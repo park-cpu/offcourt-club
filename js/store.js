@@ -2,7 +2,7 @@
 // 앱 상태 + 파생 데이터(레이팅/전적/코인) + 로그인 세션
 // ─────────────────────────────────────────────────────────────
 import { db, COLLECTIONS } from './db.js';
-import { computeRatings, computeStats, computeCoins } from './rules.js';
+import { computeRatings, computeStats, computeCoins, ntrpToRating } from './rules.js';
 
 export const state = Object.fromEntries(COLLECTIONS.map((c) => [c, []]));
 state.ready = false;
@@ -57,6 +57,10 @@ export function derived() {
   derivedCache = { ratings, deltas, allStats, coins };
   return derivedCache;
 }
+
+// 대진용 레이팅: 회원은 계산된 레이팅, 게스트는 입력한 NTRP 기준
+export const ratingOf = (id) => derived().ratings.get(id) ?? ntrpToRating(person(id).ntrp);
+export const ratingMap = (ids) => new Map(ids.map((id) => [id, ratingOf(id)]));
 
 export const seasonOf = (date) => settings().seasons.find((s) => date >= s.start && date <= s.end);
 export const currentSeason = () => {

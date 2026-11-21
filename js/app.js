@@ -1,4 +1,4 @@
-import { h } from './ui.js';
+import { h, reportError } from './ui.js';
 import { startStore, subscribe, settings, state } from './store.js';
 import { homeView } from './views/home.js';
 import { weekView, scheduleView } from './views/schedule.js';
@@ -79,5 +79,8 @@ async function boot() {
   window.addEventListener('rerender', render);
   render();
 }
+
+// 놓친 저장 오류도 화면에 알림
+window.addEventListener('unhandledrejection', (e) => reportError(e.reason));
 
 boot();

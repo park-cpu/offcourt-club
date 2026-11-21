@@ -1,15 +1,11 @@
-import { h } from '../ui.js';
-import { state, me, today, fmtDate, attendanceOf, derived, currentSeason, seasonStats, settings, courtsOf, dowOf, parseYmd } from '../store.js';
+import { h, fmtShortRange } from '../ui.js';
+import { state, me, today, attendanceOf, derived, currentSeason, seasonStats, courtsOf, dowOf, parseYmd, weekStart, addDays } from '../store.js';
 import { toggleRsvp } from './schedule.js';
 import { rankList } from './rank.js';
 
 export function homeView() {
   const t = today();
   const u = me();
-  const upcoming = state.schedules
-    .filter((s) => s.date >= t)
-    .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
-  const next = upcoming[0];
   const season = currentSeason();
 
   const hero = h(
@@ -20,42 +16,7 @@ export function homeView() {
     h('div', { class: 'hero-bottom' }, h('span', {}, u ? `${u.name}님` : '로그인하면 참가·기록이 가능해요'), h('span', {}, 'Est. 2026'))
   );
 
-  let nextCard;
-  if (!next) {
-    nextCard = h('section', { class: 'block' }, h('p', { class: 'eyebrow' }, 'Next Session'), h('p', { class: 'big-muted' }, '예정된 일정이 없어요'), h('a', { class: 'btn primary block', href: '#/week' }, '일정 등록하러 가기'));
-  } else {
-    const att = attendanceOf(next.id);
-    const mine = u && att.some((a) => a.playerId === u.id);
-    const d = parseYmd(next.date);
-    const isToday = next.date === t;
-    nextCard = h(
-      'section',
-      { class: 'block next' },
-      h('p', { class: 'eyebrow' }, isToday ? 'Today' : 'Next Session'),
-      h(
-        'a',
-        { class: 'next-main', href: `#/s/${next.id}` },
-        h('div', { class: 'next-date' }, h('span', { class: 'num' }, d.getDate()), h('span', {}, `${d.getMonth() + 1}월 · ${dowOf(next.date)}`)),
-        h(
-          'div',
-          { class: 'next-info' },
-          h('strong', {}, next.venue),
-          h('span', {}, `${next.start}–${next.end}`),
-          h('span', {}, `코트 ${courtsOf(next).join(', ') || '-'} · 예약 ${next.booker || '-'}`)
-        ),
-        h('div', { class: 'next-count' }, h('span', { class: 'num' }, att.length), h('span', {}, '명'))
-      ),
-      h(
-        'div',
-        { class: 'row gap' },
-        isToday
-          ? h('a', { class: 'btn primary grow', href: `#/play/${next.id}` }, '경기 시작하기')
-          : h('button', { class: 'btn grow ' + (mine ? 'ghost' : 'primary'), onclick: () => toggleRsvp(next) }, mine ? '참가 취소' : '참가하기'),
-        h('a', { class: 'btn ghost', href: '#/week' }, '이번 주')
-      ),
-      upcoming.length > 1 && h('p', { class: 'muted small center' }, `이후 일정 ${upcoming.length - 1}개 더`)
-    );
-  }
+  const sessions = sessionsBlock(t, u);
 
   let mineCard = null;
   if (u) {
@@ -80,7 +41,125 @@ export function homeView() {
       top.map((r, i) => h('a', { class: 'podium-row', href: `#/p/${r.id}` }, h('span', { class: 'rank-num' }, i + 1), h('span', { class: 'grow' }, r.name), h('span', { class: 'sp' }, Math.round(r.sp), h('small', {}, ' pt'))))
     );
 
-  return h('div', { class: 'page' }, hero, nextCard, mineCard, podium);
+  return h('div', { class: 'page' }, hero, sessions, mineCard, podium);
 }
 
 const stat = (label, value) => h('div', { class: 'stat' }, h('span', { class: 'stat-v' }, value), h('span', { class: 'stat-l' }, label));
+
+// ── 주간 일정 카드 (좌우로 넘기기) ─────────────────────
+// 화면이 다시 그려져도 보던 주·카드 위치를 유지
+const view = { offset: 0, index: null, key: '' };
+
+function sessionsBlock(t, u) {
+  const start = addDays(weekStart(t), view.offset * 7);
+  const end = addDays(start, 6);
+  const list = state.schedules
+    .filter((s) => s.date >= start && s.date <= end)
+    .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+  const label = view.offset === 0 ? '이번 주' : view.offset === 1 ? '다음 주' : `${view.offset}주 뒤`;
+  const setOffset = (n) => {
+    view.offset = n;
+    view.index = null;
+    window.dispatchEvent(new Event('rerender'));
+  };
+  const head = h(
+    'div',
+    { class: 'row between' },
+    h('p', { class: 'eyebrow' }, `${label} · ${fmtShortRange(start, end)}`),
+    view.offset > 0 && h('button', { class: 'link small', onclick: () => setOffset(0) }, '‹ 이번 주')
+  );
+
+  if (!list.length) {
+    return h(
+      'section',
+      { class: 'block' },
+      head,
+      h('p', { class: 'big-muted' }, view.offset === 0 ? '이번주 일정은 없습니다' : `${label} 일정은 없습니다`),
+      h(
+        'div',
+        { class: 'row gap' },
+        h('button', { class: 'btn primary grow', onclick: () => setOffset(view.offset + 1) }, view.offset === 0 ? '다음주 일정 보기' : '그다음 주 보기'),
+        h('a', { class: 'btn ghost', href: `#/week/${start}` }, '일정 등록')
+      )
+    );
+  }
+
+  // 처음엔 오늘 이후 첫 일정부터 보여줌 (모두 지났으면 마지막)
+  const key = view.offset + ':' + list.map((s) => s.id).join(',');
+  if (view.index == null || view.key !== key) {
+    const firstUpcoming = list.findIndex((s) => s.date >= t);
+    view.index = firstUpcoming >= 0 ? firstUpcoming : list.length - 1;
+    view.key = key;
+  }
+
+  const dots = h('div', { class: 'dots' }, list.map((_, i) => h('span', { class: i === view.index ? 'on' : '' })));
+  const counter = h('span', { class: 'muted small' }, `${view.index + 1} / ${list.length}`);
+  const track = h('div', { class: 'carousel' + (list.length > 1 ? ' multi' : '') }, list.map((s) => slide(s, t, u)));
+  const update = () => {
+    const w = track.firstElementChild?.offsetWidth || 1;
+    const i = Math.max(0, Math.min(list.length - 1, Math.round(track.scrollLeft / (w + 10))));
+    if (i === view.index) return;
+    view.index = i;
+    [...dots.children].forEach((d, k) => d.classList.toggle('on', k === i));
+    counter.textContent = `${i + 1} / ${list.length}`;
+  };
+  track.addEventListener('scroll', update, { passive: true });
+  // 그려진 뒤 보던 카드로 이동
+  requestAnimationFrame(() => {
+    const el = track.children[view.index];
+    if (el) track.scrollLeft = el.offsetLeft - track.firstElementChild.offsetLeft;
+  });
+  const go = (d) => {
+    const el = track.children[Math.max(0, Math.min(list.length - 1, view.index + d))];
+    if (el) track.scrollTo({ left: el.offsetLeft - track.firstElementChild.offsetLeft, behavior: 'smooth' });
+  };
+
+  return h(
+    'section',
+    { class: 'block sessions' },
+    head,
+    track,
+    list.length > 1 &&
+      h(
+        'div',
+        { class: 'carousel-nav' },
+        h('button', { class: 'icon-btn', onclick: () => go(-1), 'aria-label': '이전 일정' }, '‹'),
+        h('div', { class: 'carousel-pos' }, dots, counter),
+        h('button', { class: 'icon-btn', onclick: () => go(1), 'aria-label': '다음 일정' }, '›')
+      ),
+    view.offset === 0 && h('button', { class: 'link small center-self', onclick: () => setOffset(1) }, '다음주 일정 보기 ›')
+  );
+}
+
+function slide(s, t, u) {
+  const att = attendanceOf(s.id);
+  const mine = u && att.some((a) => a.playerId === u.id);
+  const d = parseYmd(s.date);
+  const isToday = s.date === t;
+  const past = s.date < t;
+  const days = Math.round((parseYmd(s.date) - parseYmd(t)) / 864e5);
+  const tag = isToday ? 'Today' : past ? '지난 일정' : `D-${days}`;
+  let action;
+  if (isToday) action = h('a', { class: 'btn primary grow', href: `#/play/${s.id}` }, '경기 시작하기');
+  else if (past) action = h('a', { class: 'btn ghost grow', href: `#/play/${s.id}/done` }, '결과 보기');
+  else action = h('button', { class: 'btn grow ' + (mine ? 'ghost' : 'primary'), onclick: () => toggleRsvp(s) }, mine ? '참가 취소' : '참가하기');
+  return h(
+    'div',
+    { class: 'slide' + (past ? ' past' : '') + (isToday ? ' today' : '') },
+    h('div', { class: 'row between' }, h('span', { class: 'slide-tag' }, tag), mine && h('span', { class: 'type type-official' }, '참가 중')),
+    h(
+      'a',
+      { class: 'next-main', href: `#/s/${s.id}` },
+      h('div', { class: 'next-date' }, h('span', { class: 'num' }, d.getDate()), h('span', {}, `${d.getMonth() + 1}월 · ${dowOf(s.date)}`)),
+      h(
+        'div',
+        { class: 'next-info' },
+        h('strong', {}, s.venue),
+        h('span', {}, `${s.start}–${s.end}`),
+        h('span', {}, `코트 ${courtsOf(s).join(', ') || '-'} · 예약 ${s.booker || '-'}`)
+      ),
+      h('div', { class: 'next-count' }, h('span', { class: 'num' }, att.length), h('span', {}, '명'))
+    ),
+    h('div', { class: 'row gap' }, action)
+  );
+}

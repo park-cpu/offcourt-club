@@ -22,6 +22,8 @@ export const MATCH_TYPES = {
   friendly: { label: '친선전', short: 'FRIENDLY', desc: '기록 없음 · 출석만' },
 };
 
+const localYmd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 export const ntrpToRating = (ntrp) =>
   RULES.ratingBase + ((Number(ntrp) || 3) - 3) * RULES.ratingPerNtrp;
 
@@ -161,7 +163,7 @@ export function computeCoins(players, attendance, coinLogs, matches, settings) {
     debt.set(id, 0);
     loans.set(id, 0);
     ledger.set(id, []);
-    const d = p.createdAt ? new Date(p.createdAt).toISOString().slice(0, 10) : '';
+    const d = p.createdAt ? localYmd(new Date(p.createdAt)) : '';
     ev(d, -1, () => {
       bal.set(id, bal.get(id) + (settings.initialCoins ?? 3));
       entry(id, settings.initialCoins ?? 3, '가입 지급', d);

@@ -5,7 +5,7 @@ export function h(tag, props, ...kids) {
     if (v == null || v === false) continue;
     if (k === 'class') el.className = v;
     else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
-    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), guard(el, v));
     else if (k === 'html') el.innerHTML = v;
     else if (k in el && k !== 'list' && k !== 'form') el[k] = v;
     else el.setAttribute(k, v === true ? '' : v);
@@ -13,6 +13,28 @@ export function h(tag, props, ...kids) {
   append(el, kids);
   return el;
 }
+// 비동기 클릭 핸들러: 처리 중 버튼 잠금(두 번 눌림 방지) + 실패 시 안내
+function guard(el, fn) {
+  return (e) => {
+    if (el.dataset.busy) return;
+    let r;
+    try {
+      r = fn(e);
+    } catch (err) {
+      return reportError(err);
+    }
+    if (r && typeof r.then === 'function') {
+      el.dataset.busy = '1';
+      r.catch(reportError).finally(() => delete el.dataset.busy);
+    }
+  };
+}
+export function reportError(err) {
+  console.error(err);
+  const msg = String(err?.code || err?.message || err);
+  toast(/permission|denied/i.test(msg) ? '저장 권한이 없어요 (서버 규칙 확인 필요)' : /offline|unavailable|network/i.test(msg) ? '인터넷 연결을 확인해 주세요' : '저장하지 못했어요. 다시 시도해 주세요');
+}
+
 function append(el, kids) {
   for (const k of kids.flat(Infinity)) {
     if (k == null || k === false) continue;
@@ -35,9 +57,13 @@ export function toast(msg) {
 }
 
 /** 바텀시트. build(close) 는 내용 노드를 반환 */
-export function sheet(title, build) {
+export function sheet(title, build, onClose) {
   const root = document.getElementById('sheets');
+  let closed = false;
   const close = () => {
+    if (closed) return;
+    closed = true;
+    onClose?.();
     wrap.classList.remove('open');
     setTimeout(() => wrap.remove(), 250);
   };
@@ -60,26 +86,31 @@ export function sheet(title, build) {
 
 export function confirmSheet(title, message, okLabel = '확인', danger = false) {
   return new Promise((resolve) => {
-    let done = false;
-    const close = sheet(title, (close) =>
-      h(
-        'div',
-        {},
-        h('p', { class: 'muted pre' }, message),
+    let answer = false;
+    sheet(
+      title,
+      (close) =>
         h(
           'div',
-          { class: 'row gap' },
-          h('button', { class: 'btn ghost grow', onclick: () => { done = true; close(); resolve(false); } }, '취소'),
-          h('button', { class: `btn grow ${danger ? 'danger' : 'primary'}`, onclick: () => { done = true; close(); resolve(true); } }, okLabel)
-        )
-      )
+          {},
+          h('p', { class: 'muted pre' }, message),
+          h(
+            'div',
+            { class: 'row gap' },
+            h('button', { class: 'btn ghost grow', onclick: close }, '취소'),
+            h('button', { class: `btn grow ${danger ? 'danger' : 'primary'}`, onclick: () => { answer = true; close(); } }, okLabel)
+          )
+        ),
+      () => resolve(answer)
     );
-    void close;
   });
 }
 
-export const field = (label, input, hint) =>
-  h('label', { class: 'field' }, h('span', { class: 'field-label' }, label), input, hint && h('span', { class: 'field-hint' }, hint));
+// 입력칸 + 라벨. 버튼 묶음(남/여 등)은 <label>로 감싸면 클릭이 첫 버튼으로 넘어가므로 <div> 사용
+export const field = (label, input, hint) => {
+  const isControl = input instanceof HTMLInputElement || input instanceof HTMLSelectElement || input instanceof HTMLTextAreaElement;
+  return h(isControl ? 'label' : 'div', { class: 'field' }, h('span', { class: 'field-label' }, label), input, hint && h('span', { class: 'field-hint' }, hint));
+};
 
 export const select = (props, options, value) =>
   h(
@@ -95,3 +126,8 @@ export const pct = (x) => Math.round(x * 100) + '%';
 
 export const NTRP_OPTIONS = [1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5].map((n) => [n, n.toFixed(1)]);
 export const ntrpText = (n) => (Number(n) || 0).toFixed(1);
+export const fmtShortRange = (a, b) => {
+  const [, am, ad] = a.split('-').map(Number);
+  const [, bm, bd] = b.split('-').map(Number);
+  return `${am}.${ad} – ${bm}.${bd}`;
+};

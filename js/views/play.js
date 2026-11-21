@@ -1,6 +1,6 @@
 import { h, sheet, toast, field, select, go, confirmSheet, empty } from '../ui.js';
 import {
-  state, me, isAdmin, today, fmtDate, attendanceOf, matchesOf, scheduleById, courtsOf, person, derived, activePlayers, isGuestId,
+  state, me, isAdmin, today, fmtDate, attendanceOf, matchesOf, scheduleById, courtsOf, person, derived, activePlayers, isGuestId, ratingOf, ratingMap,
 } from '../store.js';
 import { put, remove, batch, uid } from '../db.js';
 import { generate, capacity } from '../matchmaker.js';
@@ -159,13 +159,12 @@ function drawTab(s) {
   const courtCards = courts.map((c) => {
     const m = playing.find((x) => x.court === c);
     if (!m) return h('div', { class: 'court empty-court' }, h('span', { class: 'court-no' }, `코트 ${c}`), h('span', { class: 'muted' }, '비어 있음'));
-    const { ratings } = derived();
     return h(
       'div',
       { class: 'court' },
       h('div', { class: 'row between' }, h('span', { class: 'court-no' }, `코트 ${c} · ${FORMAT_LABEL[m.format] || '복식'}`), h('span', { class: 'type type-' + m.type }, MATCH_TYPES[m.type].label)),
       h('div', { class: 'court-teams' }, h('div', {}, teamNames(m.teamA)), h('span', { class: 'vs' }, 'vs'), h('div', {}, teamNames(m.teamB))),
-      h('div', { class: 'muted small' }, `평균 레이팅 ${avgR(m.teamA, ratings)} : ${avgR(m.teamB, ratings)}`),
+      h('div', { class: 'muted small' }, `평균 레이팅 ${avgR(m.teamA)} : ${avgR(m.teamB)}`),
       h(
         'div',
         { class: 'row gap' },
@@ -211,7 +210,7 @@ function drawTab(s) {
 
 const genderMap = () => new Map([...state.players, ...state.guests].map((x) => [x.id, x.gender]));
 const sum = (l, v) => h('div', {}, h('strong', {}, v), h('span', {}, l));
-const avgR = (ids, ratings) => Math.round(ids.reduce((a, id) => a + (ratings.get(id) || 1000), 0) / ids.length);
+const avgR = (ids) => Math.round(ids.reduce((a, id) => a + ratingOf(id), 0) / ids.length);
 
 // 코인전 불가 사유 (게스트 포함 / 코인 부족)
 function coinBlockReason(ids) {
@@ -224,8 +223,7 @@ function coinBlockReason(ids) {
 
 async function autoDraw(s, pool, freeCourts, p) {
   if (!requireLogin()) return;
-  const { ratings } = derived();
-  const plan = generate({ pool, courts: freeCourts, format: p.format, ratings, todayMatches: matchesOf(s.id), genders: genderMap() });
+  const plan = generate({ pool, courts: freeCourts, format: p.format, ratings: ratingMap(pool), todayMatches: matchesOf(s.id), genders: genderMap() });
   if (!plan.length) return toast('대진을 만들 수 없어요');
   const notes = [];
   const now = Date.now();

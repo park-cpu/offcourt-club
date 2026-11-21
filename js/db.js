@@ -68,9 +68,15 @@ class FirestoreDB {
     ]);
     this.fs = fs;
     const app = initializeApp(FIREBASE_CONFIG);
-    this.db = fs.initializeFirestore(app, {
-      localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }),
-    });
+    try {
+      this.db = fs.initializeFirestore(app, {
+        localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }),
+      });
+    } catch (e) {
+      // 사파리 개인정보 보호 모드 등 오프라인 저장소를 못 쓰는 환경
+      console.warn('persistent cache unavailable', e);
+      this.db = fs.getFirestore(app);
+    }
     const first = COLLECTIONS.map(
       (c) =>
         new Promise((resolve, reject) => {

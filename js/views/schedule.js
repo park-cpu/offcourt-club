@@ -219,11 +219,9 @@ export function editSchedule(s, date) {
         attendanceOf(s.id).forEach((a) => ops.push({ type: 'put', col: 'attendance', doc: { ...a, date: doc.date } }));
         matchesOf(s.id).forEach((m) => ops.push({ type: 'put', col: 'matches', doc: { ...m, date: doc.date } }));
       }
-      // 새 일정 등록자는 자동 참가
-      if (!s) ops.push({ type: 'put', col: 'attendance', doc: { id: `${doc.id}_${me().id}`, scheduleId: doc.id, date: doc.date, playerId: me().id, isGuest: false, arrived: false, createdAt: Date.now(), by: me().id } });
       await batch(ops);
       close();
-      toast(s ? '수정했어요' : '일정을 등록했어요');
+      toast(s ? '수정했어요' : '일정을 등록했어요. 참가하려면 참가하기를 눌러 주세요');
       go(`#/s/${doc.id}`);
     };
     return h(
