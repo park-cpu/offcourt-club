@@ -3,6 +3,7 @@ import {
   state, me, isAdmin, today, weekStart, addDays, parseYmd, DOW, fmtDate, attendanceOf, scheduleById, courtsOf, person, matchesOf,
 } from '../store.js';
 import { put, remove, batch, uid } from '../db.js';
+import { weatherChip, WEATHER_PLACE } from '../weather.js';
 import { requireLogin, pageHead, backLink, nameTag, genderPicker, GENDER_LABEL } from './common.js';
 
 // ── 주간 일정 ─────────────────────────────────────────
@@ -42,7 +43,7 @@ export function weekView(param) {
                 return h(
                   'a',
                   { class: 'sch' + (mine ? ' mine' : ''), href: `#/s/${s.id}` },
-                  h('div', {}, h('strong', {}, `${s.start}–${s.end}`), h('span', {}, `${s.venue} · 코트 ${courtsOf(s).join(',') || '-'}`)),
+                  h('div', {}, h('strong', {}, `${s.start}–${s.end}`), h('span', {}, `${s.venue} · 코트 ${courtsOf(s).join(',') || '-'}`), weatherChip(s)),
                   h('span', { class: 'cnt' }, n, h('small', {}, '명'))
                 );
               })
@@ -90,6 +91,7 @@ export function scheduleView(id) {
         h('dt', {}, '경기장'), h('dd', {}, s.venue),
         h('dt', {}, '코트'), h('dd', {}, courtsOf(s).join(', ') || '-'),
         h('dt', {}, '예약자'), h('dd', {}, s.booker || '-'),
+        weatherChip(s) && [h('dt', {}, '날씨'), h('dd', {}, weatherChip(s, 'on-blue'), h('small', { class: 'wx-src' }, ` ${WEATHER_PLACE.name}`))],
         s.note && [h('dt', {}, '메모'), h('dd', {}, s.note)]
       )
     ),

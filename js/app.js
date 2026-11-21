@@ -6,6 +6,7 @@ import { playView } from './views/play.js';
 import { rankView, profileView, rulesView } from './views/rank.js';
 import { meView } from './views/me.js';
 import { adminView, setupView } from './views/admin.js';
+import { loadWeather } from './weather.js';
 
 const TABS = [
   ['#/', '홈', 'home', ['', 'home']],
@@ -79,6 +80,9 @@ async function boot() {
   window.addEventListener('hashchange', render);
   window.addEventListener('rerender', render);
   render();
+  loadWeather();
+  // 앱을 오래 켜두면 1시간마다 예보 갱신
+  setInterval(loadWeather, 30 * 60 * 1000);
 }
 
 // 놓친 저장 오류도 화면에 알림

@@ -1,6 +1,7 @@
 import { h, fmtShortRange, onMount } from '../ui.js';
 import { state, me, today, attendanceOf, derived, currentSeason, seasonStats, courtsOf, dowOf, parseYmd, weekStart, addDays } from '../store.js';
 import { toggleRsvp } from './schedule.js';
+import { weatherChip } from '../weather.js';
 import { rankList } from './rank.js';
 
 export function homeView() {
@@ -167,7 +168,8 @@ function slide(s, t, u) {
         { class: 'next-info' },
         h('strong', {}, s.venue),
         h('span', {}, `${s.start}–${s.end}`),
-        h('span', {}, `코트 ${courtsOf(s).join(', ') || '-'} · 예약 ${s.booker || '-'}`)
+        h('span', {}, `코트 ${courtsOf(s).join(', ') || '-'} · 예약 ${s.booker || '-'}`),
+        weatherChip(s)
       ),
       h('div', { class: 'next-count' }, h('span', { class: 'num' }, att.length), h('span', {}, '명'))
     ),

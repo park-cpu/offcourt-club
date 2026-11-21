@@ -144,6 +144,14 @@ h2.inline { display: inline; }
 .stat-l { font-size: 12px; color: var(--ink-3); font-weight: 600; }
 .podium-row { display: flex; align-items: center; gap: 14px; padding: 8px 0; border-top: 1px solid var(--grey-2); font-weight: 600; }
 
+/* 날씨 */
+.wx { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--ink-2); margin-top: 2px; white-space: nowrap; }
+.wx-t { color: var(--ink); }
+.wx-p { color: var(--ink-3); font-weight: 500; }
+.wx.rainy .wx-p { color: var(--blue); font-weight: 700; }
+.wx.on-blue, .wx.on-blue .wx-t, .wx.on-blue .wx-p { color: var(--cream); }
+.wx-src { opacity: 0.7; font-weight: 400; }
+
 /* 홈: 얇은 브랜드 바 */
 .home-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--blue); color: var(--cream); border-radius: var(--r); padding: 10px 16px 8px; }
 .wordmark-sm { font-family: var(--serif); font-weight: 500; font-size: 38px; line-height: 1; letter-spacing: -0.045em; }
