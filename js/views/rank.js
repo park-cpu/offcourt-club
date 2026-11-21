@@ -1,0 +1,225 @@
+import { h, empty, pct, fmtNum, ntrpText, toast, confirmSheet } from '../ui.js';
+import { state, settings, currentSeason, seasonStats, derived, activePlayers, careerText, me, isAdmin, fmtShort, today } from '../store.js';
+import { put, uid } from '../db.js';
+import { ratingToNtrp, RULES, matchOrder, canBorrow } from '../rules.js';
+import { pageHead, backLink, matchCard } from './common.js';
+import { scoreSheet } from './play.js';
+
+export function rankList(season) {
+  const st = seasonStats(season);
+  const min = settings().minGames;
+  const rows = activePlayers().map((p) => ({ ...p, ...st.get(p.id) }));
+  const sort = (a, b) => b.sp - a.sp || b.winRate - a.winRate || b.games - a.games;
+  return {
+    ranked: rows.filter((r) => r.games >= min).sort(sort),
+    pending: rows.filter((r) => r.games > 0 && r.games < min).sort(sort),
+    min,
+  };
+}
+
+export function rankView(param) {
+  const seasons = [...settings().seasons].sort((a, b) => b.start.localeCompare(a.start));
+  const mode = param === 'rating' ? 'rating' : 'season';
+  const season = mode === 'season' ? seasons.find((s) => s.id === param) || currentSeason() : null;
+
+  const tabs = h(
+    'nav',
+    { class: 'seg' },
+    h('a', { class: mode === 'season' ? 'on' : '', href: '#/rank' }, '시즌 순위'),
+    h('a', { class: mode === 'rating' ? 'on' : '', href: '#/rank/rating' }, '레이팅')
+  );
+
+  if (mode === 'rating') return h('div', { class: 'page' }, pageHead('순위', 'Ranking'), tabs, ratingTable());
+
+  if (!season)
+    return h('div', { class: 'page' }, pageHead('순위', 'Ranking'), tabs, empty('등록된 시즌이 없어요. 관리자 메뉴에서 시즌을 만들어 주세요.'));
+
+  const { ranked, pending, min } = rankList(season);
+  const myId = me()?.id;
+  const row = (r, i) =>
+    h(
+      'a',
+      { class: 'rank-row' + (r.id === myId ? ' me' : '') + (i < 3 ? ' top' : ''), href: `#/p/${r.id}` },
+      h('span', { class: 'rank-num' }, i == null ? '–' : i + 1),
+      h('span', { class: 'rank-main' }, h('strong', {}, r.name), h('small', {}, `${r.wins}승 ${r.losses}패 · ${pct(r.winRate)} · NTRP ${ntrpText(r.ntrp)}`)),
+      h('span', { class: 'sp' }, Math.round(r.sp), h('small', {}, 'pt'))
+    );
+
+  return h(
+    'div',
+    { class: 'page' },
+    pageHead('순위', 'Ranking'),
+    tabs,
+    seasons.length > 1 &&
+      h('div', { class: 'chips-scroll' }, seasons.map((s) => h('a', { class: 'chip' + (s.id === season.id ? ' on' : ''), href: `#/rank/${s.id}` }, s.name))),
+    h('section', { class: 'season-band' }, h('strong', {}, season.name), h('span', {}, `${fmtShort(season.start)} – ${fmtShort(season.end)}`)),
+    ranked.length ? h('div', { class: 'rank-list' }, ranked.map((r, i) => row(r, i))) : empty(`아직 ${min}경기 이상 치른 사람이 없어요`),
+    pending.length > 0 &&
+      h('section', { class: 'block' }, h('h2', {}, `순위 산정 대기 (${min}경기 미만)`), h('div', { class: 'rank-list dim' }, pending.map((r) => row(r, null)))),
+    h('a', { class: 'link-row', href: '#/rules' }, h('span', {}, '점수는 어떻게 계산되나요?'), h('span', { class: 'muted' }, '›'))
+  );
+}
+
+function ratingTable() {
+  const { ratings, allStats } = derived();
+  const rows = activePlayers()
+    .map((p) => ({ ...p, r: ratings.get(p.id), s: allStats.get(p.id) }))
+    .sort((a, b) => b.r - a.r);
+  return h(
+    'div',
+    { class: 'stack' },
+    h('p', { class: 'muted small' }, '레이팅은 시즌과 관계없이 누적되는 실력 지표예요. 대진 밸런스에 사용됩니다.'),
+    h(
+      'div',
+      { class: 'rank-list' },
+      rows.map((r, i) =>
+        h(
+          'a',
+          { class: 'rank-row', href: `#/p/${r.id}` },
+          h('span', { class: 'rank-num' }, i + 1),
+          h('span', { class: 'rank-main' }, h('strong', {}, r.name), h('small', {}, `NTRP ${ntrpText(r.ntrp)} → 추정 ${ratingToNtrp(r.r).toFixed(1)} · ${r.s.games}경기`)),
+          h('span', { class: 'sp' }, Math.round(r.r))
+        )
+      )
+    )
+  );
+}
+
+// ── 개인 프로필 ───────────────────────────────────────
+export function profileView(id) {
+  const p = state.players.find((x) => x.id === id);
+  if (!p) return h('div', { class: 'page' }, backLink('#/rank'), empty('없는 회원이에요'));
+  const { ratings, allStats, coins } = derived();
+  const season = currentSeason();
+  const ss = season ? seasonStats(season).get(id) : null;
+  const s = allStats.get(id);
+  const r = ratings.get(id);
+  const bal = coins.bal.get(id) ?? 0;
+  const myMatches = state.matches
+    .filter((m) => m.status === 'done' && m.type !== 'friendly' && [...m.teamA, ...m.teamB].includes(id))
+    .sort(matchOrder)
+    .reverse();
+  const ledger = coins.ledger.get(id) || [];
+
+  return h(
+    'div',
+    { class: 'page' },
+    backLink('#/rank', '순위'),
+    h(
+      'section',
+      { class: 'hero hero-p' },
+      h('div', { class: 'hero-top' }, h('span', {}, `NTRP ${ntrpText(p.ntrp)}`), h('span', {}, `구력 ${careerText(p.since)}`)),
+      h('div', { class: 'pname-big' }, p.name),
+      h('div', { class: 'hero-bottom' }, h('span', {}, s.form.length ? s.form.join(' ') : '경기 기록 없음'), h('span', {}, `최고 ${s.best}연승`))
+    ),
+    h(
+      'div',
+      { class: 'stat-grid' },
+      big('코인', bal, bal <= 0 ? 'warn' : '', (coins.debt.get(id) ?? 0) > 0 ? `남은 대출 ${coins.debt.get(id)}` : ''),
+      big('레이팅', Math.round(r), '', `추정 NTRP ${ratingToNtrp(r).toFixed(1)}`),
+      big('통산', `${s.wins}-${s.losses}`, '', `승률 ${pct(s.winRate)}`),
+      big(season ? '시즌 포인트' : '시즌', ss ? Math.round(ss.sp) : '-', '', ss ? `${ss.wins}승 ${ss.losses}패` : '')
+    ),
+    loanBlock(p, coins),
+    h(
+      'section',
+      { class: 'block' },
+      h('h2', {}, '최근 경기'),
+      myMatches.length ? myMatches.slice(0, 8).map((m) => matchCard(m, { showDate: true, onEdit: scoreSheet })) : h('p', { class: 'muted' }, '기록된 경기가 없어요')
+    ),
+    h(
+      'details',
+      { class: 'block' },
+      h('summary', {}, h('h2', { class: 'inline' }, `코인 내역 · 잔액 ${bal}`)),
+      h('ul', { class: 'ledger' }, ledger.map((l) => h('li', {}, h('span', { class: 'muted small' }, l.date ? fmtShort(l.date) : ''), h('span', { class: 'grow' }, l.reason), h('strong', { class: l.amount > 0 ? 'up' : 'down' }, fmtNum(l.amount)))))
+    )
+  );
+}
+
+// ── 대출 ──────────────────────────────────────────────
+function loanBlock(p, coins) {
+  const u = me();
+  if (!u || (u.id !== p.id && !isAdmin())) return null;
+  const bal = coins.bal.get(p.id) ?? 0;
+  const debt = coins.debt.get(p.id) ?? 0;
+  const amt = settings().loanAmount;
+  if (!canBorrow(coins, p.id) && debt === 0) return null;
+  const log = (kind, amount) => put('coinLogs', { id: uid('c_'), playerId: p.id, kind, amount, date: today(), by: u.id, at: Date.now() });
+  const borrow = async () => {
+    if (!(await confirmSheet('코인 대출', `${amt}개를 대출할까요?\n상환 전까지 출석 코인은 대출 상환에 쓰여요.`, '대출 받기'))) return;
+    await log('loan', amt);
+    toast(`${amt}코인 대출 완료`);
+  };
+  const repay = async () => {
+    const n = Math.min(bal, debt);
+    if (!(await confirmSheet('대출 상환', `보유 코인 ${n}개로 대출을 갚을까요?`, '상환'))) return;
+    await log('repay', n);
+    toast('상환했어요');
+  };
+  const forgive = async () => {
+    if (!(await confirmSheet('대출 탕감', `${p.name}님의 남은 대출 ${debt}개를 탕감할까요?`, '탕감', true))) return;
+    await log('forgive', 0);
+  };
+  return h(
+    'section',
+    { class: 'block loan' },
+    h('div', { class: 'row between' }, h('h2', {}, '코인 대출'), debt > 0 && h('span', { class: 'type type-coin' }, `상환 남음 ${debt}`)),
+    debt === 0
+      ? [
+          h('p', { class: 'muted small' }, `코인이 0개 이하일 때 ${amt}개를 빌릴 수 있어요. 상환 전까지 출석 코인이 자동으로 상환에 쓰이고, 대출은 한 번에 하나만 가능해요.`),
+          h('button', { class: 'btn primary block', onclick: borrow }, `${amt}코인 대출 받기`),
+        ]
+      : [
+          h('p', { class: 'muted small' }, '출석할 때마다 1개씩 자동 상환돼요. 코인이 있으면 지금 바로 갚을 수도 있어요.'),
+          h('div', { class: 'row gap' },
+            h('button', { class: 'btn ghost grow', disabled: bal <= 0, onclick: repay }, bal > 0 ? `보유 코인으로 ${Math.min(bal, debt)}개 상환` : '상환할 코인 없음'),
+            isAdmin() && h('button', { class: 'btn ghost danger', onclick: forgive }, '탕감')
+          ),
+        ]
+  );
+}
+
+const big = (label, value, cls = '', sub = '') => h('div', { class: 'big-stat ' + cls }, h('span', { class: 'l' }, label), h('span', { class: 'v' }, value), sub && h('span', { class: 's' }, sub));
+
+// ── 점수 규칙 안내 ────────────────────────────────────
+export function rulesView() {
+  const sec = (title, ...body) => h('section', { class: 'block prose' }, h('h2', {}, title), ...body);
+  return h(
+    'div',
+    { class: 'page' },
+    backLink('#/rank', '순위'),
+    pageHead('점수 규칙', 'How it works'),
+    sec(
+      '1. 레이팅 (실력 지표)',
+      h('p', {}, `모든 회원은 NTRP로 시작 레이팅을 받아요. NTRP 3.0 = ${RULES.ratingBase}, 0.5 차이마다 ${RULES.ratingPerNtrp / 2}점.`),
+      h('p', {}, '경기 전 두 팀의 평균 레이팅으로 "이길 확률"을 계산하고, 결과가 예상보다 좋으면 오르고 나쁘면 내려가요 (Elo 방식).'),
+      h('ul', {}, h('li', {}, '낮은 레이팅이 높은 레이팅을 이기면 → 크게 상승'), h('li', {}, '이길 만한 상대를 이기면 → 조금 상승'), h('li', {}, '최근 잘하는 사람(레이팅이 오른 사람)을 잡으면 → 더 크게 상승'))
+    ),
+    sec(
+      '2. 점수차 반영',
+      h('p', {}, '7:6, 7:5, 6:5 = ×1.0 / 6:4 = ×1.1 / 6:3 = ×1.2 / 6:2 = ×1.3 / 6:1 = ×1.4 / 6:0 = ×1.5'),
+      h('p', {}, `처음 ${RULES.provisionalGames}경기는 실력이 빨리 자리 잡도록 변동폭이 커요 (K=${RULES.kProvisional} → 이후 ${RULES.kNormal}).`)
+    ),
+    sec(
+      '3. 시즌 포인트 (순위 기준)',
+      h('p', {}, h('strong', {}, '시즌 포인트 = 시즌 중 레이팅 변동 합계 + 경기당 참여 보너스 ' + RULES.participationBonus + '점')),
+      h('p', {}, '원래 잘 치는 사람이 항상 1등이 되지 않도록, "자기 수준 대비 얼마나 잘했는지"로 순위를 매겨요. 입문자도 기대 이상으로 이기면 1등이 될 수 있어요.'),
+      h('p', {}, `최소 ${settings().minGames}경기를 치러야 순위에 올라요 (몇 판만 이기고 멈추는 것 방지). 동점이면 승률 → 경기 수 순.`)
+    ),
+    sec(
+      '4. 경기 유형',
+      h('ul', {}, h('li', {}, '코인전: 승패 · 레이팅 · 코인 모두 반영'), h('li', {}, '공식전: 승패 · 레이팅 반영, 코인 없음'), h('li', {}, '친선전: 출석만, 승패 기록 없음'), h('li', {}, '게스트가 낀 경기: 점수는 남지만 승패·레이팅·순위에서 제외'))
+    ),
+    sec(
+      '5. 코인',
+      h('ul', {},
+        h('li', {}, `가입 시 ${settings().initialCoins}개, 출석(도착 체크)마다 +${settings().attendCoin}개`),
+        h('li', {}, '코인전: 모두 1개씩 걸고 승리팀이 가져감 → 승리 각 +1, 패배 각 −1'),
+        h('li', {}, '베이글(6:0, 7:0 등 상대 0게임) → 각 2개'),
+        h('li', {}, '코인전에서 지면 잔액이 마이너스가 될 수 있어요. 코인이 1개 미만이면 코인전 대신 공식전으로 자동 전환'),
+        h('li', {}, `대출: 잔액 0 이하 + 남은 대출 없음 → ${settings().loanAmount}개 대출. 상환 전까지 출석 코인이 상환에 쓰이고, 보유 코인으로 바로 갚을 수도 있어요`),
+        h('li', {}, '점수를 수정·취소하면 코인과 레이팅이 자동으로 다시 계산돼요')
+      )
+    )
+  );
+}
