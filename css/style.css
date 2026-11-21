@@ -451,3 +451,4 @@ h2.sub { margin-top: 18px; font-size: 15px; color: var(--point); }
 .rule-table th { text-align: left; font-weight: 600; color: var(--ink-3, #666); white-space: nowrap; }
 .rule-table td { font-family: var(--serif); font-size: 17px; }
 .prose h3 { font-size: 14px; margin: 16px 0 4px; }
+.input:disabled { background: var(--grey-1, #f0efea); color: var(--ink-3, #888); }

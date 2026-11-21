@@ -42,7 +42,9 @@ export function playerForm(existing, { admin = false, onSaved } = {}) {
   const p = existing || {};
   const name = h('input', { class: 'input', value: p.name || '', placeholder: '홍길동', maxLength: 12 });
   const since = h('input', { class: 'input', type: 'month', value: p.since || '' });
-  const ntrp = h('input', { class: 'input', type: 'number', step: '0.5', min: '1', max: '7', value: p.ntrp ?? 2.5 });
+  // NTRP는 레이팅 시작점이라 관리자만 수정 (회원 본인은 보기만)
+  const canNtrp = admin || isAdmin();
+  const ntrp = h('input', { class: 'input', type: 'number', step: '0.5', min: '1', max: '7', value: p.ntrp ?? 2.5, disabled: !canNtrp });
   const pin = h('input', { class: 'input', type: 'password', inputMode: 'numeric', maxLength: 4, placeholder: existing ? '변경할 때만 입력' : '숫자 4자리' });
   const active = h('input', { type: 'checkbox', checked: p.active !== false });
   const gender = genderPicker(p.gender);
@@ -59,7 +61,7 @@ export function playerForm(existing, { admin = false, onSaved } = {}) {
       id,
       name: n,
       since: since.value || '',
-      ntrp: Math.round(Number(ntrp.value || 2.5) * 10) / 10,
+      ntrp: canNtrp ? Math.round(Number(ntrp.value || 2.5) * 10) / 10 : p.ntrp,
       gender: gender.value(),
       active: admin ? active.checked : p.active !== false,
       createdAt: p.createdAt || Date.now(),
@@ -75,7 +77,7 @@ export function playerForm(existing, { admin = false, onSaved } = {}) {
       field('이름', name),
       field('성별', gender.node, '혼복 대진에 사용'),
       field('테니스 시작 (구력)', since, '처음 레슨/입문한 연·월'),
-      field('NTRP', ntrp, '모르면 2.5 (입문) · 3.0 (랠리 가능) · 3.5 (경기 운영)'),
+      field('NTRP', ntrp, canNtrp ? '모르면 2.5 (입문) · 3.0 (랠리 가능) · 3.5 (경기 운영) · 바꾸면 지난 경기까지 레이팅 재계산' : 'NTRP는 레이팅 시작점이라 관리자만 바꿀 수 있어요. 수정이 필요하면 관리자에게 요청해 주세요'),
       field(existing ? 'PIN 변경' : 'PIN (로그인용)', pin),
       admin && existing && h('label', { class: 'check' }, active, ' 활동 중 (해제하면 목록·대진에서 숨김)'),
       h('button', { class: 'btn primary block', onclick: save }, existing ? '저장' : '등록')
