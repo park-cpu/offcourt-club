@@ -13,7 +13,7 @@ export function homeView() {
   const hero = h(
     'header',
     { class: 'home-bar' },
-    h('div', { class: 'wordmark-sm' }, h('em', {}, 'Off'), 'court', h('sup', {}, '™')),
+    h('img', { class: 'wordmark-img', src: 'assets/wordmark.png', alt: 'Offcourt' }),
     h('div', { class: 'home-bar-meta' }, h('strong', {}, season ? season.name : 'Season —'), h('span', {}, u ? `${u.name}님` : h('a', { href: '#/me' }, '로그인 ›')))
   );
 

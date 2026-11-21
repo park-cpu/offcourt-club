@@ -43,5 +43,5 @@
 - 카카오 로그인 연동 (보류 중). 간단 버전 = 카카오 계정을 기존 회원에 연결(GitHub Pages 그대로), 보안 강화 버전 = Firebase Blaze + Cloud Functions 커스텀 토큰
 
 ## 디자인
-- Offcourt 브랜드: 블루 #1D5294, 크림 #F7F1D6, 클레이 #B8835A, 레드 #E5533A, 그레이. 숫자·워드마크는 세리프(Newsreader), 본문 Pretendard
+- Offcourt 브랜드: 블루 #1D5294, 크림 #F7F1D6, 클레이 #B8835A, 포인트(레드) #E94C2B (`--point`), 홈 일정 카드 배경 #E7E3D9 (`--slide-bg`, 테두리 없음), 그레이. 홈 로고 = `assets/wordmark.png`, 앱 아이콘 = OC 심볼(`assets/icon-*.png`). 숫자·워드마크는 세리프(Newsreader), 본문 Pretendard
 - 원칙: 한 화면에 한 정보, 큰 숫자, 높은 대비, 모바일 우선
