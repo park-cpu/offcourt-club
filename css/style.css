@@ -446,3 +446,8 @@ h2.sub { margin-top: 18px; font-size: 15px; color: var(--point); }
 .big-stat.name .v { font-family: var(--sans); font-size: 24px; font-weight: 800; letter-spacing: 0; }
 
 .wordmark-img { display: block; height: 30px; width: auto; }
+.rule-table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 14px; text-align: center; }
+.rule-table th, .rule-table td { padding: 8px 4px; border-bottom: 1px solid var(--grey-2); }
+.rule-table th { text-align: left; font-weight: 600; color: var(--ink-3, #666); white-space: nowrap; }
+.rule-table td { font-family: var(--serif); font-size: 17px; }
+.prose h3 { font-size: 14px; margin: 16px 0 4px; }
