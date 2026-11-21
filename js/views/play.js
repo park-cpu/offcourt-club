@@ -1,12 +1,13 @@
 import { h, sheet, toast, field, select, go, confirmSheet, empty } from '../ui.js';
 import {
-  state, me, isAdmin, today, fmtDate, attendanceOf, matchesOf, scheduleById, courtsOf, person, derived, activePlayers, isGuestId, ratingOf, ratingMap,
+  state, me, isAdmin, today, fmtDate, attendanceOf, matchesOf, scheduleById, courtsOf, person, derived, activePlayers, isGuestId, ratingOf, ratingMap, rosterOf,
 } from '../store.js';
 import { put, remove, batch, uid } from '../db.js';
 import { generate, capacity } from '../matchmaker.js';
 import { MATCH_TYPES, coinStake } from '../rules.js';
 import { requireLogin, pageHead, nameTag, matchCard, canRecord, teamNames, FORMAT_LABEL } from './common.js';
 import { addGuest } from './schedule.js';
+import { shareButton, drawText, resultsText } from '../share.js';
 
 // 대진 옵션은 기기에 기억
 const prefs = {
@@ -57,7 +58,7 @@ export function playView(sid, tab = 'draw') {
 
 // ── 출석 탭 ───────────────────────────────────────────
 function attendanceTab(s) {
-  const att = attendanceOf(s.id);
+  const att = rosterOf(s);
   const arrived = att.filter((a) => a.arrived);
   const notIn = activePlayers().filter((p) => !att.some((a) => a.playerId === p.id));
   const coin = state.settings.find((x) => x.id === 'main')?.attendCoin ?? 1;
@@ -69,7 +70,7 @@ function attendanceTab(s) {
       h('button', { class: 'att-toggle', onclick: () => setArrived(a, !a.arrived), 'aria-pressed': a.arrived }, h('span', { class: 'box' }, a.arrived ? '✓' : ''), nameTag(a.playerId)),
       a.arrived
         ? h('button', { class: 'chip' + (a.left ? ' on' : ''), onclick: () => setLeft(a, !a.left) }, a.left ? '귀가함' : '귀가')
-        : h('span', { class: 'muted small' }, '미도착')
+        : h('span', { class: 'muted small' }, a.waiting ? `대기 ${a.waitNo}` : '미도착')
     );
 
   return h(
@@ -196,6 +197,7 @@ function drawTab(s) {
       h('button', { class: 'btn primary block', disabled: !canAuto, onclick: () => autoDraw(s, pool, freeCourts, p) }, autoLabel),
       h('button', { class: 'btn ghost block', onclick: () => manualSheet(s, pool, freeCourts.length ? freeCourts : courts, p) }, '직접 대진 만들기')
     ),
+    playing.length > 0 && h('div', { class: 'row end' }, shareButton('대진 카톡 공유', () => drawText(s))),
     h('div', { class: 'courts' }, courtCards),
     h(
       'section',
@@ -381,7 +383,7 @@ function resultsTab(s) {
   return h(
     'div',
     { class: 'stack' },
-    h('p', { class: 'muted small center' }, Object.entries(counts).map(([k, n]) => `${MATCH_TYPES[k].label} ${n}`).join(' · ')),
+    h('div', { class: 'row between' }, h('p', { class: 'muted small' }, Object.entries(counts).map(([k, n]) => `${MATCH_TYPES[k].label} ${n}`).join(' · ')), shareButton('결과 카톡 공유', () => resultsText(s))),
     done.map((m) => matchCard(m, { onEdit: scoreSheet }))
   );
 }

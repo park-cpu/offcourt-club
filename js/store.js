@@ -78,6 +78,18 @@ export const attendanceOf = (scheduleId) =>
   state.attendance.filter((a) => a.scheduleId === scheduleId).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 export const matchesOf = (scheduleId) =>
   state.matches.filter((m) => m.scheduleId === scheduleId).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+// 정원: 신청 순서대로 앞 capacity명은 확정, 나머지는 대기 (취소 시 대기자가 자동으로 올라감)
+export const capacityOf = (s) => Math.max(0, Number(s?.capacity) || 0);
+export const rosterOf = (s) => {
+  const cap = capacityOf(s);
+  return attendanceOf(s.id).map((a, i) => ({ ...a, waiting: cap > 0 && i >= cap, order: i + 1, waitNo: cap > 0 && i >= cap ? i - cap + 1 : 0 }));
+};
+export const countText = (s) => {
+  const n = attendanceOf(s.id).length;
+  const cap = capacityOf(s);
+  return cap ? `${Math.min(n, cap)}/${cap}` : String(n);
+};
+
 export const courtsOf = (s) =>
   String(s?.courts || '')
     .split(/[,\s/]+/)

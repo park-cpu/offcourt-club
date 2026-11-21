@@ -3,6 +3,7 @@ import { me, isAdmin, session, derived, careerText } from '../store.js';
 import { db } from '../db.js';
 import { pageHead, loginSheet, linkRow, playerForm } from './common.js';
 import { APP_VERSION } from '../version.js';
+import { installRow } from '../install.js';
 
 export function meView() {
   const u = me();
@@ -26,6 +27,7 @@ export function meView() {
         h('p', { class: 'muted small' }, '회원 등록은 관리자가 해요. PIN을 모르면 관리자에게 물어보세요.')
       ),
       linkRow('점수 · 코인 규칙', '#/rules'),
+      h('nav', { class: 'menu' }, installRow()),
       foot
     );
 
@@ -45,6 +47,7 @@ export function meView() {
       linkRow('내 전적 · 코인 내역', `#/p/${u.id}`),
       h('button', { class: 'link-row', onclick: () => editMe(u) }, h('span', {}, '내 정보 · PIN 변경'), h('span', { class: 'muted' }, '›')),
       linkRow('점수 · 코인 규칙', '#/rules'),
+      installRow(),
       isAdmin() && linkRow('관리자 메뉴', '#/admin'),
       h(
         'button',

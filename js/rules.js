@@ -229,3 +229,28 @@ export function computeCoins(players, attendance, coinLogs, matches, settings) {
 
 /** 대출 가능 여부 */
 export const canBorrow = (coins, id) => (coins.bal.get(id) ?? 0) <= 0 && (coins.debt.get(id) ?? 0) === 0;
+
+// ── 파트너 궁합 · 상대 전적 ─────────────────────────────
+// 레이팅 반영 경기(isRated)만 사용 → 게스트 경기·친선전 제외
+export function computeRelations(id, matches, players) {
+  const partners = new Map();
+  const opponents = new Map();
+  const bump = (map, key, win) => {
+    const x = map.get(key) || { id: key, games: 0, wins: 0, losses: 0 };
+    x.games++;
+    win ? x.wins++ : x.losses++;
+    map.set(key, x);
+  };
+  for (const m of matches) {
+    if (!isRated(m, players)) continue;
+    const side = m.teamA.includes(id) ? 'A' : m.teamB.includes(id) ? 'B' : null;
+    if (!side) continue;
+    const mine = side === 'A' ? m.teamA : m.teamB;
+    const theirs = side === 'A' ? m.teamB : m.teamA;
+    const win = winnerSide(m) === side;
+    mine.filter((x) => x !== id).forEach((x) => bump(partners, x, win));
+    theirs.forEach((x) => bump(opponents, x, win));
+  }
+  const sort = (a, b) => b.games - a.games || b.wins / b.games - a.wins / a.games;
+  return { partners: [...partners.values()].sort(sort), opponents: [...opponents.values()].sort(sort) };
+}

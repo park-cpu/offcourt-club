@@ -1,5 +1,5 @@
 import { h, fmtShortRange, onMount } from '../ui.js';
-import { state, me, today, attendanceOf, derived, currentSeason, seasonStats, courtsOf, dowOf, parseYmd, weekStart, addDays } from '../store.js';
+import { state, me, today, attendanceOf, rosterOf, capacityOf, countText, derived, currentSeason, seasonStats, courtsOf, dowOf, parseYmd, weekStart, addDays } from '../store.js';
 import { toggleRsvp } from './schedule.js';
 import { weatherChip } from '../weather.js';
 import { rankList } from './rank.js';
@@ -144,8 +144,10 @@ function sessionsBlock(t, u) {
 }
 
 function slide(s, t, u) {
-  const att = attendanceOf(s.id);
-  const mine = u && att.some((a) => a.playerId === u.id);
+  const att = rosterOf(s);
+  const myRow = u && att.find((a) => a.playerId === u.id);
+  const mine = !!myRow;
+  const full = capacityOf(s) > 0 && att.length >= capacityOf(s);
   const d = parseYmd(s.date);
   const isToday = s.date === t;
   const past = s.date < t;
@@ -154,11 +156,11 @@ function slide(s, t, u) {
   let action;
   if (isToday) action = h('a', { class: 'btn primary grow', href: `#/play/${s.id}` }, '경기 시작하기');
   else if (past) action = h('a', { class: 'btn ghost grow', href: `#/play/${s.id}/done` }, '결과 보기');
-  else action = h('button', { class: 'btn grow ' + (mine ? 'ghost' : 'primary'), onclick: () => toggleRsvp(s) }, mine ? '참가 취소' : '참가하기');
+  else action = h('button', { class: 'btn grow ' + (mine ? 'ghost' : 'primary'), onclick: () => toggleRsvp(s) }, mine ? (myRow.waiting ? '대기 취소' : '참가 취소') : full ? '대기 신청' : '참가하기');
   return h(
     'div',
     { class: 'slide' + (past ? ' past' : '') + (isToday ? ' today' : '') },
-    h('div', { class: 'row between' }, h('span', { class: 'slide-tag' }, tag), mine && h('span', { class: 'type type-official' }, '참가 중')),
+    h('div', { class: 'row between' }, h('span', { class: 'slide-tag' }, tag), mine && h('span', { class: 'type ' + (myRow.waiting ? 'type-friendly' : 'type-official') }, myRow.waiting ? `대기 ${myRow.waitNo}번` : '참가 중')),
     h(
       'a',
       { class: 'next-main', href: `#/s/${s.id}` },
@@ -171,7 +173,7 @@ function slide(s, t, u) {
         h('span', {}, `코트 ${courtsOf(s).join(', ') || '-'} · 예약 ${s.booker || '-'}`),
         weatherChip(s)
       ),
-      h('div', { class: 'next-count' }, h('span', { class: 'num' }, att.length), h('span', {}, '명'))
+      h('div', { class: 'next-count' }, h('span', { class: 'num' }, countText(s)), h('span', {}, capacityOf(s) ? '정원' : '명'))
     ),
     h('div', { class: 'row gap' }, action)
   );

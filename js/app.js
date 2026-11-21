@@ -7,6 +7,7 @@ import { rankView, profileView, rulesView } from './views/rank.js';
 import { meView } from './views/me.js';
 import { adminView, setupView } from './views/admin.js';
 import { loadWeather } from './weather.js';
+import { setupApp } from './install.js';
 
 const TABS = [
   ['#/', '홈', 'home', ['', 'home']],
@@ -88,4 +89,5 @@ async function boot() {
 // 놓친 저장 오류도 화면에 알림
 window.addEventListener('unhandledrejection', (e) => reportError(e.reason));
 
+setupApp();
 boot();

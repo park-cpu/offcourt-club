@@ -1,8 +1,8 @@
 import { h, empty, pct, fmtNum, ntrpText, toast, confirmSheet } from '../ui.js';
 import { state, settings, currentSeason, seasonStats, derived, activePlayers, careerText, me, isAdmin, fmtShort, today } from '../store.js';
 import { put, uid } from '../db.js';
-import { ratingToNtrp, RULES, matchOrder, canBorrow } from '../rules.js';
-import { pageHead, backLink, matchCard } from './common.js';
+import { ratingToNtrp, RULES, matchOrder, canBorrow, computeRelations } from '../rules.js';
+import { pageHead, backLink, matchCard, nameTag } from './common.js';
 import { scoreSheet } from './play.js';
 
 export function rankList(season) {
@@ -121,6 +121,7 @@ export function profileView(id) {
       big(season ? '시즌 포인트' : '시즌', ss ? Math.round(ss.sp) : '-', '', ss ? `${ss.wins}승 ${ss.losses}패` : '')
     ),
     loanBlock(p, coins),
+    relationBlocks(id),
     h(
       'section',
       { class: 'block' },
@@ -134,6 +135,47 @@ export function profileView(id) {
       h('ul', { class: 'ledger' }, ledger.map((l) => h('li', {}, h('span', { class: 'muted small' }, l.date ? fmtShort(l.date) : ''), h('span', { class: 'grow' }, l.reason), h('strong', { class: l.amount > 0 ? 'up' : 'down' }, fmtNum(l.amount)))))
     )
   );
+}
+
+// ── 파트너 궁합 · 상대 전적 ─────────────────────────────
+function relationBlocks(id) {
+  const players = new Set(state.players.map((x) => x.id));
+  const { partners, opponents } = computeRelations(id, state.matches, players);
+  if (!partners.length && !opponents.length) return null;
+  const row = (x, kind) =>
+    h(
+      'li',
+      { class: 'rel-row' },
+      h('a', { class: 'rel-name', href: `#/p/${x.id}` }, nameTag(x.id)),
+      h('span', { class: 'rel-bar' }, h('i', { style: `width:${Math.round((x.wins / x.games) * 100)}%` })),
+      h('span', { class: 'rel-num' }, kind === 'p' ? `${pct(x.wins / x.games)}` : `${x.wins}승 ${x.losses}패`, h('small', {}, ` · ${x.games}경기`))
+    );
+  const list = (title, hint, arr, kind) => {
+    if (!arr.length) return null;
+    const head = arr.slice(0, 5);
+    const rest = arr.slice(5);
+    return h(
+      'section',
+      { class: 'block' },
+      h('div', { class: 'row between' }, h('h2', {}, title), h('span', { class: 'muted small' }, hint)),
+      h('ul', { class: 'rel' }, head.map((x) => row(x, kind))),
+      rest.length > 0 && h('details', {}, h('summary', { class: 'link small' }, `${rest.length}명 더 보기`), h('ul', { class: 'rel' }, rest.map((x) => row(x, kind))))
+    );
+  };
+  // 궁합 요약: 2경기 이상 같이 뛴 파트너 중 승률 최고
+  const best = partners.filter((x) => x.games >= 2).sort((a, b) => b.wins / b.games - a.wins / a.games || b.games - a.games)[0];
+  const nemesis = opponents.filter((x) => x.games >= 2 && x.losses > x.wins).sort((a, b) => b.losses - b.wins - (a.losses - a.wins))[0];
+  return [
+    (best || nemesis) &&
+      h(
+        'div',
+        { class: 'stat-grid two' },
+        best && big('찰떡 파트너', state.players.find((x) => x.id === best.id)?.name || '-', 'name', `함께 ${best.wins}승 ${best.losses}패`),
+        nemesis && big('천적', state.players.find((x) => x.id === nemesis.id)?.name || '-', 'name', `상대 ${nemesis.wins}승 ${nemesis.losses}패`)
+      ),
+    list('파트너 궁합', '함께 뛴 승률', partners, 'p'),
+    list('상대 전적', '내 기준 승패', opponents, 'o'),
+  ];
 }
 
 // ── 대출 ──────────────────────────────────────────────

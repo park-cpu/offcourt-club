@@ -30,6 +30,15 @@
 ## 날씨
 - `js/weather.js`: Open-Meteo(무료·키 없음), 위치 고양시 일산(37.66, 126.77) — 좌표는 `WEATHER_PLACE`에서 변경. 일정 시간대 기온 범위 + 최대 강수확률. 1시간 캐시(localStorage). 실패해도 앱은 정상 동작.
 
+## 앱 설치 · 서비스 워커 (v1.5.0~)
+- `sw.js`는 `js/install.js`가 `sw.js?v=APP_VERSION`으로 등록 → 버전을 올리면 새 서비스 워커·캐시로 교체됨. 같은 사이트 파일은 항상 서버 먼저(no-cache), 오프라인일 때만 캐시. Firebase·날씨 등 외부 요청은 건드리지 않음
+- 아이콘: `assets/icon-192/512/180.png`, `icon-maskable-512.png` (badge.png + 크림 배경)
+- 미리보기 브라우저 창은 서비스 워커를 막아 로컬 테스트 불가 → 배포 후 실제 사이트에서 확인
+
+## 정원 · 대기 · 공유
+- 일정 `capacity`(0=무제한). 신청 순서(createdAt)로 정원까지 확정, 나머지 대기 (`rosterOf` in store.js). 신청 마감 없음
+- 공유 텍스트는 `js/share.js` (navigator.share → 클립보드 → 복사용 창)
+
 ## 나중에 할 것
 - 카카오 로그인 연동 (보류 중). 간단 버전 = 카카오 계정을 기존 회원에 연결(GitHub Pages 그대로), 보안 강화 버전 = Firebase Blaze + Cloud Functions 커스텀 토큰
 
