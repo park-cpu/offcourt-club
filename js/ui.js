@@ -131,3 +131,8 @@ export const fmtShortRange = (a, b) => {
   const [, bm, bd] = b.split('-').map(Number);
   return `${am}.${ad} – ${bm}.${bd}`;
 };
+
+// 화면이 DOM에 붙은 직후 실행할 작업 (스크롤 위치 등)
+const mountQueue = [];
+export const onMount = (fn) => mountQueue.push(fn);
+export const flushMount = () => mountQueue.splice(0).forEach((fn) => fn());

@@ -1,2 +1,2 @@
 // 배포할 때마다 올려 주세요. (CHANGELOG.md 에 변경 내용 기록)
-export const APP_VERSION = 'v1.2.0';
+export const APP_VERSION = 'v1.3.0';

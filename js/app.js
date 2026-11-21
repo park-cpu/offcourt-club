@@ -1,4 +1,4 @@
-import { h, reportError } from './ui.js';
+import { h, reportError, flushMount } from './ui.js';
 import { startStore, subscribe, settings, state } from './store.js';
 import { homeView } from './views/home.js';
 import { weekView, scheduleView } from './views/schedule.js';
@@ -54,6 +54,7 @@ function render() {
   const [key, view] = route();
   const y = window.scrollY;
   main.replaceChildren(view);
+  flushMount();
   // 같은 화면 갱신이면 스크롤 유지, 화면 이동이면 맨 위로
   window.scrollTo(0, location.hash === lastHash ? y : 0);
   lastHash = location.hash;

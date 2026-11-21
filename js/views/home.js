@@ -1,4 +1,4 @@
-import { h, fmtShortRange } from '../ui.js';
+import { h, fmtShortRange, onMount } from '../ui.js';
 import { state, me, today, attendanceOf, derived, currentSeason, seasonStats, courtsOf, dowOf, parseYmd, weekStart, addDays } from '../store.js';
 import { toggleRsvp } from './schedule.js';
 import { rankList } from './rank.js';
@@ -8,43 +8,54 @@ export function homeView() {
   const u = me();
   const season = currentSeason();
 
+  // 상단: 얇은 브랜드 바 (로고 비중 축소)
   const hero = h(
-    'section',
-    { class: 'hero' },
-    h('div', { class: 'hero-top' }, h('span', {}, 'Social Nets Tennis Club'), h('span', {}, season ? season.name : 'Season —')),
-    h('div', { class: 'wordmark' }, h('em', {}, 'Off'), 'court', h('sup', {}, '™')),
-    h('div', { class: 'hero-bottom' }, h('span', {}, u ? `${u.name}님` : '로그인하면 참가·기록이 가능해요'), h('span', {}, 'Est. 2026'))
+    'header',
+    { class: 'home-bar' },
+    h('div', { class: 'wordmark-sm' }, h('em', {}, 'Off'), 'court', h('sup', {}, '™')),
+    h('div', { class: 'home-bar-meta' }, h('strong', {}, season ? season.name : 'Season —'), h('span', {}, u ? `${u.name}님` : h('a', { href: '#/me' }, '로그인 ›')))
   );
 
   const sessions = sessionsBlock(t, u);
 
+  // 내 현황: 코인 · 시즌 순위 · 전적 · 레이팅 한 줄
   let mineCard = null;
+  const ranks = season ? rankList(season) : null;
   if (u) {
     const { coins, ratings } = derived();
     const st = season ? seasonStats(season).get(u.id) : null;
+    const pos = ranks ? ranks.ranked.findIndex((r) => r.id === u.id) : -1;
     mineCard = h(
       'a',
-      { class: 'block stats3', href: `#/p/${u.id}` },
-      stat('코인', coins.bal.get(u.id) ?? 0),
-      stat('시즌 전적', st ? `${st.wins}승 ${st.losses}패` : '-'),
+      { class: 'block stats4', href: `#/p/${u.id}` },
+      stat('코인', coins.bal.get(u.id) ?? 0, (coins.bal.get(u.id) ?? 0) <= 0 ? 'warn' : ''),
+      stat('시즌 순위', pos >= 0 ? `${pos + 1}위` : '-'),
+      stat('시즌 전적', st && st.games ? `${st.wins}-${st.losses}` : '-'),
       stat('레이팅', Math.round(ratings.get(u.id) || 0))
     );
   }
 
-  const top = season ? rankList(season).ranked.slice(0, 3) : [];
+  // 시즌 Top 3: 가로 3칸
+  const top = ranks ? ranks.ranked.slice(0, 3) : [];
   const podium =
     top.length > 0 &&
     h(
       'section',
-      { class: 'block' },
-      h('div', { class: 'row between' }, h('p', { class: 'eyebrow' }, `${season.name} Top 3`), h('a', { class: 'small', href: '#/rank' }, '전체 순위 ›')),
-      top.map((r, i) => h('a', { class: 'podium-row', href: `#/p/${r.id}` }, h('span', { class: 'rank-num' }, i + 1), h('span', { class: 'grow' }, r.name), h('span', { class: 'sp' }, Math.round(r.sp), h('small', {}, ' pt'))))
+      { class: 'block podium' },
+      h('div', { class: 'row between' }, h('p', { class: 'eyebrow' }, `${season.name} Top 3`), h('a', { class: 'small link', href: '#/rank' }, '전체 순위 ›')),
+      h(
+        'div',
+        { class: 'podium-cols' },
+        top.map((r, i) =>
+          h('a', { class: 'podium-col' + (u && r.id === u.id ? ' me' : ''), href: `#/p/${r.id}` }, h('span', { class: 'rank-num' }, i + 1), h('strong', {}, r.name), h('span', { class: 'muted small' }, `${Math.round(r.sp)} pt`))
+        )
+      )
     );
 
   return h('div', { class: 'page' }, hero, sessions, mineCard, podium);
 }
 
-const stat = (label, value) => h('div', { class: 'stat' }, h('span', { class: 'stat-v' }, value), h('span', { class: 'stat-l' }, label));
+const stat = (label, value, cls = '') => h('div', { class: 'stat ' + cls }, h('span', { class: 'stat-v' }, value), h('span', { class: 'stat-l' }, label));
 
 // ── 주간 일정 카드 (좌우로 넘기기) ─────────────────────
 // 화면이 다시 그려져도 보던 주·카드 위치를 유지
@@ -105,7 +116,7 @@ function sessionsBlock(t, u) {
   };
   track.addEventListener('scroll', update, { passive: true });
   // 그려진 뒤 보던 카드로 이동
-  requestAnimationFrame(() => {
+  onMount(() => {
     const el = track.children[view.index];
     if (el) track.scrollLeft = el.offsetLeft - track.firstElementChild.offsetLeft;
   });

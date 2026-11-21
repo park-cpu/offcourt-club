@@ -11,7 +11,8 @@
 2. 커밋까지 Claude가 함 (git user.name이 없으므로 `-c user.name="Offcourt" -c user.email="noreply@anthropic.com"`)
 3. 푸시는 사용자가 GitHub Desktop의 **Push origin** 버튼으로 함 (이 PC에는 gh CLI 없음)
 4. 실제 Firestore에는 테스트 데이터를 쓰지 말 것 (운영 데이터). 기능 테스트는 `js/config.js`를 임시로 `FIREBASE_CONFIG = null && {`(체험 모드)로 바꿔 로컬에서 하고, 커밋 전에 되돌린 뒤 `git show HEAD:js/config.js`로 확인할 것.
-5. 로컬 테스트 서버: `python3 -m http.server 8766 --directory "<이 폴더>"` (사용자 허락 받고 실행) → 브라우저 창에서 http://localhost:8766 → 첫 화면 "데모 데이터로 체험하기". (미리보기 도구가 예전 폴더를 띄우는 문제가 있었음)
+5. 로컬 테스트 서버: `python3 -m http.server 8766 --directory "<이 폴더>"` (사용자 허락 받고 실행) → 브라우저 창에서 http://localhost:8766 → 첫 화면 "데모 데이터로 체험하기". (미리보기 도구가 예전 폴더를 띄우는 문제가 있었음). 브라우저가 예전 JS를 캐시하면 `fetch(url,{cache:'reload'})`로 갱신 후 새로고침.
+6. 빌드 도구가 없어 JS 파일에 버전 쿼리가 안 붙음 → 업데이트 직후(GitHub Pages 캐시 10분) 휴대폰에 예전/새 파일이 섞일 수 있음. index.html의 8초 안전장치가 새로고침 버튼을 띄움. 새 export를 추가할 때 이 점 유의.
 
 ## 확정된 규칙 (사용자와 합의됨)
 - 레이팅: NTRP 시작값(3.0=1000, 0.5당 100) + Elo, 복식은 팀 평균, 점수차 배수(6:0 ×1.5 … 7:6 ×1.0), 처음 10경기 K=32 이후 20
