@@ -1,0 +1,33 @@
+# Offcourt Club — 프로젝트 메모
+
+테니스클럽 Offcourt 운영 웹앱. 빌드 도구 없는 순수 HTML/CSS/JS(ES modules).
+- 사이트: https://park-cpu.github.io/offcourt-club/ (GitHub Pages, `main` 브랜치 root)
+- 저장소: github.com/park-cpu/offcourt-club
+- DB: Firebase Firestore 프로젝트 `offcourt-club` (서울), 경로 `clubs/offcourt/{collection}/{id}`
+- 사용자는 비개발자. 설명은 한국어로, 쉬운 말로, 단계별로.
+
+## 업데이트 절차
+1. 코드 수정 → `js/version.js`의 `APP_VERSION` 올리기 → `CHANGELOG.md`에 한 줄 기록
+2. 커밋까지 Claude가 함 (git user.name이 없으므로 `-c user.name="Offcourt" -c user.email="noreply@anthropic.com"`)
+3. 푸시는 사용자가 GitHub Desktop의 **Push origin** 버튼으로 함 (이 PC에는 gh CLI 없음)
+4. 실제 Firestore에는 테스트 데이터를 쓰지 말 것 (운영 데이터). 기능 테스트는 `js/config.js`를 임시로 `FIREBASE_CONFIG = null`(체험 모드)로 바꿔 로컬에서 하고, 커밋 전에 되돌릴 것.
+
+## 확정된 규칙 (사용자와 합의됨)
+- 레이팅: NTRP 시작값(3.0=1000, 0.5당 100) + Elo, 복식은 팀 평균, 점수차 배수(6:0 ×1.5 … 7:6 ×1.0), 처음 10경기 K=32 이후 20
+- 시즌 포인트 = 시즌 중 레이팅 변동 합 + 경기당 1점, 최소 5경기부터 순위. 시즌은 상·하반기
+- 경기 유형: 코인전(승패·레이팅·코인) / 공식전(승패·레이팅) / 친선전(출석만)
+- 코인: 가입 3, 도착 체크 시 +1, 코인전 승 +1/패 −1, 베이글 ±2. 마이너스 허용. 1개 미만이면 코인전 → 공식전 자동 전환
+- 대출: 잔액 ≤0 + 남은 대출 없음 → 3코인(설정 가능). 상환 전 출석 코인은 상환에 사용, 보유 코인 상환, 관리자 탕감. 실제 돈 연동 없음
+- 게스트: 대진 참여 가능, 게스트 낀 경기는 코인전 불가 + 승패·레이팅·순위 제외
+- 노쇼 벌칙 없음
+- 회원 등록은 관리자만 (자가 가입 없음). 관리자 1명, 로그인은 이름 + PIN 4자리
+- 권한: 회원은 일정 등록·참가·출석·자기 경기 점수 입력(기존 기록도 참가자면 수정 가능), 관리자는 전부
+- 성별(M/F) 있음, 혼복 대진(팀당 남1·여1) 지원
+- 코인·레이팅·순위는 저장하지 않고 경기 기록에서 매번 재계산 (`js/rules.js`)
+
+## 나중에 할 것
+- 카카오 로그인 연동 (보류 중). 간단 버전 = 카카오 계정을 기존 회원에 연결(GitHub Pages 그대로), 보안 강화 버전 = Firebase Blaze + Cloud Functions 커스텀 토큰
+
+## 디자인
+- Offcourt 브랜드: 블루 #1D5294, 크림 #F7F1D6, 클레이 #B8835A, 레드 #E5533A, 그레이. 숫자·워드마크는 세리프(Newsreader), 본문 Pretendard
+- 원칙: 한 화면에 한 정보, 큰 숫자, 높은 대비, 모바일 우선
