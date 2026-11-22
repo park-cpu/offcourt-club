@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// 기본 아이템 (코드로 그린 픽셀 아이템, 아바타 48×72 · 배경 120×120 기준)
+// 기본 아이템 (코드로 그린 픽셀 아이템, 아바타 48×94 · 배경 120×120 기준)
 // 관리자가 올린 아이템(state.items)과 합쳐서 상점에 보여줍니다.
 // id는 'b_' 로 시작 — 한 번 정하면 바꾸지 마세요 (구매 기록이 id로 연결됨)
 // ─────────────────────────────────────────────────────────────
@@ -12,63 +12,62 @@ const WHITE = '#f6f4ee';
 // ── 모자 ──
 const cap = (c) => (g) => {
   const d = shade(c, -0.25), l = shade(c, 0.25);
-  g.round(6, 1, 41, 14, 13, 0, c);
-  g.rect(32, 4, 41, 14, d, (x, y) => g.get(x, y) === c);
-  g.rect(12, 4, 18, 5, l);
-  g.rect(19, 6, 28, 11, WHITE).rect(20, 7, 27, 10, c).rect(22, 8, 25, 9, WHITE); // 앞 로고
-  g.rect(22, 0, 25, 0, d);
-  g.round(3, 14, 44, 18, 0, 3, d);
-  g.rect(5, 14, 42, 14, shade(c, -0.4));
+  g.round(3, 0, 44, 17, 16, 0, c);
+  g.rect(33, 3, 44, 17, d, (x, y) => g.get(x, y) === c);
+  g.rect(11, 3, 18, 4, l);
+  g.rect(18, 6, 29, 13, WHITE).rect(19, 7, 28, 12, c).rect(21, 8, 26, 11, WHITE); // 앞 로고
+  g.round(0, 17, 47, 21, 0, 3, d);
+  g.rect(2, 17, 45, 17, shade(c, -0.42));
 };
 const headband = (c) => (g) => {
-  g.rect(6, 11, 41, 14, c);
-  g.rect(6, 14, 41, 14, shade(c, -0.15));
-  g.rect(20, 11, 27, 14, '#e94c2b');
+  g.rect(4, 14, 43, 17, c);
+  g.rect(4, 17, 43, 17, shade(c, -0.15));
+  g.rect(20, 14, 27, 17, '#e94c2b');
 };
 const visor = (c) => (g) => {
-  g.rect(6, 10, 41, 13, c);
-  g.round(2, 13, 45, 17, 0, 3, shade(c, -0.25));
-  g.rect(20, 10, 27, 12, WHITE);
+  g.rect(4, 13, 43, 16, c);
+  g.round(0, 16, 47, 21, 0, 3, shade(c, -0.25));
+  g.rect(20, 13, 27, 15, WHITE);
 };
 const beanie = (c) => (g) => {
-  g.round(5, 1, 42, 17, 14, 0, c);
-  g.rect(5, 12, 42, 17, shade(c, -0.18));
-  for (let x = 6; x <= 41; x += 2) g.rect(x, 12, x, 17, shade(c, -0.3));
-  for (let y = 4; y <= 10; y += 3) g.rect(10, y, 38, y, shade(c, -0.08), (x) => g.get(x, y) === c && x % 4 !== 0);
-  g.ellipse(CXX, 0.5, 4, 3, WHITE);
+  g.round(3, 1, 44, 22, 17, 0, c);
+  g.rect(3, 16, 44, 22, shade(c, -0.18));
+  for (let x = 4; x <= 43; x += 2) g.rect(x, 16, x, 22, shade(c, -0.3));
+  for (let y = 5; y <= 13; y += 3) g.rect(8, y, 40, y, shade(c, -0.08), (x) => g.get(x, y) === c && x % 4 !== 0);
+  g.ellipse(23.5, 1, 4.5, 3, WHITE);
 };
-const CXX = 23.5;
 // ── 얼굴 ──
 const sunglasses = (c) => (g) => {
-  g.round(12, 21, 21, 28, 2, 3, c).round(26, 21, 35, 28, 2, 3, c);
-  g.rect(21, 22, 26, 22, c);
-  g.rect(5, 22, 11, 22, c).rect(36, 22, 42, 22, c);
-  g.rect(14, 23, 15, 23, '#8fa2b8').set(14, 24, '#8fa2b8').rect(28, 23, 29, 23, '#8fa2b8').set(28, 24, '#8fa2b8');
+  g.round(9, 22, 19, 31, 2, 4, c).round(28, 22, 38, 31, 2, 4, c);
+  g.rect(19, 23, 28, 24, c);
+  g.rect(3, 24, 9, 24, c).rect(38, 24, 44, 24, c);
+  g.rect(11, 24, 13, 24, '#8fa2b8').rect(11, 25, 12, 25, '#8fa2b8').rect(30, 24, 32, 24, '#8fa2b8').rect(30, 25, 31, 25, '#8fa2b8');
 };
 const roundGlasses = (c) => (g) => {
-  for (const x0 of [12, 27]) {
-    const inner = new Grid(g.w, g.h).round(x0 + 1, 21, x0 + 7, 28, 2, 2, '#000');
-    g.round(x0, 20, x0 + 8, 29, 3, 3, c, (x, y) => !inner.get(x, y));
+  for (const x0 of [9, 29]) {
+    const inner = new Grid(g.w, g.h).round(x0 + 1, 22, x0 + 8, 31, 3, 3, '#000');
+    g.round(x0, 21, x0 + 9, 32, 4, 4, c, (x, y) => !inner.get(x, y));
   }
-  g.rect(21, 23, 27, 23, c);
+  g.rect(19, 24, 28, 24, c);
 };
 // ── 상의 ──
 const tee = (c, trim) => (g) => paintTee(g, c, trim);
 const striped = (c, s) => (g) => {
   paintTee(g, c, s);
-  g.recolor((x, y, v) => y >= 43 && y <= 54 && y % 3 === 0 && (v === c || v === shade(c, -0.18) || v === shade(c, 0.22)), (v) => (v === shade(c, -0.18) ? shade(s, -0.2) : s));
+  const body = [c, shade(c, -0.2), shade(c, 0.22)];
+  g.recolor((x, y, v) => y >= 44 && y <= 59 && y % 4 === 0 && body.includes(v), (v) => (v === body[1] ? shade(s, -0.2) : s));
 };
 const polo = (c) => (g) => {
   paintTee(g, c, shade(c, -0.25));
-  g.rect(18, 40, 22, 42, WHITE).rect(25, 40, 29, 42, WHITE); // 카라
-  g.rect(23, 41, 24, 46, shade(c, -0.25));
-  g.set(23, 43, WHITE).set(23, 45, WHITE);
+  g.rect(17, 40, 22, 43, WHITE).rect(25, 40, 30, 43, WHITE); // 카라
+  g.rect(23, 41, 24, 49, shade(c, -0.25));
+  g.set(23, 45, WHITE).set(23, 47, WHITE);
 };
 const jersey = (c, num) => (g) => {
   paintTee(g, c, WHITE);
   // 가슴 숫자 (작은 픽셀 폰트)
   const F = { 1: ['010', '110', '010', '010', '111'], 7: ['111', '001', '010', '010', '010'], 0: ['111', '101', '101', '101', '111'] };
-  String(num).split('').forEach((ch, i) => F[ch].forEach((row, y) => row.split('').forEach((b, x) => b === '1' && g.set(20 + i * 4 + x, 45 + y, WHITE))));
+  String(num).split('').forEach((ch, i) => F[ch].forEach((row, y) => row.split('').forEach((b, x) => b === '1' && g.rect(18 + i * 7 + x * 2, 46 + y * 2, 19 + i * 7 + x * 2, 47 + y * 2, WHITE))));
 };
 // ── 하의 ──
 const shorts = (c) => (g) => paintShorts(g, c);
@@ -76,22 +75,22 @@ const skirt = (c) => (g) => paintSkirt(g, c);
 // ── 신발 ──
 const shoes = (c, accent) => (g) => {
   paintShoes(g, c);
-  if (accent) g.rect(17, 69, 20, 69, accent).rect(28, 69, 31, 69, accent);
+  if (accent) g.rect(16, 89, 20, 90, accent).rect(28, 89, 32, 90, accent);
 };
 // ── 손 (라켓 · 공) ──
 const racket = (frame, grip) => (g) => {
-  g.rect(39, 44, 41, 59, grip);
-  g.rect(40, 45, 40, 58, shade(grip, 0.3));
-  g.ellipse(41.5, 31, 6, 9, frame);
-  g.ellipse(41.5, 31, 4.6, 7.6, '#ece6d2');
-  for (let y = 24; y <= 38; y += 2) for (let x = 37; x <= 46; x++) if (g.get(x, y) === '#ece6d2') g.set(x, y, '#cbc2a8');
-  for (let x = 38; x <= 45; x += 2) for (let y = 23; y <= 39; y++) if (g.get(x, y) === '#ece6d2') g.set(x, y, '#d9d1b9');
-  g.rect(40, 40, 42, 43, frame);
+  g.rect(39, 49, 41, 66, grip);
+  g.rect(40, 50, 40, 65, shade(grip, 0.3));
+  g.ellipse(41.5, 34, 6, 10, frame);
+  g.ellipse(41.5, 34, 4.6, 8.6, '#ece6d2');
+  for (let y = 27; y <= 42; y += 2) for (let x = 37; x <= 46; x++) if (g.get(x, y) === '#ece6d2') g.set(x, y, '#cbc2a8');
+  for (let x = 38; x <= 45; x += 2) for (let y = 25; y <= 43; y++) if (g.get(x, y) === '#ece6d2') g.set(x, y, '#d9d1b9');
+  g.rect(40, 44, 42, 48, frame);
 };
 const ballInHand = (g) => {
-  g.ellipse(37, 58, 3.4, 3.4, '#d8e23a');
-  g.ellipse(37, 58, 3.4, 3.4, '#b9c42a', (x, y) => x + y >= 97);
-  g.set(35, 56, WHITE).set(36, 57, WHITE).set(37, 58, WHITE).set(38, 59, WHITE);
+  g.ellipse(37, 64, 3.6, 3.6, '#d8e23a');
+  g.ellipse(37, 64, 3.6, 3.6, '#b9c42a', (x, y) => x + y >= 103);
+  g.set(35, 62, WHITE).set(36, 63, WHITE).set(37, 64, WHITE).set(38, 65, WHITE);
 };
 
 // ── 배경 바탕 (120×120 전체) ──

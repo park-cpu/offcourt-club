@@ -12,12 +12,12 @@ import { pageHead, backLink } from './common.js';
 const KINDS = [...SLOTS.map(([s, l]) => [`wear:${s}`, `착용 · ${l}`]), ['bg:base', '배경 · 바탕 (화면 전체)'], ['bg:deco', '배경 · 소품 (포스터 · 글자 등)']];
 // 종류별 기본값: 크기(긴 변 픽셀), 아바타 기준 위치
 const PRESET = {
-  hat: { size: 40, x: 4, y: 0 },
-  face: { size: 26, x: 11, y: 19 },
-  top: { size: 30, x: 9, y: 40 },
-  bottom: { size: 26, x: 11, y: 55 },
-  shoes: { size: 22, x: 13, y: 65 },
-  hand: { size: 26, x: 34, y: 24 },
+  hat: { size: 44, x: 2, y: 0 },
+  face: { size: 28, x: 10, y: 21 },
+  top: { size: 32, x: 8, y: 40 },
+  bottom: { size: 26, x: 11, y: 61 },
+  shoes: { size: 24, x: 12, y: 84 },
+  hand: { size: 30, x: 33, y: 26 },
   deco: { size: 40 },
   base: { size: 120 },
 };
@@ -106,7 +106,7 @@ function newItemSheet() {
     const rmBg = h('input', { type: 'checkbox', checked: true });
     const outline = h('input', { type: 'checkbox', checked: true });
     const px = h('input', { type: 'range', min: -16, max: 60, value: 0 });
-    const py = h('input', { type: 'range', min: -16, max: 80, value: 0 });
+    const py = h('input', { type: 'range', min: -16, max: 96, value: 0 });
     const sizeLbl = h('span', {});
     const colorsLbl = h('span', {});
     const big = h('div', { class: 'thumb-big checker' });

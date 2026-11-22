@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────
 // 픽셀 아트 그리기 도구 + 아바타 · 배경 합성
-//   - 그림은 작은 캔버스(배경 120×120, 아바타 48×72)에 그린 뒤
+//   - 그림은 작은 캔버스(배경 120×120, 아바타 48×94)에 그린 뒤
 //     CSS로 확대(image-rendering: pixelated)해서 보여줍니다 → 가볍고 선명함
 //   - 기본 아이템은 코드로 그리고, 관리자 아이템은 작은 PNG(data URL)로 저장
 //   - v2 (v1.7.1~): 해상도 1.5배. 예전(80×80) 소품 위치는 lookOf에서 1.5배로 맞춤
@@ -9,9 +9,9 @@
 export const STAGE_W = 120;
 export const STAGE_H = 120;
 export const AVATAR_W = 48;
-export const AVATAR_H = 72;
+export const AVATAR_H = 94;
 export const AVATAR_X = 36; // 배경 안 아바타 위치
-export const AVATAR_Y = 42;
+export const AVATAR_Y = 23;
 export const LOOK_VERSION = 2;
 export const OUTLINE = '#3a2a24';
 
@@ -161,8 +161,10 @@ export function sourceOf(item) {
 }
 
 // ── 기본 아바타 ───────────────────────────────────────
-export const SKINS = ['#fbdcc4', '#f2c29c', '#d69a6e', '#9a6442'];
-export const HAIR_COLORS = ['#3b2a22', '#7a4628', '#b4753c', '#d8b46a', '#cfcac2', '#b23a2e'];
+// 비율 기준: 사용자가 준 레퍼런스(약 22×45칸)를 2배로 옮김
+//   머리 0–39 (전체의 약 43%) · 상의 40–61 · 하의 62–73 · 다리/양말 74–84 · 신발 85–93
+export const SKINS = ['#fdd9b5', '#f4c193', '#d69a6e', '#9a6442'];
+export const HAIR_COLORS = ['#3b2a22', '#8a4526', '#b4753c', '#d8b46a', '#cfcac2', '#b23a2e'];
 export const HAIRS = [
   ['neat', '차분한 짧은 머리'],
   ['long', '긴 머리'],
@@ -178,89 +180,92 @@ const WHITE = '#f6f4ee';
 /** 몸 · 얼굴 · 기본 옷 */
 export function paintBody(g, look) {
   const s = SKINS[look.skin] || SKINS[0];
-  const sd = shade(s, -0.12);
-  // 머리(얼굴형): 넓고 둥근 사각형
-  g.round(7, 8, 40, 37, 9, 11, s);
-  g.rect(5, 23, 6, 29, s).rect(41, 23, 42, 29, s).rect(6, 25, 6, 27, sd).rect(41, 25, 41, 27, sd); // 귀
-  // 눈 (크고 반짝이게)
-  for (const ex of [15, 29]) {
-    g.rect(ex, 22, ex + 3, 28, '#2e211b');
-    g.rect(ex, 26, ex + 3, 28, '#5a3b2c');
-    g.rect(ex + 1, 23, ex + 2, 24, WHITE).set(ex + 1, 27, '#8a6a58');
+  const sd = shade(s, -0.13);
+  // 얼굴: 넓고 둥근 사각형 + 귀
+  g.round(5, 4, 42, 39, 13, 12, s);
+  g.rect(3, 25, 4, 31, s).rect(43, 25, 44, 31, s).rect(4, 27, 4, 29, sd).rect(43, 27, 43, 29, sd);
+  // 턱선 (얼굴 아래 테두리)
+  g.rect(5, 35, 42, 39, lineOf(s), (x, y) => g.get(x, y) === s && !g.get(x, y + 1));
+  // 눈: 세로로 긴 까만 눈 + 하얀 반짝임
+  for (const ex of [12, 32]) {
+    g.rect(ex + 1, 23, ex + 2, 23, '#24170f').rect(ex, 24, ex + 3, 29, '#24170f').rect(ex + 1, 30, ex + 2, 30, '#24170f');
+    g.rect(ex + 1, 25, ex + 2, 26, '#ffffff');
   }
-  g.set(14, 22, '#2e211b').set(33, 22, '#2e211b');
   // 볼터치
-  g.rect(10, 29, 13, 30, '#f4a3a0').rect(34, 29, 37, 30, '#f4a3a0');
-  // 입 (웃는 입)
-  g.rect(21, 30, 26, 30, '#6e2620');
-  g.rect(21, 31, 26, 31, '#8f3a30');
-  g.rect(22, 32, 25, 32, '#e46f75');
-  g.rect(23, 33, 24, 33, '#e46f75');
-  g.rect(12, 36, 35, 37, sd, (x, y) => g.get(x, y) === s && !g.get(x, y + 2));
-  // 목
-  g.rect(20, 38, 27, 40, sd);
+  g.round(8, 31, 13, 33, 1, 1, '#f59c96').round(34, 31, 39, 33, 1, 1, '#f59c96');
+  // 크게 벌린 입
+  const ln = '#4a1d16';
+  g.rect(19, 29, 28, 29, ln);
+  g.rect(19, 30, 19, 33, ln).rect(28, 30, 28, 33, ln);
+  g.rect(20, 30, 27, 31, '#ffffff');
+  g.rect(20, 32, 27, 33, '#b8323b');
+  g.rect(21, 34, 26, 34, '#ef7d86').rect(20, 34, 20, 34, ln).rect(27, 34, 27, 34, ln);
+  g.rect(21, 35, 26, 35, ln);
   // 팔 · 손
-  g.rect(9, 46, 12, 54, s).rect(35, 46, 38, 54, s);
-  g.rect(12, 46, 12, 54, sd).rect(35, 46, 35, 54, sd);
-  g.round(9, 55, 12, 58, 0, 2, s).round(35, 55, 38, 58, 0, 2, s);
-  // 다리 · 양말 · 신발
-  g.rect(15, 62, 21, 64, s).rect(26, 62, 32, 64, s);
-  g.rect(15, 62, 21, 62, sd).rect(26, 62, 32, 62, sd);
+  g.rect(9, 49, 12, 58, s).rect(35, 49, 38, 58, s);
+  g.rect(12, 49, 12, 58, sd).rect(35, 49, 35, 58, sd);
+  g.round(8, 58, 13, 63, 1, 3, s).round(34, 58, 39, 63, 1, 3, s);
+  g.rect(12, 61, 13, 62, sd).rect(34, 61, 35, 62, sd);
+  // 다리
+  g.rect(15, 70, 21, 77, s).rect(26, 70, 32, 77, s);
+  g.rect(20, 70, 21, 77, sd).rect(31, 70, 32, 77, sd);
   paintSocks(g, WHITE);
-  // 기본 옷 (성별 따라)
+  // 기본 옷 (성별 따라, 무늬 없음)
   if (look.sex === 'F') {
-    paintTee(g, '#ec6b6e');
+    paintTee(g, '#ee6a6e');
     paintSkirt(g, '#4f7fa8');
   } else {
-    paintTee(g, '#3d8bd2');
-    paintShorts(g, '#2c3d6c');
+    paintTee(g, '#3a8ad6');
+    paintShorts(g, '#2b3a68');
   }
-  paintShoes(g, '#3c3c46');
+  paintShoes(g, '#34343c');
   return g;
 }
 
 // ── 옷 모양 (기본 아이템도 같은 모양을 색만 바꿔 씀) ──
 export function paintTee(g, c, trim = WHITE) {
-  const d = shade(c, -0.18);
+  const d = shade(c, -0.2);
   const l = shade(c, 0.22);
-  g.round(13, 40, 34, 55, 2, 0, c, (x, y) => y > 40 || x < 21 || x > 26); // 몸통 (목 부분은 비움)
-  g.round(9, 41, 13, 47, 2, 0, c).round(34, 41, 38, 47, 2, 0, c); // 소매
-  g.rect(9, 47, 12, 47, trim).rect(35, 47, 38, 47, trim); // 소매 끝
-  g.rect(30, 42, 34, 55, d).rect(13, 55, 34, 55, d); // 그림자
-  g.rect(14, 42, 15, 52, l);
-  g.rect(13, 47, 13, 55, d).rect(34, 47, 34, 55, shade(c, -0.28)); // 팔과 몸통 경계
-  // 목둘레
-  g.rect(19, 40, 20, 40, trim).rect(27, 40, 28, 40, trim).rect(20, 41, 27, 41, trim);
+  g.round(13, 40, 34, 61, 3, 0, c, (x, y) => y > 41 || x < 21 || x > 26); // 몸통 (목 부분은 비움)
+  g.round(8, 41, 13, 48, 3, 0, c).round(34, 41, 39, 48, 3, 0, c); // 소매
+  g.rect(8, 47, 12, 48, trim).rect(35, 47, 39, 48, trim); // 소매 끝 흰 줄
+  g.rect(30, 43, 34, 61, d).rect(13, 60, 34, 61, d); // 그림자
+  g.rect(15, 43, 16, 57, l);
+  g.rect(13, 49, 13, 61, d).rect(34, 49, 34, 61, shade(c, -0.32)); // 팔과 몸통 경계
+  // 둥근 목둘레 (흰 줄)
+  g.rect(19, 40, 20, 41, trim).rect(27, 40, 28, 41, trim).rect(20, 42, 27, 42, trim);
   return g;
 }
 export function paintShorts(g, c) {
-  const d = shade(c, -0.22);
-  g.rect(13, 56, 34, 61, c);
-  g.rect(13, 56, 34, 56, d);
-  g.rect(31, 57, 34, 61, d);
-  g.rect(23, 59, 24, 61, null);
-  g.rect(15, 58, 15, 60, shade(c, 0.18));
+  const d = shade(c, -0.25);
+  g.rect(13, 62, 34, 73, c);
+  g.rect(13, 62, 34, 63, d);
+  g.rect(30, 64, 34, 73, d);
+  g.rect(22, 68, 25, 73, null);
+  g.rect(23, 66, 24, 67, d);
+  g.rect(15, 65, 16, 72, shade(c, 0.18));
   return g;
 }
 export function paintSkirt(g, c) {
-  const d = shade(c, -0.2);
-  g.rect(13, 56, 34, 58, c).rect(12, 59, 35, 61, c).rect(11, 61, 36, 61, c);
-  g.rect(13, 56, 34, 56, d);
-  for (let x = 15; x <= 33; x += 4) g.rect(x, 58, x, 61, d);
-  g.rect(11, 61, 36, 61, d);
+  const d = shade(c, -0.22);
+  g.rect(13, 62, 34, 65, c).rect(12, 66, 35, 68, c).rect(11, 69, 36, 71, c);
+  g.rect(13, 62, 34, 63, d);
+  for (let x = 16; x <= 33; x += 5) g.rect(x, 66, x, 71, d);
+  g.rect(11, 71, 36, 71, d);
+  g.rect(14, 64, 15, 70, shade(c, 0.2));
   return g;
 }
 export function paintSocks(g, c) {
-  g.rect(15, 65, 21, 67, c).rect(26, 65, 32, 67, c);
-  g.rect(15, 65, 21, 65, shade(c, -0.1)).rect(26, 65, 32, 65, shade(c, -0.1));
-  g.rect(20, 66, 21, 67, shade(c, -0.12)).rect(31, 66, 32, 67, shade(c, -0.12));
+  g.rect(15, 76, 21, 84, c).rect(26, 76, 32, 84, c);
+  g.rect(15, 76, 21, 77, '#c9c6bd').rect(26, 76, 32, 77, '#c9c6bd');
+  g.rect(20, 78, 21, 84, shade(c, -0.12)).rect(31, 78, 32, 84, shade(c, -0.12));
   return g;
 }
 export function paintShoes(g, c) {
-  const l = shade(c, 0.25);
-  g.round(14, 68, 22, 71, 2, 1, c).round(25, 68, 33, 71, 2, 1, c);
-  g.rect(15, 68, 19, 68, l).rect(26, 68, 30, 68, l);
-  g.rect(14, 71, 22, 71, shade(c, -0.3)).rect(25, 71, 33, 71, shade(c, -0.3));
+  const l = shade(c, 0.3);
+  g.round(13, 85, 22, 93, 3, 2, c).round(25, 85, 34, 93, 3, 2, c);
+  g.rect(15, 86, 18, 86, l).rect(27, 86, 30, 86, l).set(15, 87, l).set(27, 87, l);
+  g.rect(14, 93, 21, 93, shade(c, -0.35)).rect(26, 93, 33, 93, shade(c, -0.35));
   return g;
 }
 
@@ -271,34 +276,33 @@ function hairColors(look) {
 }
 function cap(g, h, sideTo, bangs) {
   // 머리 윗부분 + 옆머리
-  g.round(5, 2, 42, sideTo, 13, 3, h.c, (x, y) => y <= 13 || x <= 8 || x >= 39);
+  g.round(3, 0, 44, sideTo, 16, 3, h.c, (x, y) => y <= 18 || x <= 8 || x >= 39);
   // 앞머리: bangs(x) = 그 칸의 아래 끝 y
   for (let x = 9; x <= 38; x++) {
     const b = bangs(x);
-    g.rect(x, 13, x, b, h.c);
-    g.set(x, b, h.d);
+    g.rect(x, 18, x, b, h.c);
+    g.rect(x, b - 1, x, b, h.d);
   }
-  g.rect(5, sideTo - 2, 8, sideTo, h.d).rect(39, sideTo - 2, 42, sideTo, h.d);
+  g.rect(3, sideTo - 2, 8, sideTo, h.d).rect(39, sideTo - 2, 44, sideTo, h.d);
+  g.rect(7, 18, 8, sideTo, h.d).rect(39, 18, 40, sideTo, h.d);
   // 윤기
-  g.rect(13, 5, 20, 6, h.l).rect(15, 4, 18, 4, h.l).rect(22, 6, 23, 6, h.l);
+  g.rect(12, 5, 22, 6, h.l).rect(14, 4, 19, 4, h.l).rect(25, 6, 27, 6, h.l);
 }
+const blunt = (x) => 21 + ((x - 9) % 7 === 3 ? 1 : 0);
 export function paintHairBack(g, look) {
   const h = hairColors(look);
   switch (look.hair) {
     case 'long':
-    case 'bun':
-      if (look.hair === 'long') {
-        g.round(4, 10, 43, 60, 8, 6, h.c);
-        g.rect(4, 54, 43, 60, h.d, (x, y) => g.get(x, y) === h.c);
-      }
+      g.round(2, 10, 45, 66, 10, 6, h.c);
+      g.rect(2, 61, 45, 66, h.d, (x, y) => g.get(x, y) === h.c);
       break;
     case 'bob':
-      g.round(4, 10, 43, 40, 8, 5, h.c);
-      g.rect(4, 37, 43, 40, h.d, (x, y) => g.get(x, y) === h.c);
+      g.round(2, 10, 45, 42, 10, 6, h.c);
+      g.rect(2, 39, 45, 42, h.d, (x, y) => g.get(x, y) === h.c);
       break;
     case 'pony':
-      g.ellipse(43, 28, 4, 13, h.c);
-      g.ellipse(43, 28, 4, 13, h.d, (x, y) => y >= 35);
+      g.ellipse(44, 32, 3.6, 15, h.c);
+      g.ellipse(44, 32, 3.6, 15, h.d, (x, y) => y >= 40);
       break;
   }
   return g;
@@ -307,37 +311,38 @@ export function paintHairFront(g, look) {
   const h = hairColors(look);
   switch (look.hair) {
     case 'buzz':
-      g.round(6, 4, 41, 16, 12, 0, h.d, (x, y) => y <= 11 || x <= 8 || x >= 39);
-      g.rect(14, 6, 20, 6, h.c);
+      g.round(5, 2, 42, 18, 15, 0, h.d, (x, y) => y <= 13 || x <= 8 || x >= 39);
+      g.rect(13, 5, 21, 6, h.c);
       return g;
     case 'long':
-      cap(g, h, 30, (x) => 18 - ((x * 7) % 5 === 0 ? 1 : 0));
-      // 어깨까지 오는 앞쪽 옆머리
-      g.round(4, 18, 9, 50, 0, 3, h.c).round(38, 18, 43, 50, 0, 3, h.c);
-      g.rect(8, 22, 9, 50, h.d).rect(38, 22, 39, 50, h.d);
+      cap(g, h, 32, blunt);
+      // 어깨 아래로 내려오는 앞쪽 옆머리
+      g.round(2, 22, 8, 58, 0, 3, h.c).round(39, 22, 45, 58, 0, 3, h.c);
+      g.rect(7, 26, 8, 58, h.d).rect(39, 26, 40, 58, h.d);
       return g;
     case 'bob':
-      cap(g, h, 38, (x) => 18 - ((x * 7) % 5 === 0 ? 1 : 0));
-      g.rect(8, 22, 9, 37, h.d).rect(38, 22, 39, 37, h.d);
+      cap(g, h, 40, blunt);
+      g.rect(7, 24, 8, 40, h.d).rect(39, 24, 40, 40, h.d);
       return g;
     case 'bun':
-      // 양쪽 똥머리
-      for (const bx of [8, 39]) {
-        g.ellipse(bx, 6, 5.5, 5.5, h.c);
-        g.ellipse(bx, 6, 5.5, 5.5, h.d, (x, y) => y >= 9);
-        g.rect(bx - 2, 3, bx, 3, h.l);
+      for (const bx of [6, 41]) {
+        g.ellipse(bx, 6, 6, 6, h.c);
+        g.ellipse(bx, 6, 6, 6, h.d, (x, y) => y >= 9);
+        g.rect(bx - 2, 2, bx, 3, h.l);
       }
-      cap(g, h, 26, (x) => 17 - ((x * 7) % 5 === 0 ? 1 : 0));
-      g.rect(5, 10, 8, 11, '#e94c2b').rect(39, 10, 42, 11, '#e94c2b');
+      cap(g, h, 30, blunt);
+      g.rect(3, 11, 7, 12, '#e94c2b').rect(40, 11, 44, 12, '#e94c2b');
       return g;
     case 'pony':
-      cap(g, h, 24, (x) => 17 - ((x * 7) % 5 === 0 ? 1 : 0));
-      g.rect(40, 14, 42, 16, '#e94c2b'); // 머리끈
+      cap(g, h, 30, blunt);
+      g.rect(42, 15, 45, 18, '#e94c2b'); // 머리끈
       return g;
-    default:
-      // 차분한 짧은 머리: 가르마 쪽(왼쪽)이 조금 더 내려오는 앞머리
-      cap(g, h, 23, (x) => 14 + Math.round(3 * Math.sin(((x - 9) / 29) * Math.PI) * 0.6) + (x < 20 ? 1 : 0) - (x % 6 === 0 ? 1 : 0));
+    default: {
+      // 차분한 짧은 머리: 굵직하게 나뉜 앞머리, 왼쪽(가르마 쪽)이 살짝 길게
+      const seg = [3, 4, 3, 2, 2];
+      cap(g, h, 28, (x) => 19 + seg[Math.min(4, Math.floor((x - 9) / 6))] + ((x - 9) % 6 === 2 ? 1 : 0));
       return g;
+    }
   }
 }
 
@@ -390,8 +395,8 @@ export function drawStage(ctx, look, items, opts = {}) {
   }
   // 바닥 그림자
   ctx.fillStyle = 'rgba(0,0,0,0.13)';
-  ctx.fillRect(AVATAR_X + 12, AVATAR_Y + 70, 24, 3);
-  ctx.fillRect(AVATAR_X + 10, AVATAR_Y + 71, 28, 1);
+  ctx.fillRect(AVATAR_X + 11, AVATAR_Y + 91, 26, 3);
+  ctx.fillRect(AVATAR_X + 9, AVATAR_Y + 92, 30, 1);
   ctx.drawImage(avatarBase(look, items), AVATAR_X, AVATAR_Y);
   // 관리자가 올린 착용 아이템 (이미지)
   for (const [slot] of SLOTS) {

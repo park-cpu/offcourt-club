@@ -29,7 +29,7 @@
 
 ## 아바타 · 볼 (v1.7.0~)
 - 볼 = 꾸미기 전용 화폐 (코인전 코인과 별개). `RULES.balls` + `computeBalls` (rules.js): 도착·경기·승리·주간 미션 적립 − purchases. 저장하지 않고 재계산
-- 그림: `js/pixel.js` (v1.7.1~ 배경 120×120, 아바타 48×72 캔버스 → CSS pixelated 확대. 저장 look에 `v:2`, v1 소품 좌표는 lookOf에서 ×1.5). 스타일 기준 = 사용자가 준 레퍼런스(큰 머리·큰 눈·볼터치·흰 양말), 남자 머리 차분하게·여자 긴 머리·티 무늬 없음. 성별(gender)로 기본 옷·헤어 결정. 기본 아이템은 `js/avatar-items.js`에서 코드로 그림(id `b_…`, 바꾸지 말 것)
+- 그림: `js/pixel.js` (v1.7.2~ 배경 120×120, 아바타 48×94 캔버스 — 레퍼런스 22×45칸 캐릭터를 2배로 옮긴 비율: 머리 0–39 · 상의 40–61 · 하의 62–73 · 양말 76–84 · 신발 85–93 → CSS pixelated 확대. 저장 look에 `v:2`, v1 소품 좌표는 lookOf에서 ×1.5). 스타일 기준 = 사용자가 준 레퍼런스(큰 머리·큰 눈·볼터치·흰 양말), 남자 머리 차분하게·여자 긴 머리·티 무늬 없음. 성별(gender)로 기본 옷·헤어 결정. 기본 아이템은 `js/avatar-items.js`에서 코드로 그림(id `b_…`, 바꾸지 말 것)
 - 관리자 아이템 = `items` 문서에 작은 PNG data URL(`img`, 200KB 제한). 변환은 `js/pixelate.js` (기기 안에서 처리)
 - 컬렉션: `items`, `purchases`(id `회원_아이템`), `avatars`(id = 회원 id). firestore.rules에 추가됨 → Firebase 콘솔 규칙도 같이 바꿔야 저장됨
 - 화면: `#/avatar[/closet|shop|missions]`, `#/avatars`(구경), `#/admin/items`
