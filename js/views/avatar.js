@@ -6,7 +6,7 @@ import { state, me, derived, itemsMap, lookOf, ownedSet, today, weekStart, fmtSh
 import { put, uid } from '../db.js';
 import { RULES } from '../rules.js';
 import {
-  drawStage, stageCanvas, itemThumb, sourceOf, SLOTS, SLOT_LABEL, BG_LABEL, SKINS, HAIRS, HAIR_COLORS, DEFAULT_LOOK, STAGE_W, STAGE_H,
+  drawStage, stageCanvas, itemThumb, sourceOf, LOOK_VERSION, SLOTS, SLOT_LABEL, BG_LABEL, SKINS, HAIRS, HAIR_COLORS, DEFAULT_LOOK, STAGE_W, STAGE_H,
 } from '../pixel.js';
 import { pageHead, backLink, loginSheet } from './common.js';
 
@@ -16,7 +16,7 @@ const ballText = (n) => `🎾 ${n}`;
 // 편집 중인 모습 (화면이 다시 그려져도 유지, 저장 전까지 서버에 안 씀)
 const ed = { id: null, look: null, dirty: false, tab: 'closet', filter: 'all', sel: null };
 const sameLook = (a, b) => JSON.stringify(pick(a)) === JSON.stringify(pick(b));
-const pick = (l) => ({ skin: l.skin, hair: l.hair, hairColor: l.hairColor, wear: l.wear || {}, base: l.base || null, deco: l.deco || [] });
+const pick = (l) => ({ skin: l.skin, hair: l.hair, hairColor: l.hairColor, wear: l.wear || {}, base: l.base || null, deco: l.deco || [], sex: l.sex, v: LOOK_VERSION });
 
 export const shopItems = () => [...itemsMap().values()].filter((it) => it.active !== false);
 
@@ -209,7 +209,7 @@ function closetTab(items, owned, change) {
                       ed.sel = null;
                     } else if (l.deco.length >= MAX_DECO) toast(`소품은 ${MAX_DECO}개까지 놓을 수 있어요`);
                     else {
-                      l.deco.push({ id: it.id, x: it.x ?? 30, y: it.y ?? 30 });
+                      l.deco.push({ id: it.id, x: it.x ?? 40, y: it.y ?? 40 });
                       ed.sel = l.deco.length - 1;
                     }
                   }),
@@ -258,13 +258,13 @@ function buySheet(u, it, owned, bal, change) {
   const look = structuredClone(ed.look);
   if (it.cat === 'wear') look.wear[it.slot] = it.id;
   else if (it.slot === 'base') look.base = it.id;
-  else if (!look.deco.some((d) => d.id === it.id)) look.deco.push({ id: it.id, x: it.x ?? 30, y: it.y ?? 30 });
+  else if (!look.deco.some((d) => d.id === it.id)) look.deco.push({ id: it.id, x: it.x ?? 40, y: it.y ?? 40 });
   const has = owned.has(it.id);
   const apply = () =>
     change((l) => {
       if (it.cat === 'wear') l.wear[it.slot] = it.id;
       else if (it.slot === 'base') l.base = it.id;
-      else if (!l.deco.some((d) => d.id === it.id) && l.deco.length < MAX_DECO) l.deco.push({ id: it.id, x: it.x ?? 30, y: it.y ?? 30 });
+      else if (!l.deco.some((d) => d.id === it.id) && l.deco.length < MAX_DECO) l.deco.push({ id: it.id, x: it.x ?? 40, y: it.y ?? 40 });
     });
   sheet(it.name, (close) =>
     h(
