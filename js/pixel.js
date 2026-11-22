@@ -1,18 +1,19 @@
 // ─────────────────────────────────────────────────────────────
 // 픽셀 아트 그리기 도구 + 아바타 · 배경 합성
-//   - 그림은 작은 캔버스(배경 120×120, 아바타 48×94)에 그린 뒤
+//   - 그림은 작은 캔버스(배경 80×80, 아바타 34×66)에 그린 뒤
 //     CSS로 확대(image-rendering: pixelated)해서 보여줍니다 → 가볍고 선명함
+//   - 아바타 몸은 레퍼런스 캐릭터를 원본 해상도 그대로 옮긴 템플릿(avatar-tpl.js)에 색만 바꿔 칠함
 //   - 기본 아이템은 코드로 그리고, 관리자 아이템은 작은 PNG(data URL)로 저장
-//   - v2 (v1.7.1~): 해상도 1.5배. 예전(80×80) 소품 위치는 lookOf에서 1.5배로 맞춤
 // ─────────────────────────────────────────────────────────────
 
-export const STAGE_W = 120;
-export const STAGE_H = 120;
-export const AVATAR_W = 48;
-export const AVATAR_H = 94;
-export const AVATAR_X = 36; // 배경 안 아바타 위치
-export const AVATAR_Y = 23;
-export const LOOK_VERSION = 2;
+export const STAGE_W = 80;
+export const STAGE_H = 80;
+export const AVATAR_W = 34; // 몸 31칸 + 오른손 아이템 여유
+export const AVATAR_H = 66;
+export const AVATAR_X = 25; // 배경 안 아바타 위치
+export const AVATAR_Y = 12;
+export const LOOK_VERSION = 3;
+import { TPL_M, TPL_F } from './avatar-tpl.js';
 export const OUTLINE = '#3a2a24';
 
 // 착용 순서 (뒤 → 앞)
@@ -160,208 +161,110 @@ export function sourceOf(item) {
   return null;
 }
 
-// ── 기본 아바타 ───────────────────────────────────────
-// 비율 기준: 사용자가 준 레퍼런스(약 22×45칸)를 2배로 옮김
-//   머리 0–39 (전체의 약 43%) · 상의 40–61 · 하의 62–73 · 다리/양말 74–84 · 신발 85–93
-export const SKINS = ['#fdd9b5', '#f4c193', '#d69a6e', '#9a6442'];
-export const HAIR_COLORS = ['#3b2a22', '#8a4526', '#b4753c', '#d8b46a', '#cfcac2', '#b23a2e'];
-export const HAIRS = [
-  ['neat', '차분한 짧은 머리'],
-  ['long', '긴 머리'],
-  ['bob', '단발'],
-  ['pony', '포니테일'],
-  ['bun', '똥머리'],
-  ['buzz', '짧게 깎은 머리'],
+// ── 기본 아바타 (레퍼런스 템플릿 + 색 바꾸기) ─────────────
+// 몸 모양은 js/avatar-tpl.js (레퍼런스 원본 해상도 그대로). 여기서는 역할별 색만 정함
+export const SKIN_SETS = [
+  { S: '#fde4cf', s: '#f7ba81', m: '#c38665', L: '#ac613a' },
+  { S: '#f6d0ae', s: '#e9a46c', m: '#b9774f', L: '#9a5530' },
+  { S: '#dba57c', s: '#c4865a', m: '#9c6240', L: '#7f4a2c' },
+  { S: '#a06c4b', s: '#87573c', m: '#6a412c', L: '#4f2f1f' },
 ];
-export const DEFAULT_LOOK = { skin: 0, hair: 'neat', hairColor: 1, wear: {}, base: null, deco: [], sex: 'M', v: LOOK_VERSION };
-const CX = 23.5; // 아바타 가운데 (좌우 대칭 기준)
-const WHITE = '#f6f4ee';
+export const SKINS = SKIN_SETS.map((x) => x.S);
+export const HAIR_COLORS = ['#362319', '#604331', '#8a5a34', '#c9a063', '#8c8a88', '#9c3a2c'];
+export const HAIRS_BY_SEX = {
+  M: [['m', '기본 (가르마)']],
+  F: [['f', '기본 (웨이브 단발)'], ['long', '긴 머리']],
+};
+export const HAIRS = [...HAIRS_BY_SEX.M, ...HAIRS_BY_SEX.F];
+// 성별 기본 옷 색 (레퍼런스 그대로)
+export const DEFAULT_WEAR = {
+  M: { top: '#16297f', bottom: '#3e6b80', shoes: '#666b6d', hair: 1 },
+  F: { top: '#d4a388', bottom: '#d4a388', shoes: '#2f3a40', hair: 0 },
+};
+// 성별마다 다른 위치 (모자 · 안경 · 손 아이템용)
+export const ANCHOR = {
+  M: { dy: 1, head: 1, eye: 16, hand: 43 },
+  F: { dy: 2, head: 2, eye: 19, hand: 44 },
+};
+export const DEFAULT_LOOK = { skin: 0, hair: 'm', hairColor: 1, wear: {}, base: null, deco: [], sex: 'M', v: LOOK_VERSION };
 
-/** 몸 · 얼굴 · 기본 옷 */
-export function paintBody(g, look) {
-  const s = SKINS[look.skin] || SKINS[0];
-  const sd = shade(s, -0.13);
-  // 얼굴: 넓고 둥근 사각형 + 귀
-  g.round(5, 4, 42, 39, 13, 12, s);
-  g.rect(3, 25, 4, 31, s).rect(43, 25, 44, 31, s).rect(4, 27, 4, 29, sd).rect(43, 27, 43, 29, sd);
-  // 턱선 (얼굴 아래 테두리)
-  g.rect(5, 35, 42, 39, lineOf(s), (x, y) => g.get(x, y) === s && !g.get(x, y + 1));
-  // 눈: 세로로 긴 까만 눈 + 하얀 반짝임
-  for (const ex of [12, 32]) {
-    g.rect(ex + 1, 23, ex + 2, 23, '#24170f').rect(ex, 24, ex + 3, 29, '#24170f').rect(ex + 1, 30, ex + 2, 30, '#24170f');
-    g.rect(ex + 1, 25, ex + 2, 26, '#ffffff');
-  }
-  // 볼터치
-  g.round(8, 31, 13, 33, 1, 1, '#f59c96').round(34, 31, 39, 33, 1, 1, '#f59c96');
-  // 크게 벌린 입
-  const ln = '#4a1d16';
-  g.rect(19, 29, 28, 29, ln);
-  g.rect(19, 30, 19, 33, ln).rect(28, 30, 28, 33, ln);
-  g.rect(20, 30, 27, 31, '#ffffff');
-  g.rect(20, 32, 27, 33, '#b8323b');
-  g.rect(21, 34, 26, 34, '#ef7d86').rect(20, 34, 20, 34, ln).rect(27, 34, 27, 34, ln);
-  g.rect(21, 35, 26, 35, ln);
-  // 팔 · 손
-  g.rect(9, 49, 12, 58, s).rect(35, 49, 38, 58, s);
-  g.rect(12, 49, 12, 58, sd).rect(35, 49, 35, 58, sd);
-  g.round(8, 58, 13, 63, 1, 3, s).round(34, 58, 39, 63, 1, 3, s);
-  g.rect(12, 61, 13, 62, sd).rect(34, 61, 35, 62, sd);
-  // 다리
-  g.rect(15, 70, 21, 77, s).rect(26, 70, 32, 77, s);
-  g.rect(20, 70, 21, 77, sd).rect(31, 70, 32, 77, sd);
-  paintSocks(g, WHITE);
-  // 기본 옷 (성별 따라, 무늬 없음)
-  if (look.sex === 'F') {
-    paintTee(g, '#ee6a6e');
-    paintSkirt(g, '#4f7fa8');
-  } else {
-    paintTee(g, '#3a8ad6');
-    paintShorts(g, '#2b3a68');
-  }
-  paintShoes(g, '#34343c');
-  return g;
-}
+const mix = (a, b, t) => {
+  const A = hex2rgb(a), B = hex2rgb(b);
+  return rgb2hex(...A.map((v, i) => v + (B[i] - v) * t));
+};
+const hairPal = (c) => ({ H: mix(c, '#100805', 0.65), d: shade(c, -0.25), h: c, l: shade(c, 0.22), x: shade(c, 0.38) });
+export const topPal = (c) => ({ T: mix(c, '#140c10', 0.6), t: c, u: shade(c, -0.14), c: shade(c, 0.62), n: '#323232', N: '#25180f' });
+export const bottomPal = (c) => ({ P: mix(c, '#0a0a10', 0.7), q: c, Q: shade(c, -0.22), g: shade(c, 0.6) });
+export const shoesPal = (c) => ({ O: mix(c, '#0a0a0a', 0.7), f: c, F: shade(c, -0.35), G: shade(c, 0.45) });
+const FIXED = { K: '#080504', W: '#ffffff', o: '#fcc3c3', p: '#ee7678', r: '#d4555f' };
+export const ROLE_GROUP = { top: 'TtucnN', bottom: 'PqQg', shoes: 'OfFG' };
 
-// ── 옷 모양 (기본 아이템도 같은 모양을 색만 바꿔 씀) ──
-export function paintTee(g, c, trim = WHITE) {
-  const d = shade(c, -0.2);
-  const l = shade(c, 0.22);
-  g.round(13, 40, 34, 61, 3, 0, c, (x, y) => y > 41 || x < 21 || x > 26); // 몸통 (목 부분은 비움)
-  g.round(8, 41, 13, 48, 3, 0, c).round(34, 41, 39, 48, 3, 0, c); // 소매
-  g.rect(8, 47, 12, 48, trim).rect(35, 47, 39, 48, trim); // 소매 끝 흰 줄
-  g.rect(30, 43, 34, 61, d).rect(13, 60, 34, 61, d); // 그림자
-  g.rect(15, 43, 16, 57, l);
-  g.rect(13, 49, 13, 61, d).rect(34, 49, 34, 61, shade(c, -0.32)); // 팔과 몸통 경계
-  // 둥근 목둘레 (흰 줄)
-  g.rect(19, 40, 20, 41, trim).rect(27, 40, 28, 41, trim).rect(20, 42, 27, 42, trim);
-  return g;
-}
-export function paintShorts(g, c) {
-  const d = shade(c, -0.25);
-  g.rect(13, 62, 34, 73, c);
-  g.rect(13, 62, 34, 63, d);
-  g.rect(30, 64, 34, 73, d);
-  g.rect(22, 68, 25, 73, null);
-  g.rect(23, 66, 24, 67, d);
-  g.rect(15, 65, 16, 72, shade(c, 0.18));
-  return g;
-}
-export function paintSkirt(g, c) {
-  const d = shade(c, -0.22);
-  g.rect(13, 62, 34, 65, c).rect(12, 66, 35, 68, c).rect(11, 69, 36, 71, c);
-  g.rect(13, 62, 34, 63, d);
-  for (let x = 16; x <= 33; x += 5) g.rect(x, 66, x, 71, d);
-  g.rect(11, 71, 36, 71, d);
-  g.rect(14, 64, 15, 70, shade(c, 0.2));
-  return g;
-}
-export function paintSocks(g, c) {
-  g.rect(15, 76, 21, 84, c).rect(26, 76, 32, 84, c);
-  g.rect(15, 76, 21, 77, '#c9c6bd').rect(26, 76, 32, 77, '#c9c6bd');
-  g.rect(20, 78, 21, 84, shade(c, -0.12)).rect(31, 78, 32, 84, shade(c, -0.12));
-  return g;
-}
-export function paintShoes(g, c) {
-  const l = shade(c, 0.3);
-  g.round(13, 85, 22, 93, 3, 2, c).round(25, 85, 34, 93, 3, 2, c);
-  g.rect(15, 86, 18, 86, l).rect(27, 86, 30, 86, l).set(15, 87, l).set(27, 87, l);
-  g.rect(14, 93, 21, 93, shade(c, -0.35)).rect(26, 93, 33, 93, shade(c, -0.35));
+/** 역할 격자(글자) — 템플릿 + 긴 머리 + 옷 무늬 */
+function roleGrid(look, items) {
+  const sex = look.sex === 'F' ? 'F' : 'M';
+  const A = ANCHOR[sex];
+  const g = new Grid(AVATAR_W, AVATAR_H);
+  if (sex === 'F' && look.hair === 'long') {
+    // 긴 머리: 양옆으로 어깨 아래까지
+    g.round(0, A.dy + 10, 4, A.dy + 44, 0, 3, 'h').round(26, A.dy + 10, 30, A.dy + 44, 0, 3, 'h');
+    g.rect(0, A.dy + 41, 4, A.dy + 44, 'd', (x, y) => g.get(x, y)).rect(26, A.dy + 41, 30, A.dy + 44, 'd', (x, y) => g.get(x, y));
+    g.rect(2, A.dy + 14, 2, A.dy + 38, 'l').rect(28, A.dy + 14, 28, A.dy + 38, 'l');
+    g.outline('H');
+  }
+  const tpl = sex === 'F' ? TPL_F : TPL_M;
+  tpl.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) if (row[x] !== '.') g.set(x, y + A.dy, row[x]);
+  });
+  const top = items.get(look.wear?.top);
+  if (top?.pattern) top.pattern(g, A);
   return g;
 }
 
-// ── 헤어 (뒤 머리는 몸 뒤에, 앞머리는 얼굴 위에) ─────────
-function hairColors(look) {
-  const c = HAIR_COLORS[look.hairColor] || HAIR_COLORS[0];
-  return { c, d: shade(c, -0.3), l: shade(c, 0.28) };
-}
-function cap(g, h, sideTo, bangs) {
-  // 머리 윗부분 + 옆머리
-  g.round(3, 0, 44, sideTo, 16, 3, h.c, (x, y) => y <= 18 || x <= 8 || x >= 39);
-  // 앞머리: bangs(x) = 그 칸의 아래 끝 y
-  for (let x = 9; x <= 38; x++) {
-    const b = bangs(x);
-    g.rect(x, 18, x, b, h.c);
-    g.rect(x, b - 1, x, b, h.d);
-  }
-  g.rect(3, sideTo - 2, 8, sideTo, h.d).rect(39, sideTo - 2, 44, sideTo, h.d);
-  g.rect(7, 18, 8, sideTo, h.d).rect(39, 18, 40, sideTo, h.d);
-  // 윤기
-  g.rect(12, 5, 22, 6, h.l).rect(14, 4, 19, 4, h.l).rect(25, 6, 27, 6, h.l);
-}
-const blunt = (x) => 21 + ((x - 9) % 7 === 3 ? 1 : 0);
-export function paintHairBack(g, look) {
-  const h = hairColors(look);
-  switch (look.hair) {
-    case 'long':
-      g.round(2, 10, 45, 66, 10, 6, h.c);
-      g.rect(2, 61, 45, 66, h.d, (x, y) => g.get(x, y) === h.c);
-      break;
-    case 'bob':
-      g.round(2, 10, 45, 42, 10, 6, h.c);
-      g.rect(2, 39, 45, 42, h.d, (x, y) => g.get(x, y) === h.c);
-      break;
-    case 'pony':
-      g.ellipse(44, 32, 3.6, 15, h.c);
-      g.ellipse(44, 32, 3.6, 15, h.d, (x, y) => y >= 40);
-      break;
-  }
-  return g;
-}
-export function paintHairFront(g, look) {
-  const h = hairColors(look);
-  switch (look.hair) {
-    case 'buzz':
-      g.round(5, 2, 42, 18, 15, 0, h.d, (x, y) => y <= 13 || x <= 8 || x >= 39);
-      g.rect(13, 5, 21, 6, h.c);
-      return g;
-    case 'long':
-      cap(g, h, 32, blunt);
-      // 어깨 아래로 내려오는 앞쪽 옆머리
-      g.round(2, 22, 8, 58, 0, 3, h.c).round(39, 22, 45, 58, 0, 3, h.c);
-      g.rect(7, 26, 8, 58, h.d).rect(39, 26, 40, 58, h.d);
-      return g;
-    case 'bob':
-      cap(g, h, 40, blunt);
-      g.rect(7, 24, 8, 40, h.d).rect(39, 24, 40, 40, h.d);
-      return g;
-    case 'bun':
-      for (const bx of [6, 41]) {
-        g.ellipse(bx, 6, 6, 6, h.c);
-        g.ellipse(bx, 6, 6, 6, h.d, (x, y) => y >= 9);
-        g.rect(bx - 2, 2, bx, 3, h.l);
-      }
-      cap(g, h, 30, blunt);
-      g.rect(3, 11, 7, 12, '#e94c2b').rect(40, 11, 44, 12, '#e94c2b');
-      return g;
-    case 'pony':
-      cap(g, h, 30, blunt);
-      g.rect(42, 15, 45, 18, '#e94c2b'); // 머리끈
-      return g;
-    default: {
-      // 차분한 짧은 머리: 굵직하게 나뉜 앞머리, 왼쪽(가르마 쪽)이 살짝 길게
-      const seg = [3, 4, 3, 2, 2];
-      cap(g, h, 28, (x) => 19 + seg[Math.min(4, Math.floor((x - 9) / 6))] + ((x - 9) % 6 === 2 ? 1 : 0));
-      return g;
+/** 역할 → 실제 색 */
+function colorize(rg, look, items) {
+  const sex = look.sex === 'F' ? 'F' : 'M';
+  const D = DEFAULT_WEAR[sex];
+  const pick = (slot, def) => items.get(look.wear?.[slot])?.color || def;
+  const pal = {
+    ...FIXED,
+    ...(SKIN_SETS[look.skin] || SKIN_SETS[0]),
+    ...hairPal(HAIR_COLORS[look.hairColor ?? D.hair] || HAIR_COLORS[D.hair]),
+    ...shoesPal(pick('shoes', D.shoes)),
+    ...bottomPal(pick('bottom', D.bottom)),
+  };
+  const tp = topPal(pick('top', D.top));
+  const g = new Grid(rg.w, rg.h);
+  for (let y = 0; y < rg.h; y++)
+    for (let x = 0; x < rg.w; x++) {
+      const r = rg.get(x, y);
+      if (!r) continue;
+      // 상의 역할(T t u c)은 신발 · 피부 역할과 글자가 겹치지 않게 상의 영역(어깨~허리)에서만
+      const inTop = 'TtucnN'.includes(r) && y >= 26 && y <= 50;
+      g.set(x, y, inTop ? tp[r] : pal[r] || tp[r] || '#ff00ff');
     }
-  }
+  return g;
 }
 
-// ── 합성 ──────────────────────────────────────────────
-const avatarCache = new Map();
+/** 모자 · 안경 · 손 아이템: 따로 그려서 테두리 넣고 얹음 */
+function overlay(g, look, part) {
+  const sex = look.sex === 'F' ? 'F' : 'M';
+  const o = new Grid(g.w, g.h);
+  part.paint(o, ANCHOR[sex]);
+  o.outline();
+  return g.paint(o);
+}
 
+const avatarCache = new Map();
 /** 아바타(코드로 그린 부분)만 캔버스로. 같은 조합은 캐시 */
 function avatarBase(look, items) {
-  const parts = SLOTS.map(([slot]) => items.get(look.wear?.[slot])).filter((it) => it && it.paint);
+  const parts = SLOTS.map(([slot]) => items.get(look.wear?.[slot])).filter((it) => it && (it.paint || it.color));
   const key = [look.sex, look.skin, look.hair, look.hairColor, ...parts.map((p) => p.id)].join('|');
   if (avatarCache.has(key)) return avatarCache.get(key);
-  const g = new Grid(AVATAR_W, AVATAR_H);
-  paintHairBack(g, look);
-  paintBody(g, look);
-  for (const p of parts) if (p.slot !== 'hat' && p.slot !== 'hand' && p.slot !== 'face') p.paint(g, look);
-  paintHairFront(g, look);
-  for (const p of parts) if (p.slot === 'face' || p.slot === 'hat') p.paint(g, look);
-  for (const p of parts) if (p.slot === 'hand') p.paint(g, look);
-  g.outline();
+  const g = colorize(roleGrid(look, items), look, items);
+  for (const slot of ['face', 'hat', 'hand']) {
+    const p = parts.find((x) => x.slot === slot && x.paint);
+    if (p) overlay(g, look, p);
+  }
   const cv = g.toCanvas();
   if (avatarCache.size > 200) avatarCache.clear();
   avatarCache.set(key, cv);
@@ -373,12 +276,11 @@ let emptyBg = null;
 function emptyBackground() {
   if (emptyBg) return emptyBg;
   const g = new Grid(STAGE_W, STAGE_H);
-  g.rect(0, 0, 119, 89, '#efebe0');
-  for (let y = 5; y < 86; y += 8) for (let x = (y / 8) % 2 ? 4 : 0; x < 120; x += 8) g.set(x, y, '#e2dccd');
-  g.rect(0, 88, 119, 89, '#e3ddcf');
-  g.rect(0, 90, 119, 92, '#c9bfa9');
-  g.rect(0, 93, 119, 119, '#ddd5c3');
-  for (let x = 0; x < 120; x += 15) g.rect(x, 93, x, 119, '#d1c8b3');
+  g.rect(0, 0, 79, 59, '#efebe0');
+  for (let y = 4; y < 58; y += 6) for (let x = (y / 6) % 2 ? 3 : 0; x < 80; x += 6) g.set(x, y, '#e4dfd1');
+  g.rect(0, 59, 79, 60, '#cfc6b2');
+  g.rect(0, 61, 79, 79, '#ddd5c3');
+  for (let x = 0; x < 80; x += 10) g.rect(x, 61, x, 79, '#d3cab6');
   emptyBg = g.toCanvas();
   return emptyBg;
 }
@@ -395,8 +297,7 @@ export function drawStage(ctx, look, items, opts = {}) {
   }
   // 바닥 그림자
   ctx.fillStyle = 'rgba(0,0,0,0.13)';
-  ctx.fillRect(AVATAR_X + 11, AVATAR_Y + 91, 26, 3);
-  ctx.fillRect(AVATAR_X + 9, AVATAR_Y + 92, 30, 1);
+  ctx.fillRect(AVATAR_X + 4, AVATAR_Y + 63, 23, 2);
   ctx.drawImage(avatarBase(look, items), AVATAR_X, AVATAR_Y);
   // 관리자가 올린 착용 아이템 (이미지)
   for (const [slot] of SLOTS) {
@@ -441,18 +342,28 @@ export function itemThumb(item, box = 64) {
 function thumbCanvas(item) {
   const cv = document.createElement('canvas');
   cv.className = 'pixel thumb';
-  if (item.paint) {
-    // 기본 착용 아이템: 빈 격자에 그려서 잘라냄
-    const g = new Grid(AVATAR_W, AVATAR_H);
-    item.paint(g, DEFAULT_LOOK);
+  let g = null;
+  if (item.color) {
+    // 색 아이템(상의·하의·신발): 기본 남자 몸에서 그 부분만 잘라 보여줌
+    const look = { ...DEFAULT_LOOK, wear: { [item.slot]: item.id } };
+    const items = new Map([[item.id, item]]);
+    const rg = roleGrid(look, items);
+    const keep = ROLE_GROUP[item.slot];
+    rg.recolor((x, y, r) => !keep.includes(r) || (item.slot === 'top' && (y < 26 || y > 50)) || (item.slot === 'shoes' && y < 54) || (item.slot === 'bottom' && y > 57), null);
+    for (let i = 0; i < rg.px.length; i++) if (rg.px[i] === null) rg.px[i] = null;
+    g = colorize(rg, look, items);
+  } else if (item.paint) {
+    g = new Grid(AVATAR_W, AVATAR_H);
+    item.paint(g, ANCHOR.M);
     g.outline();
+  }
+  if (g) {
     let x0 = 999, y0 = 999, x1 = -1, y1 = -1;
     for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) if (g.get(x, y)) {
       x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
     }
-    const w = Math.max(1, x1 - x0 + 1), hgt = Math.max(1, y1 - y0 + 1);
-    cv.width = w;
-    cv.height = hgt;
+    cv.width = Math.max(1, x1 - x0 + 1);
+    cv.height = Math.max(1, y1 - y0 + 1);
     cv.getContext('2d').drawImage(g.toCanvas(), -x0, -y0);
     return cv;
   }

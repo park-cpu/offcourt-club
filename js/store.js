@@ -4,7 +4,7 @@
 import { db, COLLECTIONS } from './db.js';
 import { computeRatings, computeStats, computeCoins, computeBalls, ntrpToRating } from './rules.js';
 import { BUILTIN_ITEMS } from './avatar-items.js';
-import { DEFAULT_LOOK, LOOK_VERSION } from './pixel.js';
+import { DEFAULT_LOOK, LOOK_VERSION, DEFAULT_WEAR, HAIRS_BY_SEX } from './pixel.js';
 
 export const state = Object.fromEntries(COLLECTIONS.map((c) => [c, []]));
 state.ready = false;
@@ -182,13 +182,13 @@ export const itemsMap = () => {
   }
   return itemsCache;
 };
-// 성별에 따라 기본 옷·헤어가 다름. 예전(v1, 80×80) 저장본은 소품 위치를 1.5배로 맞춤
+// 성별에 따라 기본 옷·헤어가 다름 (레퍼런스 남/여 캐릭터)
 export const lookOf = (playerId) => {
   const saved = state.avatars.find((a) => a.id === playerId);
   const sex = state.players.find((p) => p.id === playerId)?.gender === 'F' ? 'F' : 'M';
-  const look = { ...DEFAULT_LOOK, hair: sex === 'F' ? 'long' : 'neat', ...(saved || {}), sex, v: LOOK_VERSION };
-  if (look.hair === 'short') look.hair = 'neat';
-  if (saved && (saved.v || 1) < LOOK_VERSION) look.deco = (saved.deco || []).map((d) => ({ ...d, x: Math.round(d.x * 1.5), y: Math.round(d.y * 1.5) }));
+  const look = { ...DEFAULT_LOOK, hairColor: DEFAULT_WEAR[sex].hair, ...(saved || {}), sex, v: LOOK_VERSION };
+  // 성별에 맞는 헤어만 (예전 값은 기본으로)
+  if (!HAIRS_BY_SEX[sex].some(([k]) => k === look.hair)) look.hair = sex === 'F' ? 'f' : 'm';
   return look;
 };
 export const ownedSet = (playerId) => new Set(state.purchases.filter((p) => p.playerId === playerId).map((p) => p.itemId));

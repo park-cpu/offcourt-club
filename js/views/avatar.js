@@ -6,7 +6,7 @@ import { state, me, derived, itemsMap, lookOf, ownedSet, today, weekStart, fmtSh
 import { put, uid } from '../db.js';
 import { RULES } from '../rules.js';
 import {
-  drawStage, stageCanvas, itemThumb, sourceOf, LOOK_VERSION, SLOTS, SLOT_LABEL, BG_LABEL, SKINS, HAIRS, HAIR_COLORS, DEFAULT_LOOK, STAGE_W, STAGE_H,
+  drawStage, stageCanvas, itemThumb, sourceOf, LOOK_VERSION, SLOTS, SLOT_LABEL, BG_LABEL, SKINS, HAIRS_BY_SEX, HAIR_COLORS, DEFAULT_LOOK, STAGE_W, STAGE_H,
 } from '../pixel.js';
 import { pageHead, backLink, loginSheet } from './common.js';
 
@@ -171,7 +171,7 @@ function closetTab(items, owned, change) {
       h('p', { class: 'eyebrow' }, '피부색'),
       h('div', { class: 'row gap wrap' }, SKINS.map((c, i) => swatch(c, L.skin === i, () => change((l) => (l.skin = i))))),
       h('p', { class: 'eyebrow' }, '헤어'),
-      h('div', { class: 'chips-wrap' }, HAIRS.map(([k, label]) => h('button', { class: 'chip' + (L.hair === k ? ' on' : ''), onclick: () => change((l) => (l.hair = k)) }, label))),
+      h('div', { class: 'chips-wrap' }, (HAIRS_BY_SEX[L.sex] || HAIRS_BY_SEX.M).map(([k, label]) => h('button', { class: 'chip' + (L.hair === k ? ' on' : ''), onclick: () => change((l) => (l.hair = k)) }, label))),
       h('p', { class: 'eyebrow' }, '머리색'),
       h('div', { class: 'row gap wrap' }, HAIR_COLORS.map((c, i) => swatch(c, L.hairColor === i, () => change((l) => (l.hairColor = i)))))
     ),
@@ -209,7 +209,7 @@ function closetTab(items, owned, change) {
                       ed.sel = null;
                     } else if (l.deco.length >= MAX_DECO) toast(`소품은 ${MAX_DECO}개까지 놓을 수 있어요`);
                     else {
-                      l.deco.push({ id: it.id, x: it.x ?? 40, y: it.y ?? 40 });
+                      l.deco.push({ id: it.id, x: it.x ?? 30, y: it.y ?? 30 });
                       ed.sel = l.deco.length - 1;
                     }
                   }),
@@ -258,13 +258,13 @@ function buySheet(u, it, owned, bal, change) {
   const look = structuredClone(ed.look);
   if (it.cat === 'wear') look.wear[it.slot] = it.id;
   else if (it.slot === 'base') look.base = it.id;
-  else if (!look.deco.some((d) => d.id === it.id)) look.deco.push({ id: it.id, x: it.x ?? 40, y: it.y ?? 40 });
+  else if (!look.deco.some((d) => d.id === it.id)) look.deco.push({ id: it.id, x: it.x ?? 30, y: it.y ?? 30 });
   const has = owned.has(it.id);
   const apply = () =>
     change((l) => {
       if (it.cat === 'wear') l.wear[it.slot] = it.id;
       else if (it.slot === 'base') l.base = it.id;
-      else if (!l.deco.some((d) => d.id === it.id) && l.deco.length < MAX_DECO) l.deco.push({ id: it.id, x: it.x ?? 40, y: it.y ?? 40 });
+      else if (!l.deco.some((d) => d.id === it.id) && l.deco.length < MAX_DECO) l.deco.push({ id: it.id, x: it.x ?? 30, y: it.y ?? 30 });
     });
   sheet(it.name, (close) =>
     h(

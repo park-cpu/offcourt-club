@@ -95,14 +95,14 @@ export async function seedDemo() {
   const pickOne = (slot) => BUILTIN_ITEMS.filter((it) => it.slot === slot)[Math.floor(Math.random() * BUILTIN_ITEMS.filter((it) => it.slot === slot).length)];
   players.slice(1, 9).forEach((p, i) => {
     const wear = {};
-    for (const slot of ['hat', 'top', 'bottom', 'hand']) if (Math.random() < 0.7) wear[slot] = pickOne(slot).id;
+    for (const slot of ['hat', 'top', 'bottom', 'shoes', 'hand']) if (Math.random() < 0.7) wear[slot] = pickOne(slot).id;
     const base = Math.random() < 0.6 ? pickOne('base').id : null;
-    const deco = Math.random() < 0.6 ? [{ id: 'b_deco_trophy', x: 88, y: 66 }] : [];
+    const deco = Math.random() < 0.6 ? [{ id: 'b_deco_trophy', x: 60, y: 46 }] : [];
     [...Object.values(wear), base, ...deco.map((d) => d.id)].filter(Boolean).forEach((itemId) => {
       const it = BUILTIN_ITEMS.find((x) => x.id === itemId);
       purchases.push({ id: `${p.id}_${itemId}`, playerId: p.id, itemId, itemName: it.name, price: 0, date: t, at: now });
     });
-    avatars.push({ id: p.id, skin: i % 4, hair: ['neat', 'long', 'bob', 'pony', 'bun', 'buzz'][i % 6], v: 2, hairColor: i % 5, wear, base, deco, updatedAt: now - i });
+    avatars.push({ id: p.id, skin: i % 4, hair: i % 2 ? 'long' : 'f', v: 3, hairColor: i % 5, wear, base, deco, updatedAt: now - i });
   });
 
   await db.replaceAll({ players, guests: [], schedules, attendance, matches, coinLogs: [], settings: [settings], items: [], purchases, avatars });

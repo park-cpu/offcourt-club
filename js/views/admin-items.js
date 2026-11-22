@@ -12,17 +12,17 @@ import { pageHead, backLink } from './common.js';
 const KINDS = [...SLOTS.map(([s, l]) => [`wear:${s}`, `착용 · ${l}`]), ['bg:base', '배경 · 바탕 (화면 전체)'], ['bg:deco', '배경 · 소품 (포스터 · 글자 등)']];
 // 종류별 기본값: 크기(긴 변 픽셀), 아바타 기준 위치
 const PRESET = {
-  hat: { size: 44, x: 2, y: 0 },
-  face: { size: 28, x: 10, y: 21 },
-  top: { size: 32, x: 8, y: 40 },
-  bottom: { size: 26, x: 11, y: 61 },
-  shoes: { size: 24, x: 12, y: 84 },
-  hand: { size: 30, x: 33, y: 26 },
-  deco: { size: 40 },
-  base: { size: 120 },
+  hat: { size: 30, x: 1, y: 0 },
+  face: { size: 18, x: 6, y: 15 },
+  top: { size: 22, x: 4, y: 28 },
+  bottom: { size: 16, x: 8, y: 47 },
+  shoes: { size: 22, x: 3, y: 57 },
+  hand: { size: 18, x: 22, y: 28 },
+  deco: { size: 28 },
+  base: { size: 80 },
 };
 // 소품 처음 위치: 왼쪽 위 벽 (아바타와 안 겹치게)
-const decoPos = (cv) => ({ x: 6, y: Math.max(3, Math.min(12, 84 - cv.height)) });
+const decoPos = (cv) => ({ x: 3, y: Math.max(2, Math.min(8, 56 - cv.height)) });
 const kindText = (it) => (it.cat === 'wear' ? `착용 · ${SLOT_LABEL[it.slot]}` : BG_LABEL[it.slot]);
 
 export function itemsAdmin() {
@@ -101,12 +101,12 @@ function newItemSheet() {
     const text = h('textarea', { class: 'input', rows: 2, maxLength: 24, placeholder: '예) OFFCOURT\n(줄바꿈 3줄까지)' });
     const color = h('input', { class: 'input color', type: 'color', value: '#1d5294' });
     const font = select({ class: 'input' }, [['sans', '고딕'], ['serif', '세리프']], 'sans');
-    const size = h('input', { type: 'range', min: 8, max: 100, value: 40 });
+    const size = h('input', { type: 'range', min: 6, max: 72, value: 28 });
     const colors = h('input', { type: 'range', min: 2, max: 16, value: 10 });
     const rmBg = h('input', { type: 'checkbox', checked: true });
     const outline = h('input', { type: 'checkbox', checked: true });
-    const px = h('input', { type: 'range', min: -16, max: 60, value: 0 });
-    const py = h('input', { type: 'range', min: -16, max: 96, value: 0 });
+    const px = h('input', { type: 'range', min: -10, max: 34, value: 0 });
+    const py = h('input', { type: 'range', min: -10, max: 66, value: 0 });
     const sizeLbl = h('span', {});
     const colorsLbl = h('span', {});
     const big = h('div', { class: 'thumb-big checker' });
