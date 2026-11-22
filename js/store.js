@@ -174,11 +174,21 @@ export async function hashPin(pin, salt) {
 
 // ── 아바타 · 아이템 ─────────────────────────────────────
 // 기본 아이템(코드) + 관리자 아이템(state.items). 판매 중지 아이템도 보유자는 계속 착용
+// 기본 아이템을 관리자가 고치면 같은 id의 items 문서에 이름·가격·판매 여부만 저장 (그림은 코드 그대로)
+const BUILTIN_IDS = new Set(BUILTIN_ITEMS.map((it) => it.id));
+export const isBuiltinId = (id) => BUILTIN_IDS.has(id);
+/** 관리자가 새로 등록한 아이템만 (기본 아이템 수정 기록 제외) */
+export const customItems = () => state.items.filter((it) => !BUILTIN_IDS.has(it.id));
 let itemsCache = null, itemsSrc = null;
 export const itemsMap = () => {
   if (itemsSrc !== state.items) {
     itemsSrc = state.items;
-    itemsCache = new Map([...BUILTIN_ITEMS, ...state.items].map((it) => [it.id, it]));
+    const over = new Map(state.items.filter((it) => BUILTIN_IDS.has(it.id)).map((it) => [it.id, it]));
+    const builtins = BUILTIN_ITEMS.map((b) => {
+      const o = over.get(b.id);
+      return o ? { ...b, name: o.name || b.name, price: o.price ?? b.price, active: o.active !== false, edited: true } : b;
+    });
+    itemsCache = new Map([...builtins, ...customItems()].map((it) => [it.id, it]));
   }
   return itemsCache;
 };

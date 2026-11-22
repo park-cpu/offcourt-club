@@ -1,5 +1,5 @@
 import { h, sheet, toast, field, select, go, confirmSheet, empty, ntrpText } from '../ui.js';
-import { state, me, isAdmin, settings, derived, today, fmtShort, careerText, hashPin, session } from '../store.js';
+import { state, me, isAdmin, settings, derived, today, fmtShort, careerText, hashPin, session, customItems } from '../store.js';
 import { put, remove, batch, uid, db, COLLECTIONS } from '../db.js';
 import { pageHead, backLink, linkRow, playerForm, genderPicker, GENDER_LABEL } from './common.js';
 import { seedDemo } from '../demo.js';
@@ -31,7 +31,7 @@ export function adminView(sub) {
       linkRow('회원 관리', '#/admin/players', `${state.players.filter((p) => p.active !== false).length}명 ›`),
       linkRow('코인 지급 · 회수', '#/admin/coins', zero ? `코인 0개 ${zero}명 ›` : '›'),
       linkRow('시즌 관리', '#/admin/seasons', `${settings().seasons.length}개 ›`),
-      linkRow('아바타 아이템', '#/admin/items', `${state.items.length}개 ›`),
+      linkRow('아바타 아이템', '#/admin/items', `${customItems().length}개 ›`),
       linkRow('클럽 설정', '#/admin/settings'),
       linkRow('백업 · 복원', '#/admin/data')
     )
