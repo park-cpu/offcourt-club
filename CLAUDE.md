@@ -29,7 +29,7 @@
 
 ## 아바타 · 볼 (v1.7.0~)
 - 볼 = 꾸미기 전용 화폐 (코인전 코인과 별개). `RULES.balls` + `computeBalls` (rules.js): 도착·경기·승리·주간 미션 적립 − purchases. 저장하지 않고 재계산
-- 그림: `js/pixel.js` (v1.7.3~ 배경 80×80, 아바타 34×66). 몸은 사용자가 준 레퍼런스(남·녀 캐릭터, 약 31×63칸)를 원본 해상도 그대로 옮긴 역할 문자 템플릿 `js/avatar-tpl.js` → 역할별로 피부·머리·옷 색을 칠함. 상의·하의·신발 아이템 = 색(color)만, 모자·얼굴·손 = paint(g, ANCHOR[성별]). 스타일 기준은 이 레퍼런스 (검은 테두리 대신 같은 색의 진한 톤, 작은 눈·볼터치). 기본 아이템은 `js/avatar-items.js`(id `b_…`, 바꾸지 말 것)
+- 그림: `js/pixel.js` (v1.7.3~ 배경 80×80, 아바타 34×66). 몸은 사용자가 준 레퍼런스(남·녀 캐릭터, 약 31×63칸)를 원본 해상도 그대로 옮긴 역할 문자 템플릿 `js/avatar-tpl.js` → 역할별로 피부·머리·옷 색을 칠함. 상의·하의·신발 아이템 = 색(color)만, 모자·얼굴·손 = paint(g, ANCHOR[성별]). 스타일 기준은 이 레퍼런스 (검은 테두리 대신 같은 색의 진한 톤, 작은 눈·볼터치). 기본 아이템은 `js/avatar-items.js`(id `b_…`, 바꾸지 말 것). 헤어스타일은 `js/avatar-hair.js`(top = 템플릿 위쪽 줄 교체, back = 몸 뒤에 먼저 그림), 목록은 `HAIRS_BY_SEX`
 - 관리자 아이템 = `items` 문서에 작은 PNG data URL(`img`, 200KB 제한). 변환은 `js/pixelate.js` (기기 안에서 처리). 기본 아이템 수정(v1.7.4~) = 같은 id(`b_…`)의 `items` 문서에 name·price·active만 저장 → `itemsMap`이 덮어씀, 관리자 목록은 `customItems()`
 - 컬렉션: `items`, `purchases`(id `회원_아이템`), `avatars`(id = 회원 id). firestore.rules에 추가됨 → Firebase 콘솔 규칙도 같이 바꿔야 저장됨
 - 화면: `#/avatar[/closet|shop|missions]`, `#/avatars`(구경), `#/admin/items`

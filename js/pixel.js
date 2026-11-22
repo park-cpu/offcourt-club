@@ -14,6 +14,7 @@ export const AVATAR_X = 25; // 배경 안 아바타 위치
 export const AVATAR_Y = 12;
 export const LOOK_VERSION = 3;
 import { TPL_M, TPL_F } from './avatar-tpl.js';
+import { HAIR_TPL } from './avatar-hair.js';
 export const OUTLINE = '#3a2a24';
 
 // 착용 순서 (뒤 → 앞)
@@ -172,8 +173,8 @@ export const SKIN_SETS = [
 export const SKINS = SKIN_SETS.map((x) => x.S);
 export const HAIR_COLORS = ['#362319', '#604331', '#8a5a34', '#c9a063', '#8c8a88', '#9c3a2c'];
 export const HAIRS_BY_SEX = {
-  M: [['m', '기본 (가르마)']],
-  F: [['f', '기본 (웨이브 단발)'], ['long', '긴 머리']],
+  M: [['m', '기본 (가르마)'], ['buzz', '스포츠 (반삭)'], ['spiky', '삐죽 머리'], ['part55', '5:5 가르마']],
+  F: [['f', '기본 (웨이브 단발)'], ['long', '긴 생머리'], ['wave', '긴 웨이브'], ['pony', '포니테일']],
 };
 export const HAIRS = [...HAIRS_BY_SEX.M, ...HAIRS_BY_SEX.F];
 // 성별 기본 옷 색 (레퍼런스 그대로)
@@ -199,22 +200,19 @@ export const shoesPal = (c) => ({ O: mix(c, '#0a0a0a', 0.7), f: c, F: shade(c, -
 const FIXED = { K: '#080504', W: '#ffffff', o: '#fcc3c3', p: '#ee7678', r: '#d4555f' };
 export const ROLE_GROUP = { top: 'TtucnN', bottom: 'PqQg', shoes: 'OfFG' };
 
-/** 역할 격자(글자) — 템플릿 + 긴 머리 + 옷 무늬 */
+/** 역할 격자(글자) — 템플릿 + 헤어스타일(js/avatar-hair.js) + 옷 무늬 */
 function roleGrid(look, items) {
   const sex = look.sex === 'F' ? 'F' : 'M';
   const A = ANCHOR[sex];
   const g = new Grid(AVATAR_W, AVATAR_H);
-  if (sex === 'F' && look.hair === 'long') {
-    // 긴 머리: 양옆으로 어깨 아래까지
-    g.round(0, A.dy + 10, 4, A.dy + 44, 0, 3, 'h').round(26, A.dy + 10, 30, A.dy + 44, 0, 3, 'h');
-    g.rect(0, A.dy + 41, 4, A.dy + 44, 'd', (x, y) => g.get(x, y)).rect(26, A.dy + 41, 30, A.dy + 44, 'd', (x, y) => g.get(x, y));
-    g.rect(2, A.dy + 14, 2, A.dy + 38, 'l').rect(28, A.dy + 14, 28, A.dy + 38, 'l');
-    g.outline('H');
-  }
-  const tpl = sex === 'F' ? TPL_F : TPL_M;
-  tpl.forEach((row, y) => {
+  const hair = HAIR_TPL[sex][look.hair];
+  const put = (rows) => rows.forEach((row, y) => {
     for (let x = 0; x < row.length; x++) if (row[x] !== '.') g.set(x, y + A.dy, row[x]);
   });
+  // 몸 뒤에 먼저 (긴 머리 · 포니테일 꼬리)
+  if (hair?.back) put(hair.back);
+  const tpl = sex === 'F' ? TPL_F : TPL_M;
+  put(hair?.top ? [...hair.top, ...tpl.slice(hair.top.length)] : tpl);
   const top = items.get(look.wear?.top);
   if (top?.pattern) top.pattern(g, A);
   return g;
