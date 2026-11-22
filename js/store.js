@@ -2,7 +2,9 @@
 // 앱 상태 + 파생 데이터(레이팅/전적/코인) + 로그인 세션
 // ─────────────────────────────────────────────────────────────
 import { db, COLLECTIONS } from './db.js';
-import { computeRatings, computeStats, computeCoins, ntrpToRating } from './rules.js';
+import { computeRatings, computeStats, computeCoins, computeBalls, ntrpToRating } from './rules.js';
+import { BUILTIN_ITEMS } from './avatar-items.js';
+import { DEFAULT_LOOK } from './pixel.js';
 
 export const state = Object.fromEntries(COLLECTIONS.map((c) => [c, []]));
 state.ready = false;
@@ -54,7 +56,8 @@ export function derived() {
   const { ratings, deltas, spDeltas } = computeRatings(players, guests, state.matches);
   const allStats = computeStats(players, state.matches, spDeltas, null);
   const coins = computeCoins(players, state.attendance, state.coinLogs, state.matches, settings());
-  derivedCache = { ratings, deltas, spDeltas, allStats, coins };
+  const balls = computeBalls(players, state.attendance, state.matches, state.purchases, weekStart);
+  derivedCache = { ratings, deltas, spDeltas, allStats, coins, balls };
   return derivedCache;
 }
 
@@ -168,3 +171,16 @@ export async function hashPin(pin, salt) {
   const buf = await crypto.subtle.digest('SHA-256', data);
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
+
+// ── 아바타 · 아이템 ─────────────────────────────────────
+// 기본 아이템(코드) + 관리자 아이템(state.items). 판매 중지 아이템도 보유자는 계속 착용
+let itemsCache = null, itemsSrc = null;
+export const itemsMap = () => {
+  if (itemsSrc !== state.items) {
+    itemsSrc = state.items;
+    itemsCache = new Map([...BUILTIN_ITEMS, ...state.items].map((it) => [it.id, it]));
+  }
+  return itemsCache;
+};
+export const lookOf = (playerId) => ({ ...DEFAULT_LOOK, ...(state.avatars.find((a) => a.id === playerId) || {}) });
+export const ownedSet = (playerId) => new Set(state.purchases.filter((p) => p.playerId === playerId).map((p) => p.itemId));

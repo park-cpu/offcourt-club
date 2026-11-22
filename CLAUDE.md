@@ -27,6 +27,13 @@
 - 성별(M/F) 있음, 혼복 대진(팀당 남1·여1) 지원
 - 코인·레이팅·순위는 저장하지 않고 경기 기록에서 매번 재계산 (`js/rules.js`)
 
+## 아바타 · 볼 (v1.7.0~)
+- 볼 = 꾸미기 전용 화폐 (코인전 코인과 별개). `RULES.balls` + `computeBalls` (rules.js): 도착·경기·승리·주간 미션 적립 − purchases. 저장하지 않고 재계산
+- 그림: `js/pixel.js` (배경 80×80, 아바타 32×48 캔버스 → CSS pixelated 확대). 기본 아이템은 `js/avatar-items.js`에서 코드로 그림(id `b_…`, 바꾸지 말 것)
+- 관리자 아이템 = `items` 문서에 작은 PNG data URL(`img`, 200KB 제한). 변환은 `js/pixelate.js` (기기 안에서 처리)
+- 컬렉션: `items`, `purchases`(id `회원_아이템`), `avatars`(id = 회원 id). firestore.rules에 추가됨 → Firebase 콘솔 규칙도 같이 바꿔야 저장됨
+- 화면: `#/avatar[/closet|shop|missions]`, `#/avatars`(구경), `#/admin/items`
+
 ## 날씨
 - `js/weather.js`: Open-Meteo(무료·키 없음), 위치 고양시 일산(37.66, 126.77) — 좌표는 `WEATHER_PLACE`에서 변경. 일정 시간대 기온 범위 + 최대 강수확률. 1시간 캐시(localStorage). 실패해도 앱은 정상 동작.
 

@@ -5,6 +5,7 @@ import { weekView, scheduleView } from './views/schedule.js';
 import { playView } from './views/play.js';
 import { rankView, profileView, rulesView } from './views/rank.js';
 import { meView } from './views/me.js';
+import { avatarView, galleryView } from './views/avatar.js';
 import { adminView, setupView } from './views/admin.js';
 import { loadWeather } from './weather.js';
 import { setupApp } from './install.js';
@@ -13,8 +14,8 @@ const TABS = [
   ['#/', '홈', 'home', ['', 'home']],
   ['#/week', '일정', 'cal', ['week', 's']],
   ['#/play', '경기', 'ball', ['play']],
-  ['#/rank', '순위', 'rank', ['rank', 'p', 'rules']],
-  ['#/me', '내 정보', 'user', ['me', 'admin']],
+  ['#/rank', '순위', 'rank', ['rank', 'p', 'rules', 'avatars']],
+  ['#/me', '내 정보', 'user', ['me', 'admin', 'avatar']],
 ];
 
 const ICONS = {
@@ -45,6 +46,8 @@ function route() {
     case 'p': return ['p', profileView(a)];
     case 'rules': return ['rules', rulesView()];
     case 'me': return ['me', meView()];
+    case 'avatar': return ['avatar', avatarView(a)];
+    case 'avatars': return ['avatars', galleryView()];
     case 'admin': return ['admin', adminView(a)];
     default: return ['', homeView()];
   }

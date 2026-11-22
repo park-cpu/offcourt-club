@@ -18,6 +18,17 @@ export const RULES = {
   participationBonus: 1,
   // 코인전 랭킹: 코인 순수익 1개당 더하는 점수
   coinPoint: 10,
+  // 아바타 꾸미기용 '볼' (코인전 코인과 별개)
+  balls: {
+    attend: 10, // 도착 체크 1번
+    play: 5, // 경기 1번 (친선전·게스트 경기 포함)
+    win: 5, // 승리 1번 추가 (친선전 제외)
+    weekly: [
+      { id: 'attend2', label: '이번 주 2번 출석', kind: 'attend', goal: 2, reward: 20 },
+      { id: 'play6', label: '이번 주 6경기', kind: 'play', goal: 6, reward: 20 },
+      { id: 'win3', label: '이번 주 3승', kind: 'win', goal: 3, reward: 30 },
+    ],
+  },
 };
 
 export const MATCH_TYPES = {
@@ -270,4 +281,63 @@ export function computeRelations(id, matches, players) {
   }
   const sort = (a, b) => b.games - a.games || b.wins / b.games - a.wins / a.games;
   return { partners: [...partners.values()].sort(sort), opponents: [...opponents.values()].sort(sort) };
+}
+
+// ── 아바타 꾸미기용 볼 ─────────────────────────────────
+// 출석 · 경기 · 승리 · 주간 미션으로 쌓이고, 아이템 구매(purchases)로 줄어듦
+// weekOf(date) → 그 주 월요일 (store.js의 weekStart를 넘겨받음)
+export function computeBalls(players, attendance, matches, purchases, weekOf) {
+  const B = RULES.balls;
+  const bal = new Map();
+  const days = new Map(); // id → Map(date → {attend, play, win})
+  const weeks = new Map(); // id → Map(week → {attend, play, win})
+  const ledger = new Map();
+  for (const id of players.keys()) {
+    bal.set(id, 0);
+    days.set(id, new Map());
+    weeks.set(id, new Map());
+    ledger.set(id, []);
+  }
+  const bump = (id, date, kind) => {
+    if (!players.has(id) || !date) return;
+    const d = days.get(id);
+    const x = d.get(date) || { attend: 0, play: 0, win: 0 };
+    x[kind]++;
+    d.set(date, x);
+    const wk = weekOf(date);
+    const w = weeks.get(id);
+    const y = w.get(wk) || { attend: 0, play: 0, win: 0 };
+    y[kind]++;
+    w.set(wk, y);
+  };
+  for (const a of attendance) if (a.arrived && !a.isGuest) bump(a.playerId, a.date, 'attend');
+  for (const m of matches) {
+    if (m.status !== 'done') continue;
+    const w = winnerSide(m);
+    for (const id of [...m.teamA, ...m.teamB]) bump(id, m.date, 'play');
+    if (w && m.type !== 'friendly') (w === 'A' ? m.teamA : m.teamB).forEach((id) => bump(id, m.date, 'win'));
+  }
+  for (const [id, d] of days) {
+    for (const [date, x] of d) {
+      const amount = x.attend * B.attend + x.play * B.play + x.win * B.win;
+      if (!amount) continue;
+      const parts = [x.attend && '출석', x.play && `${x.play}경기`, x.win && `${x.win}승`].filter(Boolean).join(' · ');
+      ledger.get(id).push({ date, amount, reason: parts });
+      bal.set(id, bal.get(id) + amount);
+    }
+    for (const [wk, x] of weeks.get(id))
+      for (const ms of B.weekly)
+        if (x[ms.kind] >= ms.goal) {
+          ledger.get(id).push({ date: wk, amount: ms.reward, reason: `주간 미션 · ${ms.label}`, at: 1 });
+          bal.set(id, bal.get(id) + ms.reward);
+        }
+  }
+  for (const p of purchases) {
+    if (!players.has(p.playerId)) continue;
+    const n = Number(p.price) || 0;
+    bal.set(p.playerId, bal.get(p.playerId) - n);
+    ledger.get(p.playerId).push({ date: p.date || '', amount: -n, reason: `구매 · ${p.itemName || '아이템'}`, at: p.at || 0 });
+  }
+  for (const l of ledger.values()) l.sort((a, b) => b.date.localeCompare(a.date) || (b.at || 0) - (a.at || 0));
+  return { bal, weeks, ledger };
 }

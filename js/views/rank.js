@@ -4,6 +4,7 @@ import { put, uid } from '../db.js';
 import { ratingToNtrp, RULES, matchOrder, canBorrow, computeRelations } from '../rules.js';
 import { pageHead, backLink, matchCard, nameTag } from './common.js';
 import { scoreSheet } from './play.js';
+import { avatarBlock } from './avatar.js';
 
 // type: 'official'(공식전 시즌 순위) | 'coin'(코인전 랭킹)
 export function rankList(season, type = 'official') {
@@ -78,6 +79,7 @@ export function rankView(a, b) {
     ranked.length ? h('div', { class: 'rank-list' }, ranked.map((r, i) => row(r, i))) : empty(`아직 ${isCoin ? '코인전' : '공식전'} ${min}경기 이상 치른 사람이 없어요`),
     pending.length > 0 &&
       h('section', { class: 'block' }, h('h2', {}, `순위 산정 대기 (${min}경기 미만)`), h('div', { class: 'rank-list dim' }, pending.map((r) => row(r, null)))),
+    h('a', { class: 'link-row', href: '#/avatars' }, h('span', {}, '회원 아바타 구경'), h('span', { class: 'muted' }, '›')),
     h('a', { class: 'link-row', href: '#/rules' }, h('span', {}, '점수는 어떻게 계산되나요?'), h('span', { class: 'muted' }, '›'))
   );
 }
@@ -140,6 +142,7 @@ export function profileView(id) {
       h('div', { class: 'pname-big' }, p.name),
       h('div', { class: 'hero-bottom' }, h('span', {}, s.form.length ? s.form.join(' ') : '경기 기록 없음'), h('span', {}, `최고 ${s.best}연승`))
     ),
+    avatarBlock(id),
     h(
       'div',
       { class: 'stat-grid' },
@@ -312,6 +315,15 @@ export function rulesView() {
         h('li', {}, '코인전에서 지면 잔액이 마이너스가 될 수 있어요. 코인이 1개 미만이면 코인전 대신 공식전으로 자동 전환'),
         h('li', {}, `대출: 잔액 0 이하 + 남은 대출 없음 → ${settings().loanAmount}개 대출. 상환 전까지 출석 코인이 상환에 쓰이고, 보유 코인으로 바로 갚을 수도 있어요`),
         h('li', {}, '점수를 수정·취소하면 코인과 레이팅이 자동으로 다시 계산돼요')
+      )
+    ),
+    sec(
+      '6. 볼 · 아바타 꾸미기',
+      h('ul', {},
+        h('li', {}, `볼은 아바타 아이템을 사는 데만 쓰여요 (코인전 코인과 별개)`),
+        h('li', {}, `도착 체크 +${RULES.balls.attend} · 경기 1번 +${RULES.balls.play} (친선전 포함) · 승리 +${RULES.balls.win} 추가`),
+        h('li', {}, `주간 미션: ${RULES.balls.weekly.map((m) => `${m.label} +${m.reward}`).join(' · ')}`),
+        h('li', {}, '아이템은 관리자가 등록하고, 내 정보 → 내 아바타 꾸미기에서 사고 입힐 수 있어요')
       )
     )
   );

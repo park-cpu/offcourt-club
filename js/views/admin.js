@@ -3,6 +3,7 @@ import { state, me, isAdmin, settings, derived, today, fmtShort, careerText, has
 import { put, remove, batch, uid, db, COLLECTIONS } from '../db.js';
 import { pageHead, backLink, linkRow, playerForm, genderPicker, GENDER_LABEL } from './common.js';
 import { seedDemo } from '../demo.js';
+import { itemsAdmin } from './admin-items.js';
 
 const guard = () => {
   if (isAdmin()) return null;
@@ -17,6 +18,7 @@ export function adminView(sub) {
   if (sub === 'seasons') return seasonsAdmin();
   if (sub === 'settings') return settingsAdmin();
   if (sub === 'data') return dataAdmin();
+  if (sub === 'items') return itemsAdmin();
   const zero = state.players.filter((p) => p.active !== false && (derived().coins.bal.get(p.id) ?? 0) <= 0).length;
   return h(
     'div',
@@ -29,6 +31,7 @@ export function adminView(sub) {
       linkRow('회원 관리', '#/admin/players', `${state.players.filter((p) => p.active !== false).length}명 ›`),
       linkRow('코인 지급 · 회수', '#/admin/coins', zero ? `코인 0개 ${zero}명 ›` : '›'),
       linkRow('시즌 관리', '#/admin/seasons', `${settings().seasons.length}개 ›`),
+      linkRow('아바타 아이템', '#/admin/items', `${state.items.length}개 ›`),
       linkRow('클럽 설정', '#/admin/settings'),
       linkRow('백업 · 복원', '#/admin/data')
     )
