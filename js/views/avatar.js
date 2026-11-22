@@ -2,9 +2,9 @@
 // 아바타 꾸미기 · 상점 · 미션 · 구경하기
 // ─────────────────────────────────────────────────────────────
 import { h, sheet, toast, confirmSheet, empty, fmtNum } from '../ui.js';
-import { state, me, derived, itemsMap, lookOf, ownedSet, today, weekStart, fmtShort, activePlayers } from '../store.js';
+import { state, me, derived, itemsMap, lookOf, ownedSet, today, weekStart, fmtShort, activePlayers, weekRules, ballRulesAt } from '../store.js';
 import { put, uid } from '../db.js';
-import { RULES } from '../rules.js';
+import { missionLabel } from '../rules.js';
 import {
   drawStage, stageCanvas, itemThumb, sourceOf, LOOK_VERSION, SLOTS, SLOT_LABEL, BG_LABEL, SKINS, HAIRS_BY_SEX, HAIR_COLORS, DEFAULT_LOOK, STAGE_W, STAGE_H,
 } from '../pixel.js';
@@ -295,7 +295,8 @@ function buySheet(u, it, owned, bal, change) {
 
 // ── 미션 · 볼 내역 ──────────────────────────────────────
 function missionsTab(u) {
-  const B = RULES.balls;
+  const B = ballRulesAt(today());
+  const W = weekRules(weekStart(today()));
   const { balls } = derived();
   const wk = balls.weeks.get(u.id)?.get(weekStart(today())) || { attend: 0, play: 0, win: 0 };
   const ledger = balls.ledger.get(u.id) || [];
@@ -306,16 +307,16 @@ function missionsTab(u) {
       'section',
       { class: 'block' },
       h('h2', {}, '이번 주 미션'),
-      B.weekly.map((m) => {
+      W.weekly.length ? W.weekly.map((m) => {
         const n = Math.min(wk[m.kind], m.goal);
         return h(
           'div',
           { class: 'mission' + (n >= m.goal ? ' done' : '') },
-          h('div', { class: 'row between' }, h('strong', {}, m.label), h('span', { class: 'small' }, n >= m.goal ? `완료 +${m.reward}` : `${n} / ${m.goal} · +${m.reward}`)),
+          h('div', { class: 'row between' }, h('strong', {}, missionLabel(m)), h('span', { class: 'small' }, n >= m.goal ? `완료 +${m.reward}` : `${n} / ${m.goal} · +${m.reward}`)),
           h('div', { class: 'bar' }, h('span', { style: { width: `${(n / m.goal) * 100}%` } }))
         );
-      }),
-      h('p', { class: 'muted small' }, '월요일에 새로 시작해요.')
+      }) : h('p', { class: 'muted small' }, '이번 주 미션이 없어요.'),
+      h('p', { class: 'muted small' }, '월요일에 새로 시작해요. 목표를 채우면 볼이 자동으로 들어와요.')
     ),
     h(
       'section',

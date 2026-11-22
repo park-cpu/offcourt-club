@@ -1,7 +1,7 @@
 import { h, empty, pct, fmtNum, ntrpText, toast, confirmSheet } from '../ui.js';
-import { state, settings, currentSeason, seasonStats, derived, activePlayers, careerText, me, isAdmin, fmtShort, today } from '../store.js';
+import { state, settings, currentSeason, seasonStats, derived, activePlayers, careerText, me, isAdmin, fmtShort, today, ballRulesAt, weekRules, weekStart } from '../store.js';
 import { put, uid } from '../db.js';
-import { ratingToNtrp, RULES, matchOrder, canBorrow, computeRelations } from '../rules.js';
+import { ratingToNtrp, RULES, matchOrder, canBorrow, computeRelations, missionLabel } from '../rules.js';
 import { pageHead, backLink, matchCard, nameTag } from './common.js';
 import { scoreSheet } from './play.js';
 import { avatarBlock } from './avatar.js';
@@ -321,8 +321,9 @@ export function rulesView() {
       '6. 볼 · 아바타 꾸미기',
       h('ul', {},
         h('li', {}, `볼은 아바타 아이템을 사는 데만 쓰여요 (코인전 코인과 별개)`),
-        h('li', {}, `도착 체크 +${RULES.balls.attend} · 경기 1번 +${RULES.balls.play} (친선전 포함) · 승리 +${RULES.balls.win} 추가`),
-        h('li', {}, `주간 미션: ${RULES.balls.weekly.map((m) => `${m.label} +${m.reward}`).join(' · ')}`),
+        h('li', {}, `도착 체크 +${ballRulesAt(today()).attend} · 경기 1번 +${ballRulesAt(today()).play} (친선전 포함) · 승리 +${ballRulesAt(today()).win} 추가`),
+        h('li', {}, `주간 미션: ${weekRules(weekStart(today())).weekly.map((m) => `${missionLabel(m)} +${m.reward}`).join(' · ') || '없음'}`),
+        h('li', {}, '볼 · 미션 규칙은 관리자가 바꿀 수 있고, 바꾼 날부터 적용돼요 (지난 기록은 그대로)'),
         h('li', {}, '아이템은 관리자가 등록하고, 내 정보 → 내 아바타 꾸미기에서 사고 입힐 수 있어요')
       )
     )

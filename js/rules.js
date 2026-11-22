@@ -286,8 +286,10 @@ export function computeRelations(id, matches, players) {
 // ── 아바타 꾸미기용 볼 ─────────────────────────────────
 // 출석 · 경기 · 승리 · 주간 미션으로 쌓이고, 아이템 구매(purchases)로 줄어듦
 // weekOf(date) → 그 주 월요일 (store.js의 weekStart를 넘겨받음)
-export function computeBalls(players, attendance, matches, purchases, weekOf) {
-  const B = RULES.balls;
+// rulesAt(date) → 그날 적용되는 볼 규칙 (관리자가 바꾼 날부터 새 규칙), weekRules(월요일) → 그 주 미션
+export const MISSION_KINDS = [['attend', '출석'], ['play', '경기'], ['win', '승리']];
+export const missionLabel = (m) => `이번 주 ${m.goal}${m.kind === 'attend' ? '번 출석' : m.kind === 'play' ? '경기' : '승'}`;
+export function computeBalls(players, attendance, matches, purchases, weekOf, rulesAt = () => RULES.balls, weekRules = () => RULES.balls) {
   const bal = new Map();
   const days = new Map(); // id → Map(date → {attend, play, win})
   const weeks = new Map(); // id → Map(week → {attend, play, win})
@@ -319,6 +321,7 @@ export function computeBalls(players, attendance, matches, purchases, weekOf) {
   }
   for (const [id, d] of days) {
     for (const [date, x] of d) {
+      const B = rulesAt(date);
       const amount = x.attend * B.attend + x.play * B.play + x.win * B.win;
       if (!amount) continue;
       const parts = [x.attend && '출석', x.play && `${x.play}경기`, x.win && `${x.win}승`].filter(Boolean).join(' · ');
@@ -326,9 +329,9 @@ export function computeBalls(players, attendance, matches, purchases, weekOf) {
       bal.set(id, bal.get(id) + amount);
     }
     for (const [wk, x] of weeks.get(id))
-      for (const ms of B.weekly)
+      for (const ms of weekRules(wk).weekly)
         if (x[ms.kind] >= ms.goal) {
-          ledger.get(id).push({ date: wk, amount: ms.reward, reason: `주간 미션 · ${ms.label}`, at: 1 });
+          ledger.get(id).push({ date: wk, amount: ms.reward, reason: `주간 미션 · ${missionLabel(ms)}`, at: 1 });
           bal.set(id, bal.get(id) + ms.reward);
         }
   }

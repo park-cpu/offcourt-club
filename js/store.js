@@ -2,7 +2,7 @@
 // 앱 상태 + 파생 데이터(레이팅/전적/코인) + 로그인 세션
 // ─────────────────────────────────────────────────────────────
 import { db, COLLECTIONS } from './db.js';
-import { computeRatings, computeStats, computeCoins, computeBalls, ntrpToRating } from './rules.js';
+import { computeRatings, computeStats, computeCoins, computeBalls, ntrpToRating, RULES } from './rules.js';
 import { BUILTIN_ITEMS } from './avatar-items.js';
 import { DEFAULT_LOOK, LOOK_VERSION, DEFAULT_WEAR, HAIRS_BY_SEX } from './pixel.js';
 
@@ -36,6 +36,13 @@ export const DEFAULT_SETTINGS = {
   loanAmount: 3,
   seasons: [],
 };
+// 볼 · 미션 규칙: settings.ballRules = [{from:'날짜', attend, play, win, weekly:[{id,kind,goal,reward}]}]
+// 관리자가 바꾸면 그날부터 새 규칙 (지난 기록은 그때 규칙 그대로). 주간 미션은 그 주 일요일 기준 → 이번 주부터 바로 적용
+export const ballRulesAt = (date) => {
+  const v = (settings().ballRules || []).filter((r) => r.from <= date).sort((a, b) => a.from.localeCompare(b.from)).pop();
+  return v ? { ...RULES.balls, ...v } : RULES.balls;
+};
+export const weekRules = (wk) => ballRulesAt(addDays(wk, 6));
 export const settings = () => ({ ...DEFAULT_SETTINGS, ...(state.settings.find((s) => s.id === 'main') || {}) });
 
 // ── 조회 헬퍼 ─────────────────────────────────────────
@@ -56,7 +63,7 @@ export function derived() {
   const { ratings, deltas, spDeltas } = computeRatings(players, guests, state.matches);
   const allStats = computeStats(players, state.matches, spDeltas, null);
   const coins = computeCoins(players, state.attendance, state.coinLogs, state.matches, settings());
-  const balls = computeBalls(players, state.attendance, state.matches, state.purchases, weekStart);
+  const balls = computeBalls(players, state.attendance, state.matches, state.purchases, weekStart, ballRulesAt, weekRules);
   derivedCache = { ratings, deltas, spDeltas, allStats, coins, balls };
   return derivedCache;
 }
