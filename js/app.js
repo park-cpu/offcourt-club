@@ -41,7 +41,7 @@ function route() {
     case 'week': return ['week', weekView(a)];
     case 's': return ['s', scheduleView(a)];
     case 'play': return ['play', playView(a, b)];
-    case 'rank': return ['rank', rankView(a)];
+    case 'rank': return ['rank', rankView(a, b)];
     case 'p': return ['p', profileView(a)];
     case 'rules': return ['rules', rulesView()];
     case 'me': return ['me', meView()];

@@ -14,6 +14,8 @@ export const RULES = {
   provisionalGames: 10,
   // 시즌 포인트: 경기 참여 보너스
   participationBonus: 1,
+  // 코인전 랭킹: 코인 순수익 1개당 더하는 점수
+  coinPoint: 10,
 };
 
 export const MATCH_TYPES = {
@@ -107,15 +109,21 @@ export function computeRatings(players, guests, matches) {
 const avg = (arr) => arr.reduce((s, x) => s + x, 0) / (arr.length || 1);
 
 /** 선수별 전적(기간 필터 가능) + 시즌 포인트 */
-export function computeStats(players, matches, deltas, range) {
+/**
+ * 전적 · 시즌 포인트
+ * type: 생략 = 코인전+공식전 전체 / 'official' = 공식전만 / 'coin' = 코인전만
+ * 코인전 포인트 = 레이팅 변동 + 경기당 1점 + 코인 순수익 × coinPoint
+ */
+export function computeStats(players, matches, deltas, range, type) {
   const stats = new Map();
   for (const id of players.keys())
-    stats.set(id, { games: 0, wins: 0, losses: 0, gw: 0, gl: 0, sp: 0, streak: 0, best: 0, form: [] });
+    stats.set(id, { games: 0, wins: 0, losses: 0, gw: 0, gl: 0, sp: 0, coins: 0, streak: 0, best: 0, form: [] });
   const inRange = (m) => !range || ((!range.start || m.date >= range.start) && (!range.end || m.date <= range.end));
-  const list = matches.filter((m) => isRated(m, players) && inRange(m)).sort(matchOrder);
+  const list = matches.filter((m) => isRated(m, players) && inRange(m) && (!type || m.type === type)).sort(matchOrder);
   for (const m of list) {
     const w = winnerSide(m);
     const d = deltas.get(m.id) || new Map();
+    const stake = m.type === 'coin' ? coinStake(m) : 0;
     const side = (ids, me, them, won) =>
       ids.forEach((id) => {
         const s = stats.get(id);
@@ -124,7 +132,9 @@ export function computeStats(players, matches, deltas, range) {
         won ? s.wins++ : s.losses++;
         s.gw += me;
         s.gl += them;
-        s.sp += (d.get(id) || 0) + RULES.participationBonus;
+        const c = won ? stake : -stake;
+        s.coins += c;
+        s.sp += (d.get(id) || 0) + RULES.participationBonus + (type === 'coin' ? c * RULES.coinPoint : 0);
         s.streak = won ? Math.max(1, s.streak + 1) : Math.min(-1, s.streak - 1);
         s.best = Math.max(s.best, s.streak);
         s.form.push(won ? 'W' : 'L');

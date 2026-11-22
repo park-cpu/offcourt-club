@@ -67,9 +67,10 @@ export const currentSeason = () => {
   const s = settings().seasons;
   return seasonOf(today()) || [...s].sort((a, b) => b.start.localeCompare(a.start))[0] || null;
 };
-export const seasonStats = (season) => {
+// type: 'official'(공식전 시즌 순위) | 'coin'(코인전 랭킹) | 생략(전체)
+export const seasonStats = (season, type) => {
   const { deltas } = derived();
-  return computeStats(playersMap(), state.matches, deltas, season);
+  return computeStats(playersMap(), state.matches, deltas, season, type);
 };
 
 // ── 일정/출석 ─────────────────────────────────────────

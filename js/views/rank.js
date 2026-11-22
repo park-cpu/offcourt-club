@@ -5,8 +5,9 @@ import { ratingToNtrp, RULES, matchOrder, canBorrow, computeRelations } from '..
 import { pageHead, backLink, matchCard, nameTag } from './common.js';
 import { scoreSheet } from './play.js';
 
-export function rankList(season) {
-  const st = seasonStats(season);
+// type: 'official'(공식전 시즌 순위) | 'coin'(코인전 랭킹)
+export function rankList(season, type = 'official') {
+  const st = seasonStats(season, type);
   const min = settings().minGames;
   const rows = activePlayers().map((p) => ({ ...p, ...st.get(p.id) }));
   const sort = (a, b) => b.sp - a.sp || b.winRate - a.winRate || b.games - a.games;
@@ -17,16 +18,23 @@ export function rankList(season) {
   };
 }
 
-export function rankView(param) {
-  const seasons = [...settings().seasons].sort((a, b) => b.start.localeCompare(a.start));
-  const mode = param === 'rating' ? 'rating' : 'season';
-  const season = mode === 'season' ? seasons.find((s) => s.id === param) || currentSeason() : null;
+const RANK_TABS = [
+  ['official', '공식전'],
+  ['coin', '코인전'],
+  ['rating', '레이팅'],
+];
+
+// #/rank → 공식전(현재 시즌) · #/rank/coin[/시즌] · #/rank/official/시즌 · #/rank/rating
+export function rankView(a, b) {
+  const seasons = [...settings().seasons].sort((x, y) => y.start.localeCompare(x.start));
+  const mode = a === 'rating' || a === 'coin' || a === 'official' ? a : 'official';
+  const sid = a === 'coin' || a === 'official' ? b : a;
+  const season = mode !== 'rating' ? seasons.find((s) => s.id === sid) || currentSeason() : null;
 
   const tabs = h(
     'nav',
     { class: 'seg' },
-    h('a', { class: mode === 'season' ? 'on' : '', href: '#/rank' }, '시즌 순위'),
-    h('a', { class: mode === 'rating' ? 'on' : '', href: '#/rank/rating' }, '레이팅')
+    RANK_TABS.map(([k, label]) => h('a', { class: mode === k ? 'on' : '', href: k === 'rating' ? '#/rank/rating' : `#/rank/${k}${season ? '/' + season.id : ''}` }, label))
   );
 
   if (mode === 'rating') return h('div', { class: 'page' }, pageHead('순위', 'Ranking'), tabs, ratingTable());
@@ -34,14 +42,21 @@ export function rankView(param) {
   if (!season)
     return h('div', { class: 'page' }, pageHead('순위', 'Ranking'), tabs, empty('등록된 시즌이 없어요. 관리자 메뉴에서 시즌을 만들어 주세요.'));
 
-  const { ranked, pending, min } = rankList(season);
+  const isCoin = mode === 'coin';
+  const { ranked, pending, min } = rankList(season, mode);
   const myId = me()?.id;
+  const coinText = (n) => `코인 ${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n)}`;
   const row = (r, i) =>
     h(
       'a',
-      { class: 'rank-row' + (r.id === myId ? ' me' : '') + (i < 3 ? ' top' : ''), href: `#/p/${r.id}` },
+      { class: 'rank-row' + (r.id === myId ? ' me' : '') + (i != null && i < 3 ? ' top' : ''), href: `#/p/${r.id}` },
       h('span', { class: 'rank-num' }, i == null ? '–' : i + 1),
-      h('span', { class: 'rank-main' }, h('strong', {}, r.name), h('small', {}, `${r.wins}승 ${r.losses}패 · ${pct(r.winRate)} · NTRP ${ntrpText(r.ntrp)}`)),
+      h(
+        'span',
+        { class: 'rank-main' },
+        h('strong', {}, r.name),
+        h('small', {}, isCoin ? `${r.wins}승 ${r.losses}패 · ${pct(r.winRate)} · ${coinText(r.coins)}` : `${r.wins}승 ${r.losses}패 · ${pct(r.winRate)} · NTRP ${ntrpText(r.ntrp)}`)
+      ),
       h('span', { class: 'sp' }, Math.round(r.sp), h('small', {}, 'pt'))
     );
 
@@ -51,9 +66,16 @@ export function rankView(param) {
     pageHead('순위', 'Ranking'),
     tabs,
     seasons.length > 1 &&
-      h('div', { class: 'chips-scroll' }, seasons.map((s) => h('a', { class: 'chip' + (s.id === season.id ? ' on' : ''), href: `#/rank/${s.id}` }, s.name))),
-    h('section', { class: 'season-band' }, h('strong', {}, season.name), h('span', {}, `${fmtShort(season.start)} – ${fmtShort(season.end)}`)),
-    ranked.length ? h('div', { class: 'rank-list' }, ranked.map((r, i) => row(r, i))) : empty(`아직 ${min}경기 이상 치른 사람이 없어요`),
+      h('div', { class: 'chips-scroll' }, seasons.map((s) => h('a', { class: 'chip' + (s.id === season.id ? ' on' : ''), href: `#/rank/${mode}/${s.id}` }, s.name))),
+    h('section', { class: 'season-band' }, h('strong', {}, `${season.name} · ${isCoin ? '코인전' : '공식전'}`), h('span', {}, `${fmtShort(season.start)} – ${fmtShort(season.end)}`)),
+    h(
+      'p',
+      { class: 'muted small' },
+      isCoin
+        ? `코인전 경기만 반영 · 포인트 = 레이팅 변동 + 경기당 ${RULES.participationBonus}점 + 코인 순수익 × ${RULES.coinPoint}점`
+        : `공식전 경기만 반영 · 포인트 = 레이팅 변동 + 경기당 ${RULES.participationBonus}점`
+    ),
+    ranked.length ? h('div', { class: 'rank-list' }, ranked.map((r, i) => row(r, i))) : empty(`아직 ${isCoin ? '코인전' : '공식전'} ${min}경기 이상 치른 사람이 없어요`),
     pending.length > 0 &&
       h('section', { class: 'block' }, h('h2', {}, `순위 산정 대기 (${min}경기 미만)`), h('div', { class: 'rank-list dim' }, pending.map((r) => row(r, null)))),
     h('a', { class: 'link-row', href: '#/rules' }, h('span', {}, '점수는 어떻게 계산되나요?'), h('span', { class: 'muted' }, '›'))
@@ -91,7 +113,13 @@ export function profileView(id) {
   if (!p) return h('div', { class: 'page' }, backLink('#/rank'), empty('없는 회원이에요'));
   const { ratings, allStats, coins } = derived();
   const season = currentSeason();
-  const ss = season ? seasonStats(season).get(id) : null;
+  const ss = season ? seasonStats(season, 'official').get(id) : null;
+  const cs = season ? seasonStats(season, 'coin').get(id) : null;
+  const rankOf = (type) => {
+    if (!season) return '';
+    const i = rankList(season, type).ranked.findIndex((r) => r.id === id);
+    return i >= 0 ? ` · ${i + 1}위` : '';
+  };
   const s = allStats.get(id);
   const r = ratings.get(id);
   const bal = coins.bal.get(id) ?? 0;
@@ -118,7 +146,8 @@ export function profileView(id) {
       big('코인', bal, bal <= 0 ? 'warn' : '', (coins.debt.get(id) ?? 0) > 0 ? `남은 대출 ${coins.debt.get(id)}` : ''),
       big('레이팅', Math.round(r), '', `추정 NTRP ${ratingToNtrp(r).toFixed(1)}`),
       big('통산', `${s.wins}-${s.losses}`, '', `승률 ${pct(s.winRate)}`),
-      big(season ? '시즌 포인트' : '시즌', ss ? Math.round(ss.sp) : '-', '', ss ? `${ss.wins}승 ${ss.losses}패` : '')
+      big('공식전 포인트', ss && ss.games ? Math.round(ss.sp) : '-', '', ss && ss.games ? `${ss.wins}승 ${ss.losses}패${rankOf('official')}` : '이번 시즌 기록 없음'),
+      big('코인전 포인트', cs && cs.games ? Math.round(cs.sp) : '-', '', cs && cs.games ? `${cs.wins}승 ${cs.losses}패 · 코인 ${fmtNum(cs.coins)}${rankOf('coin')}` : '이번 시즌 기록 없음')
     ),
     loanBlock(p, coins),
     relationBlocks(id),
@@ -259,10 +288,15 @@ export function rulesView() {
       h('p', {}, `처음 ${RULES.provisionalGames}경기는 실력이 빨리 자리 잡도록 변동폭이 커요 (K=${RULES.kProvisional} → 이후 ${RULES.kNormal}).`)
     ),
     sec(
-      '3. 시즌 포인트 (순위 기준)',
-      h('p', {}, h('strong', {}, '시즌 포인트 = 시즌 중 레이팅 변동 합계 + 경기당 참여 보너스 ' + RULES.participationBonus + '점')),
+      '3. 시즌 순위 (공식전 · 코인전 따로)',
+      h('p', {}, '순위는 공식전과 코인전을 따로 운영해요. 각 순위에는 그 유형의 경기만 반영돼요. 레이팅은 두 유형 모두에서 함께 쌓여요.'),
+      h('ul', {},
+        h('li', {}, h('strong', {}, '공식전 포인트'), ` = 공식전 레이팅 변동 합계 + 경기당 ${RULES.participationBonus}점`),
+        h('li', {}, h('strong', {}, '코인전 포인트'), ` = 코인전 레이팅 변동 합계 + 경기당 ${RULES.participationBonus}점 + 코인 순수익 × ${RULES.coinPoint}점`)
+      ),
+      h('p', { class: 'muted' }, `코인 순수익 = 코인전에서 딴 코인 − 잃은 코인 (베이글 ±2 포함). 출석·관리자 지급·대출 코인은 포함하지 않아요. 예) 코인전 5승 3패, 베이글 승 1번 → 순수익 +3 → +${3 * RULES.coinPoint}점`),
       h('p', {}, '원래 잘 치는 사람이 항상 1등이 되지 않도록, "자기 수준 대비 얼마나 잘했는지"로 순위를 매겨요. 입문자도 기대 이상으로 이기면 1등이 될 수 있어요.'),
-      h('p', {}, `최소 ${settings().minGames}경기를 치러야 순위에 올라요 (몇 판만 이기고 멈추는 것 방지). 동점이면 승률 → 경기 수 순.`)
+      h('p', {}, `각 순위마다 그 유형으로 최소 ${settings().minGames}경기를 치러야 순위에 올라요 (몇 판만 이기고 멈추는 것 방지). 동점이면 승률 → 경기 수 순.`)
     ),
     sec(
       '4. 경기 유형',

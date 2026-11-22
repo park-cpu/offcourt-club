@@ -452,3 +452,4 @@ h2.sub { margin-top: 18px; font-size: 15px; color: var(--point); }
 .rule-table td { font-family: var(--serif); font-size: 17px; }
 .prose h3 { font-size: 14px; margin: 16px 0 4px; }
 .input:disabled { background: var(--grey-1, #f0efea); color: var(--ink-3, #888); }
+.stat-grid > .big-stat:last-child:nth-child(odd) { grid-column: 1 / -1; }

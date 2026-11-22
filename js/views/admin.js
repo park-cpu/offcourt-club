@@ -149,7 +149,7 @@ function seasonsAdmin() {
     { class: 'page' },
     backLink('#/admin', '관리자'),
     pageHead('시즌 관리', 'Seasons', h('button', { class: 'btn primary small', onclick: () => open(null) }, '+ 추가')),
-    h('p', { class: 'muted small' }, '시즌 기간 안의 코인전·공식전만 시즌 순위에 반영돼요. 레이팅과 코인은 시즌과 상관없이 누적됩니다.'),
+    h('p', { class: 'muted small' }, '시즌 기간 안의 공식전은 공식전 순위, 코인전은 코인전 순위에 따로 반영돼요. 레이팅과 코인은 시즌과 상관없이 누적됩니다.'),
     seasons.length
       ? h(
           'nav',

@@ -19,19 +19,19 @@ export function homeView() {
 
   const sessions = sessionsBlock(t, u);
 
-  // 내 현황: 코인 · 시즌 순위 · 전적 · 레이팅 한 줄
+  // 내 현황: 코인 · 공식전 순위 · 공식전 전적 · 레이팅 한 줄
   let mineCard = null;
   const ranks = season ? rankList(season) : null;
   if (u) {
     const { coins, ratings } = derived();
-    const st = season ? seasonStats(season).get(u.id) : null;
+    const st = season ? seasonStats(season, 'official').get(u.id) : null;
     const pos = ranks ? ranks.ranked.findIndex((r) => r.id === u.id) : -1;
     mineCard = h(
       'a',
       { class: 'block stats4', href: `#/p/${u.id}` },
       stat('코인', coins.bal.get(u.id) ?? 0, (coins.bal.get(u.id) ?? 0) <= 0 ? 'warn' : ''),
-      stat('시즌 순위', pos >= 0 ? `${pos + 1}위` : '-'),
-      stat('시즌 전적', st && st.games ? `${st.wins}-${st.losses}` : '-'),
+      stat('공식전 순위', pos >= 0 ? `${pos + 1}위` : '-'),
+      stat('공식전 전적', st && st.games ? `${st.wins}-${st.losses}` : '-'),
       stat('레이팅', Math.round(ratings.get(u.id) || 0))
     );
   }
@@ -43,7 +43,7 @@ export function homeView() {
     h(
       'section',
       { class: 'block podium' },
-      h('div', { class: 'row between' }, h('p', { class: 'eyebrow' }, `${season.name} Top 3`), h('a', { class: 'small link', href: '#/rank' }, '전체 순위 ›')),
+      h('div', { class: 'row between' }, h('p', { class: 'eyebrow' }, `${season.name} 공식전 Top 3`), h('a', { class: 'small link', href: '#/rank' }, '전체 순위 ›')),
       h(
         'div',
         { class: 'podium-cols' },
