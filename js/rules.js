@@ -12,6 +12,8 @@ export const RULES = {
   kProvisional: 32,
   kNormal: 20,
   provisionalGames: 10,
+  // 시즌 포인트는 경기 수와 상관없이 모두 같은 K로 계산 (신입 포인트 부풀림 방지)
+  kSeason: 20,
   // 시즌 포인트: 경기 참여 보너스
   participationBonus: 1,
   // 코인전 랭킹: 코인 순수익 1개당 더하는 점수
@@ -64,7 +66,7 @@ export const matchOrder = (a, b) =>
 
 /**
  * 전체 경기를 시간순으로 돌며 레이팅을 갱신.
- * @returns {ratings: Map<id,number>, deltas: Map<matchId, Map<playerId, number>>, expectations: Map<matchId, number>}
+ * @returns {ratings, deltas: Map<matchId, Map<playerId, number>>, spDeltas: 시즌 포인트용(고정 K) 변동, expectations}
  */
 export function computeRatings(players, guests, matches) {
   const ratings = new Map();
@@ -79,6 +81,7 @@ export function computeRatings(players, guests, matches) {
   };
   const isGuest = (id) => !players.has(id);
   const deltas = new Map();
+  const spDeltas = new Map();
   const expectations = new Map();
 
   const rated = matches.filter((m) => isRated(m, players)).sort(matchOrder);
@@ -90,6 +93,7 @@ export function computeRatings(players, guests, matches) {
     const sa = winnerSide(m) === 'A' ? 1 : 0;
     const mult = marginMult(m.scoreA, m.scoreB);
     const d = new Map();
+    const sd = new Map();
     const apply = (id, s, e) => {
       if (isGuest(id)) return; // 게스트 레이팅은 고정
       const k = games.get(id) < RULES.provisionalGames ? RULES.kProvisional : RULES.kNormal;
@@ -97,13 +101,15 @@ export function computeRatings(players, guests, matches) {
       ratings.set(id, ratings.get(id) + delta);
       games.set(id, games.get(id) + 1);
       d.set(id, delta);
+      sd.set(id, RULES.kSeason * mult * (s - e));
     };
     m.teamA.forEach((id) => apply(id, sa, ea));
     m.teamB.forEach((id) => apply(id, 1 - sa, 1 - ea));
     deltas.set(m.id, d);
+    spDeltas.set(m.id, sd);
   }
   for (const id of players.keys()) seed(id);
-  return { ratings, deltas, expectations };
+  return { ratings, deltas, spDeltas, expectations };
 }
 
 const avg = (arr) => arr.reduce((s, x) => s + x, 0) / (arr.length || 1);
@@ -113,6 +119,7 @@ const avg = (arr) => arr.reduce((s, x) => s + x, 0) / (arr.length || 1);
  * 전적 · 시즌 포인트
  * type: 생략 = 코인전+공식전 전체 / 'official' = 공식전만 / 'coin' = 코인전만
  * 코인전 포인트 = 레이팅 변동 + 경기당 1점 + 코인 순수익 × coinPoint
+ * deltas 에는 시즌 포인트용(고정 K) 변동(spDeltas)을 넘김
  */
 export function computeStats(players, matches, deltas, range, type) {
   const stats = new Map();

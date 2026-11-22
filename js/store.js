@@ -51,10 +51,10 @@ export function derived() {
   if (derivedCache) return derivedCache;
   const players = playersMap();
   const guests = guestsMap();
-  const { ratings, deltas } = computeRatings(players, guests, state.matches);
-  const allStats = computeStats(players, state.matches, deltas, null);
+  const { ratings, deltas, spDeltas } = computeRatings(players, guests, state.matches);
+  const allStats = computeStats(players, state.matches, spDeltas, null);
   const coins = computeCoins(players, state.attendance, state.coinLogs, state.matches, settings());
-  derivedCache = { ratings, deltas, allStats, coins };
+  derivedCache = { ratings, deltas, spDeltas, allStats, coins };
   return derivedCache;
 }
 
@@ -69,8 +69,8 @@ export const currentSeason = () => {
 };
 // type: 'official'(공식전 시즌 순위) | 'coin'(코인전 랭킹) | 생략(전체)
 export const seasonStats = (season, type) => {
-  const { deltas } = derived();
-  return computeStats(playersMap(), state.matches, deltas, season, type);
+  const { spDeltas } = derived();
+  return computeStats(playersMap(), state.matches, spDeltas, season, type);
 };
 
 // ── 일정/출석 ─────────────────────────────────────────
