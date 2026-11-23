@@ -6,9 +6,11 @@
 // id는 'b_' 로 시작 — 한 번 정하면 바꾸지 마세요 (구매 기록이 id로 연결됨)
 // ─────────────────────────────────────────────────────────────
 import { Grid, shade, STAGE_W, STAGE_H } from './pixel.js';
+import { TENNIS_ITEMS } from './avatar-tennis.js';
 
 const paintItem = (id, name, slot, price, paint) => ({ id, name, cat: 'wear', slot, price, builtin: true, paint });
-const colorItem = (id, name, slot, price, color, pattern) => ({ id, name, cat: 'wear', slot, price, builtin: true, color, pattern });
+// 예전 단색 옷: 이미 산 사람은 계속 입을 수 있고, 상점에서는 판매 중지 (관리자가 다시 켤 수 있음)
+const colorItem = (id, name, slot, price, color, pattern) => ({ id, name, cat: 'wear', slot, price, builtin: true, color, pattern, active: false });
 const bg = (id, name, slot, price, gen, x = 0, y = 0) => ({ id, name, cat: 'bg', slot, price, builtin: true, gen, x, y });
 const WHITE = '#f4f2ea';
 
@@ -191,6 +193,7 @@ export const BUILTIN_ITEMS = [
   colorItem('b_shoes_black', '블랙 슈즈', 'shoes', 60, '#2a2a30'),
   colorItem('b_shoes_white', '화이트 슈즈', 'shoes', 60, '#e8e6e0'),
   colorItem('b_shoes_red', '레드 슈즈', 'shoes', 70, '#d8442a'),
+  ...TENNIS_ITEMS,
   paintItem('b_racket_blue', '블루 라켓', 'hand', 100, racket('#1d5294', '#2a2320')),
   paintItem('b_racket_red', '레드 라켓', 'hand', 100, racket('#e94c2b', '#2a2320')),
   paintItem('b_ball_hand', '테니스공', 'hand', 30, ballInHand),

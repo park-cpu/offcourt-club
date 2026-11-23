@@ -184,8 +184,8 @@ export const DEFAULT_WEAR = {
 };
 // 성별마다 다른 위치 (모자 · 안경 · 손 아이템용)
 export const ANCHOR = {
-  M: { dy: 1, head: 1, eye: 16, hand: 43 },
-  F: { dy: 2, head: 2, eye: 19, hand: 44 },
+  M: { sex: 'M', dy: 1, head: 1, eye: 16, hand: 43 },
+  F: { sex: 'F', dy: 2, head: 2, eye: 19, hand: 44 },
 };
 export const DEFAULT_LOOK = { skin: 0, hair: 'm', hairColor: 1, wear: {}, base: null, deco: [], sex: 'M', v: LOOK_VERSION };
 
@@ -197,8 +197,8 @@ const hairPal = (c) => ({ H: mix(c, '#100805', 0.65), d: shade(c, -0.25), h: c, 
 export const topPal = (c) => ({ T: mix(c, '#140c10', 0.6), t: c, u: shade(c, -0.14), c: shade(c, 0.62), n: '#323232', N: '#25180f' });
 export const bottomPal = (c) => ({ P: mix(c, '#0a0a10', 0.7), q: c, Q: shade(c, -0.22), g: shade(c, 0.6) });
 export const shoesPal = (c) => ({ O: mix(c, '#0a0a0a', 0.7), f: c, F: shade(c, -0.35), G: shade(c, 0.45) });
-const FIXED = { K: '#080504', W: '#ffffff', o: '#fcc3c3', p: '#ee7678', r: '#d4555f' };
-export const ROLE_GROUP = { top: 'TtucnN', bottom: 'PqQg', shoes: 'OfFG' };
+const FIXED = { K: '#080504', W: '#ffffff', o: '#fcc3c3', p: '#ee7678', r: '#d4555f', y: '#f4f2ea', Y: '#cfcbbf', z: '#6f6b62' };
+export const ROLE_GROUP = { top: 'TtucnNab', bottom: 'PqQgv', shoes: 'OfFGwe' };
 
 /** 역할 격자(글자) — 템플릿 + 헤어스타일(js/avatar-hair.js) + 옷 무늬 */
 function roleGrid(look, items) {
@@ -213,8 +213,8 @@ function roleGrid(look, items) {
   if (hair?.back) put(hair.back);
   const tpl = sex === 'F' ? TPL_F : TPL_M;
   put(hair?.top ? [...hair.top, ...tpl.slice(hair.top.length)] : tpl);
-  const top = items.get(look.wear?.top);
-  if (top?.pattern) top.pattern(g, A);
+  // 옷 무늬 (상의 → 하의 → 신발 순서. 반바지·스커트·민소매는 맨살도 칠함)
+  for (const slot of ['top', 'bottom', 'shoes']) items.get(look.wear?.[slot])?.pattern?.(g, A);
   return g;
 }
 
@@ -229,6 +229,11 @@ function colorize(rg, look, items) {
     ...hairPal(HAIR_COLORS[look.hairColor ?? D.hair] || HAIR_COLORS[D.hair]),
     ...shoesPal(pick('shoes', D.shoes)),
     ...bottomPal(pick('bottom', D.bottom)),
+    // 아이템 강조색 (로고 · 줄무늬 · 밑창)
+    a: '#f4f2ea', b: '#f4f2ea', v: '#f4f2ea', w: '#f4f2ea', e: '#f4f2ea',
+    ...items.get(look.wear?.top)?.acc,
+    ...items.get(look.wear?.bottom)?.acc,
+    ...items.get(look.wear?.shoes)?.acc,
   };
   const tp = topPal(pick('top', D.top));
   const g = new Grid(rg.w, rg.h);
