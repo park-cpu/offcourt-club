@@ -7,6 +7,7 @@
 // ─────────────────────────────────────────────────────────────
 import { Grid, shade, STAGE_W, STAGE_H } from './pixel.js';
 import { TENNIS_ITEMS } from './avatar-tennis.js';
+import { RACKETS } from './avatar-rackets.js';
 
 const paintItem = (id, name, slot, price, paint) => ({ id, name, cat: 'wear', slot, price, builtin: true, paint });
 // 예전 단색 옷: 이미 산 사람은 계속 입을 수 있고, 상점에서는 판매 중지 (관리자가 다시 켤 수 있음)
@@ -194,8 +195,10 @@ export const BUILTIN_ITEMS = [
   colorItem('b_shoes_white', '화이트 슈즈', 'shoes', 60, '#e8e6e0'),
   colorItem('b_shoes_red', '레드 슈즈', 'shoes', 70, '#d8442a'),
   ...TENNIS_ITEMS,
-  paintItem('b_racket_blue', '블루 라켓', 'hand', 100, racket('#1d5294', '#2a2320')),
-  paintItem('b_racket_red', '레드 라켓', 'hand', 100, racket('#e94c2b', '#2a2320')),
+  // 예전 라켓 (손 칸): 판매 중지, 산 사람은 계속 사용. 새 라켓은 '라켓' 칸 (js/avatar-rackets.js)
+  { ...paintItem('b_racket_blue', '블루 라켓', 'hand', 100, racket('#1d5294', '#2a2320')), active: false },
+  { ...paintItem('b_racket_red', '레드 라켓', 'hand', 100, racket('#e94c2b', '#2a2320')), active: false },
+  ...RACKETS,
   paintItem('b_ball_hand', '테니스공', 'hand', 30, ballInHand),
   bg('b_bg_clay', '클레이 코트', 'base', 150, court('#bcd8ee', '#2f5a3a', '#c8794a', WHITE)),
   bg('b_bg_hard', '하드 코트', 'base', 150, court('#bcd8ee', '#2f5a3a', '#1d5294', WHITE)),

@@ -95,7 +95,7 @@ export async function seedDemo() {
   const pickOne = (slot) => BUILTIN_ITEMS.filter((it) => it.slot === slot)[Math.floor(Math.random() * BUILTIN_ITEMS.filter((it) => it.slot === slot).length)];
   players.slice(1, 9).forEach((p, i) => {
     const wear = {};
-    for (const slot of ['hat', 'top', 'bottom', 'shoes', 'hand']) if (Math.random() < 0.7) wear[slot] = pickOne(slot).id;
+    for (const slot of ['hat', 'top', 'bottom', 'shoes', 'racket']) if (Math.random() < 0.7) wear[slot] = pickOne(slot).id;
     const base = Math.random() < 0.6 ? pickOne('base').id : null;
     const deco = Math.random() < 0.6 ? [{ id: 'b_deco_trophy', x: 60, y: 46 }] : [];
     [...Object.values(wear), base, ...deco.map((d) => d.id)].filter(Boolean).forEach((itemId) => {

@@ -8,7 +8,7 @@
 
 export const STAGE_W = 80;
 export const STAGE_H = 80;
-export const AVATAR_W = 34; // 몸 31칸 + 오른손 아이템 여유
+export const AVATAR_W = 50; // 몸 31칸 + 오른손 아이템(45도 라켓) 여유
 export const AVATAR_H = 66;
 export const AVATAR_X = 25; // 배경 안 아바타 위치
 export const AVATAR_Y = 12;
@@ -24,6 +24,7 @@ export const SLOTS = [
   ['shoes', '신발'],
   ['face', '얼굴'],
   ['hat', '모자'],
+  ['racket', '라켓'],
   ['hand', '손'],
 ];
 export const SLOT_LABEL = Object.fromEntries(SLOTS);
@@ -121,7 +122,8 @@ export class Grid {
     this.px.forEach((c, i) => {
       if (!c) return;
       const [r, g, b] = hex2rgb(c);
-      img.data.set([r, g, b, 255], i * 4);
+      // '#rrggbbaa' = 반투명 (라켓 줄 사이)
+      img.data.set([r, g, b, c.length === 9 ? parseInt(c.slice(7, 9), 16) : 255], i * 4);
     });
     ctx.putImageData(img, 0, 0);
     return cv;
@@ -264,7 +266,7 @@ function avatarBase(look, items) {
   const key = [look.sex, look.skin, look.hair, look.hairColor, ...parts.map((p) => p.id)].join('|');
   if (avatarCache.has(key)) return avatarCache.get(key);
   const g = colorize(roleGrid(look, items), look, items);
-  for (const slot of ['face', 'hat', 'hand']) {
+  for (const slot of ['face', 'hat', 'racket', 'hand']) {
     const p = parts.find((x) => x.slot === slot && x.paint);
     if (p) overlay(g, look, p);
   }
