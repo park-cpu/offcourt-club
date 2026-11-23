@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────────────────────
 import { h, sheet, toast, field, select, confirmSheet, empty } from '../ui.js';
 import { state, itemsMap, customItems } from '../store.js';
-import { put, remove, uid } from '../db.js';
+import { put, remove, uid, batch } from '../db.js';
 import { BUILTIN_ITEMS } from '../avatar-items.js';
 import { stageCanvas, itemThumb, scaleTo, SLOTS, SLOT_LABEL, BG_LABEL, DEFAULT_LOOK, STAGE_W } from '../pixel.js';
 import { pixelate, fileToImage, textToCanvas } from '../pixelate.js';
@@ -25,11 +25,24 @@ const PRESET = {
 const decoPos = (cv) => ({ x: 3, y: Math.max(2, Math.min(8, 56 - cv.height)) });
 const kindText = (it) => (it.cat === 'wear' ? `착용 · ${SLOT_LABEL[it.slot]}` : BG_LABEL[it.slot]);
 
+// 카테고리 필터 (상점과 같은 순서) · 판매 중지 보기 — 화면이 다시 그려져도 유지
+const FILTERS = [['all', '전체'], ...SLOTS, ['base', '배경'], ['deco', '소품']];
+const view = { filter: 'all', showOff: false };
+const rerender = () => window.dispatchEvent(new Event('rerender'));
+
 export function itemsAdmin() {
-  const list = [...customItems()].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   const all = itemsMap();
   const sold = new Map();
   state.purchases.forEach((p) => sold.set(p.itemId, (sold.get(p.itemId) || 0) + 1));
+  const inCat = (it) => view.filter === 'all' || it.slot === view.filter;
+  const byPrice = (a, b) => a.price - b.price || a.name.localeCompare(b.name, 'ko');
+  const custom = [...customItems()].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const builtin = BUILTIN_ITEMS.filter((b) => !b.hidden).map((b) => all.get(b.id));
+  const count = (k) => [...custom, ...builtin].filter((it) => it.active !== false && (k === 'all' || it.slot === k)).length;
+  const mine = custom.filter(inCat);
+  const onSale = builtin.filter((it) => inCat(it) && it.active !== false).sort(byPrice);
+  const off = builtin.filter((it) => inCat(it) && it.active === false).sort(byPrice);
+
   const row = (it, onclick) =>
     h(
       'button',
@@ -38,21 +51,66 @@ export function itemsAdmin() {
       h('span', { class: 'rank-main' }, h('strong', {}, it.name), h('small', {}, `${kindText(it)} · 구매 ${sold.get(it.id) || 0}명${it.active === false ? ' · 판매 중지' : ''}${it.edited ? ' · 수정함' : ''}`)),
       h('span', { class: 'sp' }, it.price, h('small', {}, '볼'))
     );
+  const catLabel = FILTERS.find(([k]) => k === view.filter)[1];
   return h(
     'div',
     { class: 'page' },
     backLink('#/admin', '관리자'),
     pageHead('아바타 아이템', 'Items', h('button', { class: 'btn primary small', onclick: () => itemSheet() }, '+ 추가')),
-    h('p', { class: 'muted small' }, '사진이나 글자를 넣으면 픽셀 그림으로 바꿔서 등록해요. 아이템을 누르면 이름 · 가격 · 그림 · 위치를 고칠 수 있어요.'),
-    list.length ? h('div', { class: 'rank-list' }, list.map((it) => row(it, () => itemSheet(it)))) : empty('아직 등록한 아이템이 없어요'),
-    h(
-      'details',
-      { class: 'block' },
-      h('summary', {}, h('h2', { class: 'inline' }, `기본 아이템 ${BUILTIN_ITEMS.filter((b) => !b.hidden).length}개`)),
-      h('p', { class: 'muted small' }, '기본 아이템은 이름 · 가격 · 판매 여부만 바꿀 수 있어요.'),
-      h('div', { class: 'rank-list' }, BUILTIN_ITEMS.filter((b) => !b.hidden).map((b) => all.get(b.id)).map((it) => row(it, () => builtinSheet(it))))
-    )
+    h('p', { class: 'muted small' }, '종류를 골라서 보고, 아이템을 누르면 이름 · 가격 · 판매 여부를 고칠 수 있어요.'),
+    h('div', { class: 'chips-scroll' }, FILTERS.map(([k, l]) => h('button', { class: 'chip' + (view.filter === k ? ' on' : ''), onclick: () => { view.filter = k; rerender(); } }, `${l} ${count(k)}`))),
+    view.filter !== 'all' && onSale.length + mine.length > 0 &&
+      h('button', { class: 'btn ghost block', onclick: () => bulkPriceSheet(catLabel, [...mine.filter((it) => it.active !== false), ...onSale]) }, `${catLabel} 가격 한꺼번에 바꾸기`),
+    mine.length > 0 && [h('h2', {}, `직접 등록한 아이템 ${mine.length}개`), h('div', { class: 'rank-list' }, mine.map((it) => row(it, () => itemSheet(it))))],
+    h('h2', {}, `기본 아이템 · 판매 중 ${onSale.length}개`),
+    onSale.length ? h('div', { class: 'rank-list' }, onSale.map((it) => row(it, () => builtinSheet(it)))) : empty('이 종류의 판매 중인 기본 아이템이 없어요'),
+    off.length > 0 &&
+      h('button', { class: 'btn ghost block', onclick: () => { view.showOff = !view.showOff; rerender(); } }, view.showOff ? '판매 중지 아이템 숨기기' : `판매 중지 아이템 ${off.length}개 보기`),
+    view.showOff && off.length > 0 && h('div', { class: 'rank-list' }, off.map((it) => row(it, () => builtinSheet(it))))
   );
+}
+
+// 카테고리 가격 한꺼번에: +/- 볼 (판매 중인 아이템만, 0볼 아래로는 안 내려감)
+function bulkPriceSheet(label, list) {
+  sheet(`${label} 가격 바꾸기`, (close) => {
+    const delta = h('input', { class: 'input', type: 'number', inputmode: 'numeric', placeholder: '예) -40 (내리기) · 20 (올리기)' });
+    const preview = h('p', { class: 'muted small' });
+    const d = () => Math.round(Number(delta.value) || 0);
+    const show = () => {
+      const ps = list.map((it) => Math.max(0, it.price + d()));
+      preview.textContent = `판매 중 ${list.length}개 → ${Math.min(...ps)}~${Math.max(...ps)}볼`;
+    };
+    delta.addEventListener('input', show);
+    show();
+    return h(
+      'div',
+      { class: 'stack' },
+      field('얼마나 바꿀까요? (볼)', delta, '마이너스(-)를 붙이면 내려요. 이미 산 사람의 볼은 그대로예요.'),
+      preview,
+      h(
+        'button',
+        {
+          class: 'btn primary block',
+          onclick: async () => {
+            if (!d()) return toast('바꿀 볼 수를 입력해 주세요');
+            const now = Date.now();
+            await batch(
+              list.map((it) => ({
+                type: 'put',
+                col: 'items',
+                doc: BUILTIN_ITEMS.some((b) => b.id === it.id)
+                  ? { id: it.id, name: it.name, price: Math.max(0, it.price + d()), active: it.active !== false, updatedAt: now }
+                  : { ...state.items.find((x) => x.id === it.id), price: Math.max(0, it.price + d()), updatedAt: now },
+              }))
+            );
+            close();
+            toast(`${list.length}개 가격을 바꿨어요`);
+          },
+        },
+        '한꺼번에 바꾸기'
+      )
+    );
+  });
 }
 
 // 기본 아이템: 이름 · 가격 · 판매 여부만 (같은 id 문서에 저장)
