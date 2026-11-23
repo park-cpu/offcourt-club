@@ -596,7 +596,7 @@ function drawHud(g) {
 
 // ── 화면 · 입력 ───────────────────────────────────────
 function loop(now) {
-  if (!game.root || !game.root.isConnected) { game.raf = 0; if (game.phase === 'play') pause(); return; }
+  if (!game.root || !game.root.isConnected) { game.raf = 0; lockPage(false); if (game.phase === 'play') pause(); return; }
   const dt = Math.min(0.05, (now - (game.last || now)) / 1000);
   game.last = now;
   if (game.phase === 'play') step(dt);
@@ -806,7 +806,31 @@ export function rallyView() {
     showOverlay('menu');
   }
   renderRank();
+  lockPage(true);
   if (!game.raf) { game.last = 0; game.raf = requestAnimationFrame(loop); }
   return game.root;
+}
+
+// 게임 화면에서만: 확대(두 손가락 · 두 번 탭) 막기, 오래 눌러도 글자 선택 · 메뉴 안 뜨게
+const VIEWPORT = 'width=device-width, initial-scale=1, viewport-fit=cover';
+const noZoom = (e) => e.preventDefault();
+const noSelect = (e) => { if (!e.target.closest?.('input, textarea')) e.preventDefault(); };
+const noPinch = (e) => { if (e.touches && e.touches.length > 1 && !e.target.closest?.('.rally-pad')) e.preventDefault(); };
+let lastTap = 0;
+const noDoubleTap = (e) => { const now = Date.now(); if (now - lastTap < 350 && !e.target.closest?.('.rally-pad, .rally-cv')) e.preventDefault(); lastTap = now; };
+let locked = false;
+function lockPage(on) {
+  if (locked === on) return;
+  locked = on;
+  const meta = document.querySelector('meta[name="viewport"]');
+  if (meta) meta.setAttribute('content', on ? VIEWPORT + ', maximum-scale=1, user-scalable=no' : VIEWPORT);
+  document.documentElement.classList.toggle('rally-lock', on);
+  const opt = { passive: false };
+  const fn = on ? 'addEventListener' : 'removeEventListener';
+  document[fn]('gesturestart', noZoom, opt);
+  document[fn]('gesturechange', noZoom, opt);
+  document[fn]('touchmove', noPinch, opt);
+  document[fn]('touchend', noDoubleTap, opt);
+  document[fn]('selectstart', noSelect, opt);
 }
 export const _rally = game; // 테스트용
