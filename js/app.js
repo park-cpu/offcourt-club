@@ -10,9 +10,10 @@ import { adminView, setupView } from './views/admin.js';
 import { loadWeather } from './weather.js';
 import { setupApp } from './install.js';
 import { membersOnly } from './views/common.js';
+import { rallyView } from './views/rally.js';
 
 const TABS = [
-  ['#/', '홈', 'home', ['', 'home']],
+  ['#/', '홈', 'home', ['', 'home', 'rally']],
   ['#/week', '일정', 'cal', ['week', 's']],
   ['#/play', '경기', 'ball', ['play']],
   ['#/rank', '순위', 'rank', ['rank', 'p', 'rules', 'avatars']],
@@ -40,7 +41,7 @@ function route() {
   const [head, a, b] = parts;
   if (!settings().adminId && !state.players.length) return ['', setupView()];
   // 로그인하지 않은 방문자는 일정(홈 · 주간 · 일정 상세)만 볼 수 있음
-  const PUBLIC = ['', 'home', 'week', 's', 'me'];
+  const PUBLIC = ['', 'home', 'week', 's', 'me', 'rally'];
   if (!me() && !PUBLIC.includes(head)) {
     const tab = TABS.find(([, , , keys]) => keys.includes(head));
     return [head, membersOnly(tab ? tab[1] : '')];
@@ -56,6 +57,7 @@ function route() {
     case 'avatar': return ['avatar', avatarView(a)];
     case 'avatars': return ['avatars', galleryView()];
     case 'admin': return ['admin', adminView(a)];
+    case 'rally': return ['rally', rallyView()];
     default: return ['', homeView()];
   }
 }

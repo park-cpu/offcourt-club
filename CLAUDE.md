@@ -51,6 +51,10 @@
 - 일정 `capacity`(0=무제한). 신청 순서(createdAt)로 정원까지 확정, 나머지 대기 (`rosterOf` in store.js). 신청 마감 없음
 - 공유 텍스트는 `js/share.js` (navigator.share → 클립보드 → 복사용 창)
 
+## 랠리 게임 (v1.9.0~)
+- `js/views/rally.js` 하나에 전부 (캔버스 256×240, 원근 `proj`, 5×7 글꼴 `FONT`, 공 궤적은 해석식 `ballAt` → 타이밍 판정 정확). 난이도 `DIFFS`, 샷 품질 `QUAL`. 화면이 다시 그려져도 게임이 안 끊기게 `game.root`를 재사용. 기록은 localStorage `oc_rally_v1` (Firestore 아님). `_rally` export는 테스트용
+- 그래픽은 레퍼런스 분위기(NES 테니스)만 참고한 자체 그림 — 특정 게임 로고 · 캐릭터는 쓰지 않음
+
 ## 나중에 할 것
 - 카카오 로그인 연동 (보류 중). 간단 버전 = 카카오 계정을 기존 회원에 연결(GitHub Pages 그대로), 보안 강화 버전 = Firebase Blaze + Cloud Functions 커스텀 토큰
 

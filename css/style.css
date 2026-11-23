@@ -506,3 +506,34 @@ ul.plain { margin: 0; padding-left: 18px; }
 
 .venue-info { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--slide-bg, #e7e3d9); font-size: 14px; }
 .venue-addr { display: block; margin-top: 2px; font-size: 12px; opacity: 0.8; }
+
+/* 랠리 게임 */
+.rally-wrap { position: relative; margin: 0 -4px; border-radius: 10px; overflow: hidden; background: #000; box-shadow: 0 0 0 3px #111 inset; }
+.rally-cv { display: block; width: 100%; height: auto; aspect-ratio: 256 / 240; image-rendering: pixelated; image-rendering: crisp-edges; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.rally-ov { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 7px; padding: 12px; background: rgba(8, 18, 52, 0.8); color: #fff; text-align: center; overflow-y: auto; }
+.rally-ov[hidden] { display: none; }
+.rally-title { font: 800 30px/1 ui-monospace, Menlo, monospace; letter-spacing: 4px; color: #ffd23a; text-shadow: 3px 3px 0 #e94c2b; }
+.rally-title.small { font-size: 26px; }
+.rally-how { margin: 0; font-size: 13px; line-height: 1.5; opacity: 0.92; }
+.rally-sub { margin: 2px 0 0; font-size: 12px; opacity: 0.75; }
+.rally-diffs { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.rally-chip { border: 2px solid #f7f1d6; background: transparent; color: #f7f1d6; border-radius: 0; padding: 5px 10px; font: 700 13px ui-monospace, Menlo, monospace; }
+.rally-chip.on { background: #f7f1d6; color: #1d2b5a; }
+.rally-start { border: 0; border-radius: 0; background: #e94c2b; color: #fff; padding: 9px 26px; font: 800 17px ui-monospace, Menlo, monospace; letter-spacing: 2px; box-shadow: 3px 3px 0 #7a1d0e; }
+.rally-link { border: 0; background: none; color: #9fd8f0; font-size: 13px; text-decoration: underline; }
+.rally-rec { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; width: 100%; max-width: 360px; }
+.rally-rec > div { background: rgba(255, 255, 255, 0.08); padding: 4px 2px; display: flex; flex-direction: column; }
+.rally-rec > div.new { background: rgba(255, 210, 58, 0.3); }
+.rally-rec small { font-size: 10px; opacity: 0.75; }
+.rally-rec b { font: 700 15px ui-monospace, Menlo, monospace; }
+.rally-score b { display: block; font: 800 26px ui-monospace, Menlo, monospace; color: #ffd23a; }
+.rally-score small { font-size: 12px; opacity: 0.8; }
+.rally-new { font: 800 15px ui-monospace, Menlo, monospace; color: #ffd23a; animation: rallyBlink 0.6s steps(2) infinite; }
+@keyframes rallyBlink { 50% { opacity: 0.2; } }
+.rally-help ul { margin: 8px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.6; }
+.game-banner { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: #1b3aa0; color: #fff; text-decoration: none; }
+.game-banner strong { display: block; }
+.game-banner small { display: block; opacity: 0.8; font-size: 12px; }
+.game-banner > span:nth-child(2) { flex: 1; }
+.game-banner .muted { color: #fff; opacity: 0.7; }
+.game-px { font: 800 13px ui-monospace, Menlo, monospace; letter-spacing: 1px; background: #2f8f3a; color: #ffd23a; padding: 8px 6px; box-shadow: 0 0 0 2px #f6f6ee inset; }

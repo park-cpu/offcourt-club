@@ -53,7 +53,8 @@ export function homeView() {
       )
     );
 
-  return h('div', { class: 'page' }, hero, sessions, mineCard, podium);
+  const game = h('a', { class: 'game-banner', href: '#/rally' }, h('span', { class: 'game-px' }, 'RALLY'), h('span', {}, h('strong', {}, '랠리 게임'), h('small', {}, '타이밍 · 힘 · 방향으로 혼자 랠리 연습')), h('span', { class: 'muted' }, '›'));
+  return h('div', { class: 'page' }, hero, sessions, mineCard, podium, game);
 }
 
 const stat = (label, value, cls = '') => h('div', { class: 'stat ' + cls }, h('span', { class: 'stat-v' }, value), h('span', { class: 'stat-l' }, label));
