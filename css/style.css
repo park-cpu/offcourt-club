@@ -499,3 +499,7 @@ ul.plain { margin: 0; padding-left: 18px; }
 .input.color { padding: 4px; height: 48px; }
 .danger-text { color: var(--red); }
 [hidden] { display: none !important; }
+
+/* 네이버 지도 링크 (v1.8.0) */
+.map-link { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; text-decoration: none; background: var(--blue, #1d5294); color: #fff; vertical-align: 1px; }
+.map-link.on-blue { background: rgba(255, 255, 255, 0.92); color: var(--blue, #1d5294); }

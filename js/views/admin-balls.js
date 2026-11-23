@@ -2,9 +2,9 @@
 // 관리자: 볼 적립 · 주간 미션 설정
 //   저장하면 settings.ballRules에 "오늘부터 적용" 버전을 하나 추가 (지난 기록은 그때 규칙 그대로)
 // ─────────────────────────────────────────────────────────────
-import { h, toast, select, confirmSheet } from '../ui.js';
-import { settings, today, weekStart, ballRulesAt, weekRules, fmtShort } from '../store.js';
-import { put, uid } from '../db.js';
+import { h, toast, select, confirmSheet, field } from '../ui.js';
+import { state, me, derived, settings, today, weekStart, ballRulesAt, weekRules, fmtShort } from '../store.js';
+import { put, remove, batch, uid } from '../db.js';
 import { MISSION_KINDS, missionLabel, RULES } from '../rules.js';
 import { pageHead, backLink } from './common.js';
 
@@ -76,7 +76,8 @@ export function ballsAdmin() {
     'div',
     { class: 'page' },
     backLink('#/admin', '관리자'),
-    pageHead('미션 · 볼 설정', 'Missions'),
+    pageHead('볼 지급 · 미션 설정', 'Balls'),
+    grantSection(),
     h('p', { class: 'muted small' }, '바꾼 날부터 적용돼요. 지난 기록으로 받은 볼은 바뀌지 않아요. 미션 성공은 출석 · 경기 기록으로 자동 체크돼요.'),
     h(
       'section',
@@ -103,5 +104,53 @@ export function ballsAdmin() {
       history.length > 0 &&
         h('p', { class: 'muted small' }, `처음 규칙: ${ruleText(RULES.balls)} (${RULES.balls.weekly.map((m) => `${missionLabel(m)} +${m.reward}`).join(' · ')})`)
     )
+  );
+}
+
+// ── 관리자: 회원에게 볼 지급 · 회수 (ballLogs) ──
+function grantSection() {
+  const { balls } = derived();
+  const bal = (id) => balls.bal.get(id) ?? 0;
+  const list = state.players.filter((p) => p.active !== false).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+  const picked = new Set();
+  const amount = h('input', { class: 'input', type: 'number', value: 100, step: 10 });
+  const reason = h('input', { class: 'input', value: '관리자 지급', maxLength: 30 });
+  const chips = list.map((p) =>
+    h('button', { class: 'chip big', onclick: (e) => { picked.has(p.id) ? picked.delete(p.id) : picked.add(p.id); e.currentTarget.classList.toggle('on', picked.has(p.id)); } }, p.name, h('small', {}, ` ${bal(p.id)}`))
+  );
+  const all = () => {
+    const on = picked.size < list.length;
+    picked.clear();
+    if (on) list.forEach((p) => picked.add(p.id));
+    chips.forEach((c) => c.classList.toggle('on', on));
+  };
+  const submit = async () => {
+    const n = Math.trunc(Number(amount.value));
+    if (!picked.size) return toast('회원을 선택해 주세요');
+    if (!n) return toast('수량을 입력해 주세요');
+    const ok = await confirmSheet('볼 지급', `${picked.size}명에게 볼 ${n > 0 ? '+' : ''}${n}개씩 ${n > 0 ? '지급' : '회수'}할까요?`, '확인');
+    if (!ok) return;
+    const t = today();
+    await batch([...picked].map((pid) => ({ type: 'put', col: 'ballLogs', doc: { id: uid('bl_'), playerId: pid, amount: n, reason: reason.value.trim() || '관리자 지급', date: t, by: me().id, at: Date.now() } })));
+    toast('반영했어요');
+  };
+  const logs = [...(state.ballLogs || [])].sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 20);
+  const nameOf = (id) => state.players.find((p) => p.id === id)?.name || '?';
+  return h(
+    'section',
+    { class: 'block' },
+    h('h2', {}, '회원에게 볼 지급'),
+    h('p', { class: 'muted small' }, `모든 회원은 처음에 볼 ${RULES.balls.start}개를 받고 시작해요. 여기서 추가로 주거나(+) 회수(−)할 수 있어요. 숫자 = 지금 가진 볼`),
+    h('div', { class: 'row between' }, h('strong', { class: 'small' }, '회원 선택'), h('button', { class: 'link small', onclick: all }, '전체 선택 / 해제')),
+    h('div', { class: 'pick-grid' }, chips),
+    h('div', { class: 'grid2' }, field('수량 (회수는 음수)', amount), field('사유', reason)),
+    h('button', { class: 'btn primary block', onclick: submit }, '지급'),
+    logs.length > 0 &&
+      h(
+        'details',
+        {},
+        h('summary', { class: 'small' }, `최근 지급 내역 ${logs.length}개`),
+        h('ul', { class: 'ledger' }, logs.map((l) => h('li', {}, h('span', { class: 'muted small' }, fmtShort(l.date)), h('span', { class: 'grow' }, `${nameOf(l.playerId)} · ${l.reason}`), h('strong', {}, (l.amount > 0 ? '+' : '') + l.amount), h('button', { class: 'link danger small', onclick: async () => (await confirmSheet('내역 삭제', '이 지급 내역을 삭제할까요? 볼도 같이 빠져요.', '삭제', true)) && remove('ballLogs', l.id) }, '삭제'))))
+      )
   );
 }

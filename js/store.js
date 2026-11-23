@@ -63,7 +63,7 @@ export function derived() {
   const { ratings, deltas, spDeltas } = computeRatings(players, guests, state.matches);
   const allStats = computeStats(players, state.matches, spDeltas, null);
   const coins = computeCoins(players, state.attendance, state.coinLogs, state.matches, settings());
-  const balls = computeBalls(players, state.attendance, state.matches, state.purchases, weekStart, ballRulesAt, weekRules);
+  const balls = computeBalls(players, state.attendance, state.matches, state.purchases, weekStart, ballRulesAt, weekRules, state.ballLogs || []);
   derivedCache = { ratings, deltas, spDeltas, allStats, coins, balls };
   return derivedCache;
 }

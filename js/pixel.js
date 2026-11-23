@@ -185,6 +185,9 @@ export const DEFAULT_WEAR = {
   F: { top: '#d4a388', bottom: '#d4a388', shoes: '#2f3a40', hair: 0 },
 };
 // 성별마다 다른 위치 (모자 · 안경 · 손 아이템용)
+// 아무것도 안 입었을 때 기본 옷 (v1.8.0~): 흰 반팔 · 반바지 · 기본 운동화 (js/avatar-tennis.js의 숨은 아이템)
+export const BASE_WEAR = { top: 'b_d_tee', bottom: 'b_d_shorts', shoes: 'b_d_shoes' };
+const worn = (look, items, slot) => items.get(look.wear?.[slot]) || items.get(BASE_WEAR[slot]);
 export const ANCHOR = {
   M: { sex: 'M', dy: 1, head: 1, eye: 16, hand: 43 },
   F: { sex: 'F', dy: 2, head: 2, eye: 19, hand: 44 },
@@ -216,7 +219,7 @@ function roleGrid(look, items) {
   const tpl = sex === 'F' ? TPL_F : TPL_M;
   put(hair?.top ? [...hair.top, ...tpl.slice(hair.top.length)] : tpl);
   // 옷 무늬 (상의 → 하의 → 신발 순서. 반바지·스커트·민소매는 맨살도 칠함)
-  for (const slot of ['top', 'bottom', 'shoes']) items.get(look.wear?.[slot])?.pattern?.(g, A);
+  for (const slot of ['top', 'bottom', 'shoes']) worn(look, items, slot)?.pattern?.(g, A);
   return g;
 }
 
@@ -224,7 +227,7 @@ function roleGrid(look, items) {
 function colorize(rg, look, items) {
   const sex = look.sex === 'F' ? 'F' : 'M';
   const D = DEFAULT_WEAR[sex];
-  const pick = (slot, def) => items.get(look.wear?.[slot])?.color || def;
+  const pick = (slot, def) => worn(look, items, slot)?.color || def;
   const pal = {
     ...FIXED,
     ...(SKIN_SETS[look.skin] || SKIN_SETS[0]),
@@ -233,9 +236,9 @@ function colorize(rg, look, items) {
     ...bottomPal(pick('bottom', D.bottom)),
     // 아이템 강조색 (로고 · 줄무늬 · 밑창)
     a: '#f4f2ea', b: '#f4f2ea', v: '#f4f2ea', V: '#cfcbbf', w: '#f4f2ea', e: '#f4f2ea',
-    ...items.get(look.wear?.top)?.acc,
-    ...items.get(look.wear?.bottom)?.acc,
-    ...items.get(look.wear?.shoes)?.acc,
+    ...worn(look, items, 'top')?.acc,
+    ...worn(look, items, 'bottom')?.acc,
+    ...worn(look, items, 'shoes')?.acc,
   };
   const tp = topPal(pick('top', D.top));
   const g = new Grid(rg.w, rg.h);

@@ -6,6 +6,12 @@ import { put, remove, batch, uid } from '../db.js';
 import { weatherChip, WEATHER_PLACE } from '../weather.js';
 import { shareButton, scheduleText } from '../share.js';
 
+// 네이버 지도: 일정에 넣은 지도 링크가 있으면 그것, 없으면 경기장명으로 검색
+export const mapUrlOf = (s) => (s.mapUrl && /^https?:\/\//.test(s.mapUrl) ? s.mapUrl : `https://map.naver.com/p/search/${encodeURIComponent(s.venue || '')}`);
+export const mapLink = (s, cls = '') => s.venue && h('a', { class: 'map-link ' + cls, href: mapUrlOf(s), target: '_blank', rel: 'noopener' }, '지도 ›');
+// 일정 수정 · 삭제: 등록한 사람 (+ 관리자)
+export const canEditSchedule = (s) => { const u = me(); return !!u && (s.createdBy === u.id || isAdmin()); };
+
 import { requireLogin, pageHead, backLink, nameTag, genderPicker, GENDER_LABEL } from './common.js';
 
 // ── 주간 일정 ─────────────────────────────────────────
@@ -76,7 +82,7 @@ export function scheduleView(id) {
   const myRow = u && att.find((a) => a.playerId === u.id);
   const mine = !!myRow;
   const full = cap > 0 && att.length >= cap;
-  const canEdit = u && (isAdmin() || s.createdBy === u.id);
+  const canEdit = canEditSchedule(s);
   const d = parseYmd(s.date);
   const t = today();
 
@@ -92,7 +98,7 @@ export function scheduleView(id) {
       h(
         'dl',
         { class: 'sch-dl' },
-        h('dt', {}, '경기장'), h('dd', {}, s.venue),
+        h('dt', {}, '경기장'), h('dd', {}, s.venue, ' ', mapLink(s, 'on-blue')),
         h('dt', {}, '코트'), h('dd', {}, courtsOf(s).join(', ') || '-'),
         h('dt', {}, '예약자'), h('dd', {}, s.booker || '-'),
         cap > 0 && [h('dt', {}, '정원'), h('dd', {}, `${cap}명`)],
@@ -104,7 +110,7 @@ export function scheduleView(id) {
       'div',
       { class: 'row gap' },
       s.date >= t && h('button', { class: 'btn grow ' + (mine ? 'ghost' : 'primary'), onclick: () => toggleRsvp(s) }, rsvpLabel(mine, myRow, full)),
-      s.date <= t && h('a', { class: 'btn primary grow', href: `#/play/${s.id}` }, '출석 · 대진 ›')
+      s.date <= t && u && h('a', { class: 'btn primary grow', href: `#/play/${s.id}` }, '출석 · 대진 ›')
     ),
     h(
       'section',
@@ -119,6 +125,7 @@ export function scheduleView(id) {
       waiting.length > 0 && [h('h2', { class: 'sub' }, `대기 ${waiting.length}명`), h('ul', { class: 'people waiting' }, waiting.map((a) => personRow(a, u)))],
       cap > 0 && h('p', { class: 'muted small' }, '정원이 차면 대기로 신청돼요. 누가 취소하면 먼저 신청한 대기자부터 자동으로 확정돼요.')
     ),
+    !canEdit && u && s.createdBy && h('p', { class: 'muted small center' }, `일정 수정은 등록한 ${person(s.createdBy).name}님만 할 수 있어요`),
     canEdit &&
       h(
         'div',
@@ -202,8 +209,9 @@ export function addGuest(s, { arrived = false } = {}) {
 
 export function editSchedule(s, date) {
   if (!requireLogin(() => editSchedule(s, date))) return;
+  if (s && !canEditSchedule(s)) return toast('일정을 등록한 사람만 수정할 수 있어요');
   const last = [...state.schedules].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
-  const base = s || { date: date || today(), start: last?.start || '07:00', end: last?.end || '09:00', venue: last?.venue || '', courts: last?.courts || '', capacity: last?.capacity || '', booker: me().name };
+  const base = s || { date: date || today(), start: last?.start || '07:00', end: last?.end || '09:00', venue: last?.venue || '', mapUrl: last?.mapUrl || '', courts: last?.courts || '', capacity: last?.capacity || '', booker: me().name };
   sheet(s ? '일정 수정' : '일정 등록', (close) => {
     const venues = [...new Set(state.schedules.map((x) => x.venue).filter(Boolean))];
     const f = {
@@ -211,12 +219,18 @@ export function editSchedule(s, date) {
       start: h('input', { class: 'input', type: 'time', value: base.start, step: 1800 }),
       end: h('input', { class: 'input', type: 'time', value: base.end, step: 1800 }),
       venue: h('input', { class: 'input', value: base.venue, placeholder: '예) 법원읍 테니스장', list: 'venue-list' }),
+      mapUrl: h('input', { class: 'input', type: 'url', value: base.mapUrl || '', placeholder: '비우면 경기장명으로 네이버 지도 검색' }),
       courts: h('input', { class: 'input', value: base.courts, placeholder: '예) 3, 4' }),
       capacity: h('input', { class: 'input', type: 'number', min: 0, inputMode: 'numeric', value: base.capacity || '', placeholder: '비우면 제한 없음' }),
       repeat: select({ class: 'input' }, [[1, '반복 안 함'], [2, '매주 · 2주'], [4, '매주 · 4주'], [8, '매주 · 8주'], [12, '매주 · 12주']], 1),
       booker: h('input', { class: 'input', value: base.booker || '' }),
       note: h('input', { class: 'input', value: base.note || '', placeholder: '선택 사항' }),
     };
+    f.venue.addEventListener('change', () => {
+      if (f.mapUrl.value.trim()) return;
+      const prev = [...state.schedules].filter((x) => x.venue === f.venue.value.trim() && x.mapUrl).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
+      if (prev) f.mapUrl.value = prev.mapUrl;
+    });
     const save = async () => {
       if (!f.venue.value.trim()) return toast('경기장명을 입력해 주세요');
       if (!f.date.value) return toast('날짜를 선택해 주세요');
@@ -232,6 +246,7 @@ export function editSchedule(s, date) {
         capacity: Math.max(0, parseInt(f.capacity.value, 10) || 0),
         booker: f.booker.value.trim(),
         note: f.note.value.trim(),
+        mapUrl: f.mapUrl.value.trim(),
         createdBy: s?.createdBy || me().id,
         createdAt: s?.createdAt || Date.now(),
       };
@@ -258,6 +273,7 @@ export function editSchedule(s, date) {
       field('날짜', f.date),
       h('div', { class: 'row gap' }, field('시작', f.start), field('종료', f.end)),
       field('경기장명', f.venue),
+      field('네이버 지도 링크', f.mapUrl, '네이버 지도 앱에서 경기장 → 공유 → 링크 복사 후 붙여넣기'),
       field('코트 번호', f.courts, '여러 면이면 쉼표로 구분 → 자동 대진 코트 수'),
       field('정원', f.capacity, '코트 수 × 4명 추천 (예: 2면 → 8명). 넘으면 대기로 받아요'),
       !s && field('반복', f.repeat, '같은 요일·시간으로 매주 등록'),
@@ -269,6 +285,7 @@ export function editSchedule(s, date) {
 }
 
 async function deleteSchedule(s) {
+  if (!canEditSchedule(s)) return toast('일정을 등록한 사람만 삭제할 수 있어요');
   const ms = matchesOf(s.id);
   if (ms.some((m) => m.status === 'done' && m.type !== 'friendly'))
     return toast('기록된 경기가 있는 일정은 삭제할 수 없어요');

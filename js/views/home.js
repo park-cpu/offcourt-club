@@ -37,7 +37,7 @@ export function homeView() {
   }
 
   // 시즌 Top 3: 가로 3칸
-  const top = ranks ? ranks.ranked.slice(0, 3) : [];
+  const top = ranks && u ? ranks.ranked.slice(0, 3) : [];
   const podium =
     top.length > 0 &&
     h(
@@ -154,7 +154,8 @@ function slide(s, t, u) {
   const days = Math.round((parseYmd(s.date) - parseYmd(t)) / 864e5);
   const tag = isToday ? 'Today' : past ? '지난 일정' : `D-${days}`;
   let action;
-  if (isToday) action = h('a', { class: 'btn primary grow', href: `#/play/${s.id}` }, '경기 시작하기');
+  if (!u && (isToday || past)) action = h('a', { class: 'btn ghost grow', href: `#/s/${s.id}` }, '일정 보기');
+  else if (isToday) action = h('a', { class: 'btn primary grow', href: `#/play/${s.id}` }, '경기 시작하기');
   else if (past) action = h('a', { class: 'btn ghost grow', href: `#/play/${s.id}/done` }, '결과 보기');
   else action = h('button', { class: 'btn grow ' + (mine ? 'ghost' : 'primary'), onclick: () => toggleRsvp(s) }, mine ? (myRow.waiting ? '대기 취소' : '참가 취소') : full ? '대기 신청' : '참가하기');
   return h(

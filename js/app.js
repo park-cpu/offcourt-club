@@ -1,5 +1,5 @@
 import { h, reportError, flushMount } from './ui.js';
-import { startStore, subscribe, settings, state } from './store.js';
+import { startStore, subscribe, settings, state, me } from './store.js';
 import { homeView } from './views/home.js';
 import { weekView, scheduleView } from './views/schedule.js';
 import { playView } from './views/play.js';
@@ -9,6 +9,7 @@ import { avatarView, galleryView } from './views/avatar.js';
 import { adminView, setupView } from './views/admin.js';
 import { loadWeather } from './weather.js';
 import { setupApp } from './install.js';
+import { membersOnly } from './views/common.js';
 
 const TABS = [
   ['#/', '홈', 'home', ['', 'home']],
@@ -38,6 +39,12 @@ function route() {
   const parts = location.hash.replace(/^#\/?/, '').split('/');
   const [head, a, b] = parts;
   if (!settings().adminId && !state.players.length) return ['', setupView()];
+  // 로그인하지 않은 방문자는 일정(홈 · 주간 · 일정 상세)만 볼 수 있음
+  const PUBLIC = ['', 'home', 'week', 's', 'me'];
+  if (!me() && !PUBLIC.includes(head)) {
+    const tab = TABS.find(([, , , keys]) => keys.includes(head));
+    return [head, membersOnly(tab ? tab[1] : '')];
+  }
   switch (head) {
     case 'week': return ['week', weekView(a)];
     case 's': return ['s', scheduleView(a)];

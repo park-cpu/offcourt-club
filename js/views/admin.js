@@ -34,7 +34,7 @@ export function adminView(sub) {
       linkRow('코인 지급 · 회수', '#/admin/coins', zero ? `코인 0개 ${zero}명 ›` : '›'),
       linkRow('시즌 관리', '#/admin/seasons', `${settings().seasons.length}개 ›`),
       linkRow('아바타 아이템', '#/admin/items', `${customItems().length}개 ›`),
-      linkRow('미션 · 볼 설정', '#/admin/balls'),
+      linkRow('볼 지급 · 미션 설정', '#/admin/balls'),
       linkRow('클럽 설정', '#/admin/settings'),
       linkRow('백업 · 복원', '#/admin/data')
     )

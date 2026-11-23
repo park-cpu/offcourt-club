@@ -31,6 +31,16 @@ export function loginSheet(onDone) {
   });
 }
 
+// 로그인한 회원만 볼 수 있는 화면 (방문자에게는 일정만 공개)
+export function membersOnly(title) {
+  return h(
+    'div',
+    { class: 'page' },
+    pageHead(title || 'Offcourt', 'Members'),
+    h('div', { class: 'empty' }, h('p', {}, '회원만 볼 수 있어요'), h('p', { class: 'muted small' }, '일정은 로그인 없이 볼 수 있어요.'), h('div', { class: 'row gap center' }, h('a', { class: 'btn ghost', href: '#/week' }, '일정 보기'), h('button', { class: 'btn primary', onclick: () => loginSheet() }, '로그인')))
+  );
+}
+
 export function requireLogin(next) {
   if (me()) return true;
   loginSheet(next);

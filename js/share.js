@@ -38,6 +38,9 @@ export async function shareText(text) {
   }
 }
 
+// 네이버 지도 링크 (schedule.js의 mapUrlOf와 같은 규칙)
+const mapUrlOf = (s) => (s.mapUrl && /^https?:\/\//.test(s.mapUrl) ? s.mapUrl : `https://map.naver.com/p/search/${encodeURIComponent(s.venue || '')}`);
+
 export function scheduleText(s) {
   const roster = rosterOf(s);
   const cap = capacityOf(s);
@@ -46,6 +49,7 @@ export function scheduleText(s) {
   return [
     `[Offcourt] ${dateLabel(s)} ${s.start}–${s.end}`,
     `📍 ${s.venue} · 코트 ${courtsOf(s).join(', ') || '-'}`,
+    s.venue ? `🗺 지도: ${mapUrlOf(s)}` : null,
     weatherLine(s),
     `👥 참가 ${cap ? `${ok.length}/${cap}` : ok.length}명${ok.length ? ': ' + ok.map((a) => person(a.playerId).name).join(', ') : ''}`,
     wait.length ? `⏳ 대기 ${wait.length}명: ${wait.map((a) => person(a.playerId).name).join(', ')}` : null,

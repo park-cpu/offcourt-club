@@ -92,7 +92,7 @@ export async function seedDemo() {
   // 몇 명은 아바타를 꾸며 둔 상태로
   const purchases = [];
   const avatars = [];
-  const pickOne = (slot) => BUILTIN_ITEMS.filter((it) => it.slot === slot)[Math.floor(Math.random() * BUILTIN_ITEMS.filter((it) => it.slot === slot).length)];
+  const pickOne = (slot) => { const l = BUILTIN_ITEMS.filter((it) => it.slot === slot && !it.hidden); return l[Math.floor(Math.random() * l.length)]; };
   players.slice(1, 9).forEach((p, i) => {
     const wear = {};
     for (const slot of ['hat', 'top', 'bottom', 'shoes', 'racket']) if (Math.random() < 0.7) wear[slot] = pickOne(slot).id;
@@ -105,6 +105,6 @@ export async function seedDemo() {
     avatars.push({ id: p.id, skin: i % 4, hair: i % 2 ? 'long' : 'f', v: 3, hairColor: i % 5, wear, base, deco, updatedAt: now - i });
   });
 
-  await db.replaceAll({ players, guests: [], schedules, attendance, matches, coinLogs: [], settings: [settings], items: [], purchases, avatars });
+  await db.replaceAll({ players, guests: [], schedules, attendance, matches, coinLogs: [], settings: [settings], items: [], purchases, avatars, ballLogs: [] });
   session.set(players[0].id);
 }

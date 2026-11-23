@@ -48,9 +48,9 @@ export function itemsAdmin() {
     h(
       'details',
       { class: 'block' },
-      h('summary', {}, h('h2', { class: 'inline' }, `기본 아이템 ${BUILTIN_ITEMS.length}개`)),
+      h('summary', {}, h('h2', { class: 'inline' }, `기본 아이템 ${BUILTIN_ITEMS.filter((b) => !b.hidden).length}개`)),
       h('p', { class: 'muted small' }, '기본 아이템은 이름 · 가격 · 판매 여부만 바꿀 수 있어요.'),
-      h('div', { class: 'rank-list' }, BUILTIN_ITEMS.map((b) => all.get(b.id)).map((it) => row(it, () => builtinSheet(it))))
+      h('div', { class: 'rank-list' }, BUILTIN_ITEMS.filter((b) => !b.hidden).map((b) => all.get(b.id)).map((it) => row(it, () => builtinSheet(it))))
     )
   );
 }

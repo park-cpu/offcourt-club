@@ -28,10 +28,10 @@
 - 코인·레이팅·순위는 저장하지 않고 경기 기록에서 매번 재계산 (`js/rules.js`)
 
 ## 아바타 · 볼 (v1.7.0~)
-- 볼 = 꾸미기 전용 화폐 (코인전 코인과 별개). `RULES.balls` + `computeBalls` (rules.js): 도착·경기·승리·주간 미션 적립 − purchases. 저장하지 않고 재계산. 볼·미션 규칙은 관리자가 `#/admin/balls`에서 변경 → `settings.ballRules` 버전 목록(from 날짜). 날짜별 적립은 `ballRulesAt(date)`, 주간 미션은 그 주 일요일 기준 `weekRules(월요일)` → 바꾼 주부터 적용, 지난 기록은 그대로
-- 그림: `js/pixel.js` (v1.7.3~ 배경 80×80, 아바타 34×66). 몸은 사용자가 준 레퍼런스(남·녀 캐릭터, 약 31×63칸)를 원본 해상도 그대로 옮긴 역할 문자 템플릿 `js/avatar-tpl.js` → 역할별로 피부·머리·옷 색을 칠함. 상의·하의·신발 아이템 = 색(color)만, 모자·얼굴·손 = paint(g, ANCHOR[성별]). 스타일 기준은 이 레퍼런스 (검은 테두리 대신 같은 색의 진한 톤, 작은 눈·볼터치). 기본 아이템은 `js/avatar-items.js`(id `b_…`, 바꾸지 말 것). 테니스 의류(v1.7.7~)는 `js/avatar-tennis.js` (id `b_t_…`): 역할 격자에 무늬(pattern)를 칠하고 강조색은 `acc`(상의 a·b, 하의 v, 신발 w·밑창 e, 양말 y·Y·z 고정). 상의·하의·신발 순서로 pattern 적용, 반바지·스커트·민소매는 맨살 역할(S·s·L)로 바꿈. 예전 단색 옷·모자는 `active:false`. 신발은 `SHOE_SHAPES`(모양 5가지, 왼발 16칸 글자 → 오른발 뒤집기, v1.7.8~). 라켓(v1.7.9~)은 `racket` 칸, `js/avatar-rackets.js`의 `racketPaint` (45도, s·t 회전 좌표로 그림, 줄 사이 '#rrggbbaa' 반투명 → `Grid.toCanvas`가 알파 지원). 아바타 폭 `AVATAR_W` 50. 테니스 모자는 `js/avatar-tennis.js`의 `capT·visorT·bandT·bucketT`(실제 색으로 그림). 헤어스타일은 `js/avatar-hair.js`(top = 템플릿 위쪽 줄 교체, back = 몸 뒤에 먼저 그림), 목록은 `HAIRS_BY_SEX`
+- 볼 = 꾸미기 전용 화폐 (코인전 코인과 별개). 모든 회원 기본 300개(`RULES.balls.start`), 관리자 지급 · 회수는 `ballLogs` 컬렉션(v1.8.0~). `RULES.balls` + `computeBalls` (rules.js): 도착·경기·승리·주간 미션 적립 − purchases. 저장하지 않고 재계산. 볼·미션 규칙은 관리자가 `#/admin/balls`에서 변경 → `settings.ballRules` 버전 목록(from 날짜). 날짜별 적립은 `ballRulesAt(date)`, 주간 미션은 그 주 일요일 기준 `weekRules(월요일)` → 바꾼 주부터 적용, 지난 기록은 그대로
+- 그림: `js/pixel.js` (v1.7.3~ 배경 80×80, 아바타 34×66). 몸은 사용자가 준 레퍼런스(남·녀 캐릭터, 약 31×63칸)를 원본 해상도 그대로 옮긴 역할 문자 템플릿 `js/avatar-tpl.js` → 역할별로 피부·머리·옷 색을 칠함. 상의·하의·신발 아이템 = 색(color)만, 모자·얼굴·손 = paint(g, ANCHOR[성별]). 스타일 기준은 이 레퍼런스 (검은 테두리 대신 같은 색의 진한 톤, 작은 눈·볼터치). 기본 아이템은 `js/avatar-items.js`(id `b_…`, 바꾸지 말 것). 테니스 의류(v1.7.7~)는 `js/avatar-tennis.js` (id `b_t_…`): 역할 격자에 무늬(pattern)를 칠하고 강조색은 `acc`(상의 a·b, 하의 v, 신발 w·밑창 e, 양말 y·Y·z 고정). 상의·하의·신발 순서로 pattern 적용, 반바지·스커트·민소매는 맨살 역할(S·s·L)로 바꿈. 예전 단색 옷·모자는 `active:false`. 신발은 `SHOE_SHAPES`(모양 5가지, 왼발 16칸 글자 → 오른발 뒤집기, v1.7.8~). 라켓(v1.7.9~)은 `racket` 칸, `js/avatar-rackets.js`의 `racketPaint` (45도, s·t 회전 좌표로 그림, 줄 사이 '#rrggbbaa' 반투명 → `Grid.toCanvas`가 알파 지원). 아바타 폭 `AVATAR_W` 50. 테니스 모자는 `js/avatar-tennis.js`의 `capT·visorT·bandT·bucketT`(실제 색으로 그림). 기본 옷(아무것도 안 입었을 때)은 숨은 아이템 `b_d_tee · b_d_shorts · b_d_shoes` (`pixel.js`의 `BASE_WEAR`, `hidden:true`). 헤어스타일은 `js/avatar-hair.js`(top = 템플릿 위쪽 줄 교체, back = 몸 뒤에 먼저 그림), 목록은 `HAIRS_BY_SEX`
 - 관리자 아이템 = `items` 문서에 작은 PNG data URL(`img`, 200KB 제한). 변환은 `js/pixelate.js` (기기 안에서 처리). 기본 아이템 수정(v1.7.4~) = 같은 id(`b_…`)의 `items` 문서에 name·price·active만 저장 → `itemsMap`이 덮어씀, 관리자 목록은 `customItems()`
-- 컬렉션: `items`, `purchases`(id `회원_아이템`), `avatars`(id = 회원 id). firestore.rules에 추가됨 → Firebase 콘솔 규칙도 같이 바꿔야 저장됨
+- 컬렉션: `items`, `purchases`(id `회원_아이템`), `avatars`(id = 회원 id), `ballLogs`. firestore.rules에 추가됨 → Firebase 콘솔 규칙도 같이 바꿔야 저장됨
 - 화면: `#/avatar[/closet|shop|missions]`, `#/avatars`(구경), `#/admin/items`
 
 ## 날씨
@@ -41,6 +41,10 @@
 - `sw.js`는 `js/install.js`가 `sw.js?v=APP_VERSION`으로 등록 → 버전을 올리면 새 서비스 워커·캐시로 교체됨. 같은 사이트 파일은 항상 서버 먼저(no-cache), 오프라인일 때만 캐시. Firebase·날씨 등 외부 요청은 건드리지 않음
 - 아이콘: `assets/icon-192/512/180.png`, `icon-maskable-512.png` (badge.png + 크림 배경)
 - 미리보기 브라우저 창은 서비스 워커를 막아 로컬 테스트 불가 → 배포 후 실제 사이트에서 확인
+
+## 공개 범위 · 일정 (v1.8.0~)
+- 로그인 안 한 방문자는 홈 · 주간 일정 · 일정 상세만 (`app.js`의 PUBLIC, 나머지는 `membersOnly`). 일정 수정 · 삭제는 등록자 + 관리자 (`canEditSchedule`)
+- 일정 `mapUrl`(네이버 지도 공유 링크, 선택). 없으면 `https://map.naver.com/p/search/경기장명`
 
 ## 정원 · 대기 · 공유
 - 일정 `capacity`(0=무제한). 신청 순서(createdAt)로 정원까지 확정, 나머지 대기 (`rosterOf` in store.js). 신청 마감 없음

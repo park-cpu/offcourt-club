@@ -357,6 +357,10 @@ const wear = (id, name, slot, price, color, acc, pattern) => ({ id, name, cat: '
 const W = '#f4f2ea';
 
 export const TENNIS_ITEMS = [
+  // 기본 옷 (v1.8.0~): 아무것도 안 입으면 이 옷. 상점 · 관리자 목록에는 안 보임 (hidden). id 바꾸지 말 것 (pixel.js BASE_WEAR)
+  { ...wear('b_d_tee', '기본 흰 반팔', 'top', 0, '#f4f2ea', { a: W }, top(shortSleeve)), hidden: true, active: false },
+  { ...wear('b_d_shorts', '기본 반바지', 'bottom', 0, '#26304a', {}, bottom(shorts())), hidden: true, active: false },
+  { ...wear('b_d_shoes', '기본 운동화', 'shoes', 0, '#e9e7e0', { w: '#a3a8ae', e: '#cfcbbf' }, shoes(shoeShape('classic'))), hidden: true, active: false },
   // 상의
   wear('b_t_nk_adv', '나이키코트 드라이핏 어드밴티지 탑', 'top', 90, '#1f2a55', { a: W }, top(shortSleeve, chest(SWOOSH))),
   wear('b_t_nk_slam', '나이키코트 슬램 민소매', 'top', 110, '#c6e03a', { a: '#1a1a1f' }, top(sleeveless, chest(SWOOSH), band(6, 'a', true))),

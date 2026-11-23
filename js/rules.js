@@ -20,6 +20,7 @@ export const RULES = {
   coinPoint: 10,
   // 아바타 꾸미기용 '볼' (코인전 코인과 별개)
   balls: {
+    start: 300, // 모든 회원 기본 지급 (v1.8.0~)
     attend: 10, // 도착 체크 1번
     play: 5, // 경기 1번 (친선전·게스트 경기 포함)
     win: 5, // 승리 1번 추가 (친선전 제외)
@@ -289,16 +290,17 @@ export function computeRelations(id, matches, players) {
 // rulesAt(date) → 그날 적용되는 볼 규칙 (관리자가 바꾼 날부터 새 규칙), weekRules(월요일) → 그 주 미션
 export const MISSION_KINDS = [['attend', '출석'], ['play', '경기'], ['win', '승리']];
 export const missionLabel = (m) => `이번 주 ${m.goal}${m.kind === 'attend' ? '번 출석' : m.kind === 'play' ? '경기' : '승'}`;
-export function computeBalls(players, attendance, matches, purchases, weekOf, rulesAt = () => RULES.balls, weekRules = () => RULES.balls) {
+// grants = ballLogs (관리자 지급 · 회수 {playerId, amount, reason, date})
+export function computeBalls(players, attendance, matches, purchases, weekOf, rulesAt = () => RULES.balls, weekRules = () => RULES.balls, grants = []) {
   const bal = new Map();
   const days = new Map(); // id → Map(date → {attend, play, win})
   const weeks = new Map(); // id → Map(week → {attend, play, win})
   const ledger = new Map();
   for (const id of players.keys()) {
-    bal.set(id, 0);
+    bal.set(id, RULES.balls.start);
     days.set(id, new Map());
     weeks.set(id, new Map());
-    ledger.set(id, []);
+    ledger.set(id, [{ date: '', amount: RULES.balls.start, reason: '기본 지급' }]);
   }
   const bump = (id, date, kind) => {
     if (!players.has(id) || !date) return;
@@ -334,6 +336,12 @@ export function computeBalls(players, attendance, matches, purchases, weekOf, ru
           ledger.get(id).push({ date: wk, amount: ms.reward, reason: `주간 미션 · ${missionLabel(ms)}`, at: 1 });
           bal.set(id, bal.get(id) + ms.reward);
         }
+  }
+  for (const g of grants) {
+    if (!players.has(g.playerId)) continue;
+    const n = Math.trunc(Number(g.amount) || 0);
+    bal.set(g.playerId, bal.get(g.playerId) + n);
+    ledger.get(g.playerId).push({ date: g.date || '', amount: n, reason: g.reason || '관리자 지급', at: g.at || 0 });
   }
   for (const p of purchases) {
     if (!players.has(p.playerId)) continue;
