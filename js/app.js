@@ -98,6 +98,18 @@ async function boot() {
   setInterval(loadWeather, 30 * 60 * 1000);
 }
 
+// 앱 전체: 확대(두 손가락 · 두 번 탭) 막기, 오래 눌러도 글자 선택 안 됨 (입력칸 제외)
+(() => {
+  const opt = { passive: false };
+  const stop = (e) => e.preventDefault();
+  const isInput = (t) => !!t?.closest?.('input, textarea, [contenteditable]');
+  document.addEventListener('gesturestart', stop, opt);
+  document.addEventListener('gesturechange', stop, opt);
+  document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) e.preventDefault(); }, opt);
+  // 두 번 탭 확대는 CSS touch-action으로 막음 (빠른 연타 버튼이 씹히지 않게)
+  document.addEventListener('selectstart', (e) => { if (!isInput(e.target)) e.preventDefault(); }, opt);
+})();
+
 // 놓친 저장 오류도 화면에 알림
 window.addEventListener('unhandledrejection', (e) => reportError(e.reason));
 

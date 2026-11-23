@@ -555,8 +555,8 @@ ul.plain { margin: 0; padding-left: 18px; }
 .rally-swing { width: 104px; height: 104px; border-radius: 50%; border: 0; padding: 0; background: radial-gradient(circle at 40% 35%, #f26a4b, #c8341a 75%); box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.35), 0 0 0 8px rgba(233, 76, 43, 0.35), 0 5px 0 4px rgba(0, 0, 0, 0.25); color: #fff; font: 800 19px ui-monospace, Menlo, monospace; letter-spacing: 1px; }
 .rally-swing.down { transform: scale(0.94); background: radial-gradient(circle at 40% 35%, #d94b2c, #a02812 75%); }
 
-/* 랠리 게임 화면: 확대 · 글자 선택 · 길게 누르기 메뉴 막기 */
-html.rally-lock, html.rally-lock body { touch-action: pan-y; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-text-size-adjust: 100%; }
-html.rally-lock * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
-html.rally-lock button, html.rally-lock a { touch-action: manipulation; }
-html.rally-lock input, html.rally-lock textarea { -webkit-user-select: text; user-select: text; }
+/* 앱 전체: 확대 · 글자 선택 · 길게 누르기 메뉴 막기 (입력칸은 그대로) */
+html, body { touch-action: pan-x pan-y; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-text-size-adjust: 100%; }
+* { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+button, a, label, select { touch-action: manipulation; }
+input, textarea, [contenteditable] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }

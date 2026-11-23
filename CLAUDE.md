@@ -62,4 +62,5 @@
 
 ## 디자인
 - Offcourt 브랜드: 블루 #1D5294, 크림 #F7F1D6, 클레이 #B8835A, 포인트(레드) #E94C2B (`--point`), 홈 일정 카드 배경 #E7E3D9 (`--slide-bg`, 테두리 없음), 그레이. 홈 로고 = `assets/wordmark.png`, 앱 아이콘 = OC 심볼(`assets/icon-*.png`). 숫자·워드마크는 세리프(Newsreader), 본문 Pretendard
+- 확대 · 글자 선택 금지(v1.9.6~): index.html viewport `user-scalable=no`, style.css 전체 `user-select:none`(입력칸 제외), app.js에서 iOS gesture · 두 손가락 touchmove 막음
 - 원칙: 한 화면에 한 정보, 큰 숫자, 높은 대비, 모바일 우선
