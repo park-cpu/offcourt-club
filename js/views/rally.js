@@ -24,10 +24,10 @@ const ZCPU = LEN + 0.7;   // 상대 타점
 const PLAYER_Z = -1.3, CPU_Z = LEN + 1.0;
 
 const DIFFS = {
-  easy:   { label: '쉬움',   en: 'EASY',   win: [48, 95, 160], tf: 1.55, minTf: 1.05, spread: 1.6, depth: [3.5, 7.5], cpuSpd: 4.0, react: 0.32, mult: 1,   guide: true },
-  normal: { label: '보통',   en: 'NORMAL', win: [36, 72, 125], tf: 1.3,  minTf: 0.86, spread: 2.6, depth: [2.6, 6.8], cpuSpd: 5.0, react: 0.22, mult: 1.5, guide: false },
-  hard:   { label: '어려움', en: 'HARD',   win: [27, 56, 98],  tf: 1.1,  minTf: 0.74, spread: 3.3, depth: [1.8, 5.6], cpuSpd: 6.0, react: 0.15, mult: 2,   guide: false },
-  pro:    { label: '프로',   en: 'PRO',    win: [19, 42, 78],  tf: 0.96, minTf: 0.64, spread: 3.8, depth: [1.2, 4.8], cpuSpd: 7.0, react: 0.1,  mult: 3,   guide: false },
+  easy:   { label: '쉬움',   en: 'EASY',   win: [48, 95, 160], tf: 1.55, minTf: 1.05, spread: 1.6, depth: [3.5, 7.5], cpuSpd: 4.0, react: 0.32, mult: 1,   guide: true,  auto: true,  marker: true },
+  normal: { label: '보통',   en: 'NORMAL', win: [36, 72, 125], tf: 1.3,  minTf: 0.86, spread: 2.6, depth: [2.6, 6.8], cpuSpd: 5.0, react: 0.22, mult: 1.5, guide: false, auto: false, marker: true },
+  hard:   { label: '어려움', en: 'HARD',   win: [27, 56, 98],  tf: 1.1,  minTf: 0.74, spread: 3.3, depth: [1.8, 5.6], cpuSpd: 6.0, react: 0.15, mult: 2,   guide: false, auto: false, marker: false },
+  pro:    { label: '프로',   en: 'PRO',    win: [19, 42, 78],  tf: 0.96, minTf: 0.64, spread: 3.8, depth: [1.2, 4.8], cpuSpd: 7.0, react: 0.1,  mult: 3,   guide: false, auto: false, marker: false },
 };
 const QUAL = {
   perfect: { text: 'PERFECT!', color: '#ffd23a', pts: 100, noise: 0.05, skew: 0, depthN: 0.3, spd: 0.9, big: 2 },
@@ -253,6 +253,9 @@ function launch(from, to, tf, opts = {}) {
   return { x0, z0, h0, tx, tz, vx, vz, vh, tf, t0: game.t, stop: !!opts.stop, bounces: 0, x: x0, z: z0, h: h0 };
 }
 const DAMP = 0.88, REST = 0.6;
+// 직접 이동일 때 몸과 타점 거리(m): jam 미만 = 너무 붙음, ok 이하 = 정상, max 초과 = 닿지 않음
+const REACH = { jam: 0.25, ok: 1.25, max: 1.9 };
+const RUN = 6.8; // 달리기 속도 (m/s)
 function ballAt(b, t) {
   if (t <= b.tf) return { x: b.x0 + b.vx * t, z: b.z0 + b.vz * t, h: Math.max(0, b.h0 + b.vh * t - (G * t * t) / 2), n: 0 };
   if (b.stop) return { x: b.tx, z: b.tz, h: 0, n: 1 };
@@ -321,8 +324,10 @@ function cpuShot(slow = 1, fromBall = null) {
   const cx = ballAt(game.ball, tc).x;
   game.ball.tc = tc;
   game.ball.cx = cx;
-  game.player.side = cx > -1.2 ? 1 : -1;
-  game.player.tx = cx - 0.75 * game.player.side;
+  if (D().auto) {
+    game.player.side = cx > -1.2 ? 1 : -1;
+    game.player.tx = cx - 0.75 * game.player.side;
+  }
 }
 
 // 손을 뗀 순간 = 스윙
@@ -338,7 +343,17 @@ function swing() {
   if (err < -d.win[2]) { popup('EARLY', '#ff8a7a'); beep(200, 0.08); return; }
   if (err > d.win[2]) return; // 이미 지나감 (miss 처리됨)
   const a = Math.abs(err);
-  const q = a <= d.win[0] ? 'perfect' : a <= d.win[1] ? 'great' : 'good';
+  let q = a <= d.win[0] ? 'perfect' : a <= d.win[1] ? 'great' : 'good';
+  // 직접 이동: 타점과 몸의 거리 (라켓 자리 0.75m가 가장 좋음)
+  if (!d.auto) {
+    const dist = Math.abs(b.cx - p.x);
+    p.side = b.cx >= p.x ? 1 : -1;
+    if (dist > REACH.max) { popup('TOO FAR', '#ff8a7a'); beep(200, 0.08); return; }
+    if (dist > REACH.ok || dist < REACH.jam) {
+      q = 'good';
+      popup(dist < REACH.jam ? 'JAMMED' : 'STRETCH', '#ffb36b', 1, (() => { const [x, y] = proj(p.x, PLAYER_Z, 2.4); return [x, y - 10]; })());
+    }
+  }
   const Q = QUAL[q];
   const aim = curAim();
   // 방향: 누른 위치 + 타이밍 쏠림(빠르면 왼쪽, 늦으면 오른쪽) + 흔들림
@@ -430,7 +445,16 @@ function step(dt) {
     if (p.poseT > 0) { p.poseT -= dt; if (p.poseT <= 0) { if (p.pose === 'hit') { p.pose = 'follow'; p.poseT = 0.25; } else p.pose = 'ready'; } }
   };
   if (game.charge) game.player.pose = 'charge';
-  move(game.player, 9);
+  if (D().auto || game.phase !== 'play') move(game.player, 9);
+  else {
+    // 조이스틱 / ←→ 로 직접 이동, 오는 공 쪽으로 라켓 방향 맞춤
+    const p = game.player, inp = moveInput();
+    p.x = Math.max(-7, Math.min(7, p.x + inp * RUN * dt));
+    p.tx = p.x;
+    p.moving = Math.abs(inp) > 0.1; if (p.moving) p.legT += dt;
+    if (game.mode === 'in' && game.ball && !game.swung) p.side = game.ball.cx >= p.x ? 1 : -1;
+    if (p.poseT > 0) { p.poseT -= dt; if (p.poseT <= 0) { if (p.pose === 'hit') { p.pose = 'follow'; p.poseT = 0.25; } else p.pose = 'ready'; } }
+  }
   const cpu = game.cpu;
   if (cpu.wait > 0) cpu.wait -= dt; else move(cpu, game.mode === 'out' ? D().cpuSpd : 3);
   if (game.phase !== 'play' || !game.ball) return;
@@ -476,11 +500,16 @@ function draw() {
   drawCrowd(g, game.t, game.cheer > 0);
   const b = game.ball, d = D();
   const far = b && b.z > NETZ;
-  // 쉬움: 바운드 지점 표시
-  if (b && game.phase === 'play' && game.mode === 'in' && d.guide && b.bounces === 0) {
+  // 쉬움 · 보통: 바운드 지점 표시, 보통(직접 이동)은 칠 자리(타점)도 표시
+  if (b && game.phase === 'play' && game.mode === 'in' && d.marker && b.bounces === 0) {
     const [mx, my] = proj(b.tx, b.tz);
     g.fillStyle = 'rgba(255,240,120,0.8)';
     g.fillRect(Math.round(mx) - 2, Math.round(my), 5, 1); g.fillRect(Math.round(mx), Math.round(my) - 1, 1, 3);
+  }
+  if (b && game.phase === 'play' && game.mode === 'in' && d.marker && !d.auto && !game.swung) {
+    const [cx, cy] = proj(b.cx, ZC);
+    g.fillStyle = 'rgba(255,255,255,0.75)';
+    g.fillRect(Math.round(cx) - 3, Math.round(cy), 2, 1); g.fillRect(Math.round(cx) + 2, Math.round(cy), 2, 1);
   }
   // 상대 (멀리)
   drawPerson(g, game.cpu, 'front');
@@ -583,7 +612,8 @@ function pause() {
 }
 
 // 방향 = 왼쪽 조이스틱(누른 채 좌우로 밀기, 놓으면 가운데) 또는 ←/→ 키
-const curAim = () => game.keyAim || game.stickAim || 0;
+const curAim = () => (game.keyAim || game.stick || 0) * 0.9;
+const moveInput = () => (game.keyAim ? Math.sign(game.keyAim) : game.stick || 0);
 function bindStick(base, knob) {
   let id = null;
   const moveTo = (e) => {
@@ -593,7 +623,7 @@ function bindStick(base, knob) {
     const n = Math.hypot(dx, dy), max = R * 0.62;
     if (n > max) { dx = (dx / n) * max; dy = (dy / n) * max; }
     knob.style.transform = `translate(${dx}px, ${dy}px)`;
-    game.stickAim = Math.max(-0.9, Math.min(0.9, (dx / max) * 0.9));
+    game.stick = Math.max(-1, Math.min(1, dx / max));
   };
   base.addEventListener('pointerdown', (e) => {
     e.preventDefault();
@@ -608,7 +638,7 @@ function bindStick(base, knob) {
     id = null;
     base.classList.remove('down');
     knob.style.transform = '';
-    game.stickAim = 0;
+    game.stick = 0;
   };
   base.addEventListener('pointerup', end);
   base.addEventListener('pointercancel', end);
@@ -705,7 +735,7 @@ function showOverlay(kind) {
   if (kind === 'menu') {
     ov.replaceChildren(
       h('div', { class: 'rally-title' }, 'RALLY'),
-      h('p', { class: 'rally-how' }, '오른손: SWING을 꾹 눌러 힘 → 공이 발 옆에 올 때 떼기', h('br'), '왼손: 조이스틱을 좌우로 밀어 방향 (놓으면 가운데)'),
+      h('p', { class: 'rally-how' }, '오른손: SWING을 꾹 눌러 힘 → 공이 발 옆에 올 때 떼기', h('br'), D().auto ? '왼손: 조이스틱 = 방향 (쉬움은 선수가 자동으로 달려가요)' : '왼손: 조이스틱 = 이동 · 칠 때 민 쪽이 방향'),
       diffChips(),
       h('p', { class: 'rally-sub' }, `${D().label} 기록 · 점수 ×${D().mult}`),
       recordTable(game.diff),
@@ -742,7 +772,7 @@ export function rallyView() {
     const swingBtn = h('button', { class: 'rally-swing', type: 'button' }, h('span', {}, 'SWING'));
     const knob = h('div', { class: 'rally-knob' });
     const stick = h('div', { class: 'rally-stick' }, h('span', { class: 'l' }, '◀'), h('span', { class: 'r' }, '▶'), knob);
-    game.pad = h('div', { class: 'rally-pad' }, h('div', { class: 'rally-pad-side' }, stick, h('small', {}, '방향')), h('div', { class: 'rally-pad-mid' }, '꾹 눌러 힘', h('br'), '떼면 스윙'), h('div', { class: 'rally-pad-side' }, swingBtn, h('small', {}, '힘 · 타이밍')));
+    game.pad = h('div', { class: 'rally-pad' }, h('div', { class: 'rally-pad-side' }, stick, (game.stickLbl = h('small', {}, '이동 · 방향'))), h('div', { class: 'rally-pad-mid' }, '꾹 눌러 힘', h('br'), '떼면 스윙'), h('div', { class: 'rally-pad-side' }, swingBtn, h('small', {}, '힘 · 타이밍')));
     bindStick(stick, knob);
     bindSwing(swingBtn);
     bindInput(cv);
