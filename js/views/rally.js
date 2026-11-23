@@ -5,7 +5,9 @@
 //   기록은 이 기기(localStorage)에 난이도별로 저장
 // ─────────────────────────────────────────────────────────────
 import { h } from '../ui.js';
-import { pageHead } from './common.js';
+import { pageHead, loginSheet } from './common.js';
+import { state, me } from '../store.js';
+import { put } from '../db.js';
 
 const W = 256, H = 240;
 // 원근: 깊이 d = z + D0 → 화면 y = HY + K/d, x = CX + F·x/d (높이 h는 F·h/d 만큼 위로)
@@ -409,7 +411,9 @@ function gameOver() {
   r.plays = (r.plays || 0) + 1;
   rec[game.diff] = r;
   saveRec(rec);
+  game.clubNew = submitClub(st);
   showOverlay('over');
+  renderRank();
 }
 
 // ── 한 프레임 ─────────────────────────────────────────
@@ -610,6 +614,50 @@ function bindInput(cv) {
   document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
 }
 
+// ── 클럽 랭킹 (Firestore rallyScores, id = 회원_난이도, 최고 기록만) ──
+const clubDoc = (pid, diff) => state.rallyScores.find((x) => x.id === `${pid}_${diff}`);
+function submitClub(st) {
+  const u = me();
+  if (!u) return false;
+  const old = clubDoc(u.id, game.diff) || {};
+  const acc = st.hits ? Math.round(((st.perfect + st.great) / st.hits) * 100) : 0;
+  const better = st.score > (old.score || 0);
+  const doc = {
+    id: `${u.id}_${game.diff}`, playerId: u.id, diff: game.diff,
+    score: Math.max(old.score || 0, st.score), rally: Math.max(old.rally || 0, st.maxRally), perfect: Math.max(old.perfect || 0, st.perfect),
+    streak: Math.max(old.streak || 0, st.maxStreak), winners: Math.max(old.winners || 0, st.winners),
+    acc: better ? acc : old.acc ?? acc, plays: (old.plays || 0) + 1, at: better ? Date.now() : old.at || Date.now(),
+  };
+  put('rallyScores', doc).catch(() => {});
+  return better;
+}
+const RANK_SORT = [['score', '점수'], ['rally', '랠리'], ['perfect', '퍼펙트']];
+const rankView = { sort: 'score', diff: null };
+function renderRank() {
+  const box = game.rank;
+  if (!box) return;
+  const diff = rankView.diff || game.diff;
+  const key = rankView.sort;
+  const names = new Map(state.players.map((p) => [p.id, p.name]));
+  const rows = state.rallyScores.filter((x) => x.diff === diff && names.has(x.playerId) && (x[key] || 0) > 0).sort((a, b) => (b[key] || 0) - (a[key] || 0) || (b.score || 0) - (a.score || 0)).slice(0, 20);
+  const u = me();
+  const rerank = (f) => { f(); renderRank(); };
+  box.replaceChildren(
+    h('div', { class: 'row between' }, h('h2', {}, '클럽 랭킹'), h('small', { class: 'muted' }, '회원 최고 기록')),
+    h('div', { class: 'chips-scroll' }, Object.entries(DIFFS).map(([k, v]) => h('button', { class: 'chip' + (diff === k ? ' on' : ''), onclick: () => rerank(() => (rankView.diff = k)) }, v.label))),
+    h('div', { class: 'seg rally-seg' }, RANK_SORT.map(([k, l]) => h('button', { class: key === k ? 'on' : '', onclick: () => rerank(() => (rankView.sort = k)) }, l))),
+    rows.length
+      ? h('div', { class: 'rank-list rally-rank' }, rows.map((x, i) =>
+          h('a', { class: 'rank-row' + (u && x.playerId === u.id ? ' me' : '') + (i < 3 ? ' top' : ''), href: `#/p/${x.playerId}` },
+            h('span', { class: 'rank-num' }, i + 1),
+            h('span', { class: 'rank-main' }, h('strong', {}, names.get(x.playerId)), h('small', {}, `랠리 ${x.rally || 0} · 퍼펙트 ${x.perfect || 0} · 위너 ${x.winners || 0} · ${x.plays || 0}판`)),
+            h('span', { class: 'sp' }, (x[key] || 0).toLocaleString(), h('small', {}, key === 'score' ? '점' : key === 'rally' ? '회' : '개'))
+          )))
+      : h('p', { class: 'muted small' }, `${DIFFS[diff].label} 기록이 아직 없어요. 첫 기록의 주인공이 되어 보세요!`),
+    u ? '' : h('p', { class: 'muted small' }, '로그인하고 하면 기록이 클럽 랭킹에 올라가요. ', h('button', { class: 'link small', onclick: () => loginSheet() }, '로그인'))
+  );
+}
+
 const STAT_ROWS = [['score', '최고 점수'], ['rally', '최장 랠리'], ['perfect', '퍼펙트'], ['winners', '위너']];
 function recordTable(diff, hl = []) {
   const r = loadRec()[diff] || {};
@@ -620,7 +668,7 @@ function showOverlay(kind) {
   if (!kind) { ov.hidden = true; ov.replaceChildren(); return; }
   ov.hidden = false;
   const diffChips = () =>
-    h('div', { class: 'rally-diffs' }, Object.entries(DIFFS).map(([k, v]) => h('button', { class: 'rally-chip' + (game.diff === k ? ' on' : ''), onclick: () => { game.diff = k; savePref('oc_rally_diff', k); showOverlay(kind); } }, v.label)));
+    h('div', { class: 'rally-diffs' }, Object.entries(DIFFS).map(([k, v]) => h('button', { class: 'rally-chip' + (game.diff === k ? ' on' : ''), onclick: () => { game.diff = k; rankView.diff = null; savePref('oc_rally_diff', k); showOverlay(kind); renderRank(); } }, v.label)));
   if (kind === 'menu') {
     ov.replaceChildren(
       h('div', { class: 'rally-title' }, 'RALLY'),
@@ -639,10 +687,11 @@ function showOverlay(kind) {
     const cell = (label, v, key) => h('div', { class: game.newRec.includes(key) ? 'new' : '' }, h('small', {}, label), h('b', {}, v));
     ov.replaceChildren(
       h('div', { class: 'rally-title small' }, 'GAME OVER'),
-      game.newRec.length ? h('div', { class: 'rally-new' }, 'NEW RECORD!') : null,
+      game.newRec.length ? h('div', { class: 'rally-new' }, 'NEW RECORD!') : '',
       h('div', { class: 'rally-score' }, h('small', {}, `${D().label} · 점수`), h('b', {}, st.score.toLocaleString())),
       h('div', { class: 'rally-rec four' }, cell('최장 랠리', st.maxRally, 'rally'), cell('퍼펙트', st.perfect, 'perfect'), cell('위너', st.winners, 'winners'), cell('정확도', `${acc}%`)),
       h('p', { class: 'rally-sub' }, `최고 ${(r.score || 0).toLocaleString()}점 · 최장 랠리 ${r.rally || 0} · 연속 퍼펙트 ${r.streak || 0}`),
+      me() ? (game.clubNew ? h('div', { class: 'rally-new' }, '클럽 랭킹 기록 경신!') : '') : h('p', { class: 'rally-sub' }, '로그인하면 클럽 랭킹에 올라가요'),
       h('button', { class: 'rally-start', onclick: startGame }, '다시 하기'),
       h('button', { class: 'rally-link', onclick: () => { game.phase = 'menu'; showOverlay('menu'); } }, '난이도 바꾸기')
     );
@@ -669,6 +718,7 @@ export function rallyView() {
       pageHead('랠리 게임', 'Rally'),
       h('div', { class: 'rally-wrap' }, cv, game.ov),
       h('div', { class: 'row between' }, h('small', { class: 'muted' }, '키보드: 스페이스 꾹 → 떼기, ←/→ 방향'), soundBtn),
+      (game.rank = h('section', { class: 'block' })),
       h(
         'details',
         { class: 'block rally-help' },
@@ -685,6 +735,7 @@ export function rallyView() {
     );
     showOverlay('menu');
   }
+  renderRank();
   if (!game.raf) { game.last = 0; game.raf = requestAnimationFrame(loop); }
   return game.root;
 }

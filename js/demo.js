@@ -105,6 +105,6 @@ export async function seedDemo() {
     avatars.push({ id: p.id, skin: i % 4, hair: i % 2 ? 'long' : 'f', v: 3, hairColor: i % 5, wear, base, deco, updatedAt: now - i });
   });
 
-  await db.replaceAll({ players, guests: [], schedules, attendance, matches, coinLogs: [], settings: [settings], items: [], purchases, avatars, ballLogs: [] });
+  await db.replaceAll({ players, guests: [], schedules, attendance, matches, coinLogs: [], settings: [settings], items: [], purchases, avatars, ballLogs: [], rallyScores: [] });
   session.set(players[0].id);
 }

@@ -537,3 +537,5 @@ ul.plain { margin: 0; padding-left: 18px; }
 .game-banner > span:nth-child(2) { flex: 1; }
 .game-banner .muted { color: #fff; opacity: 0.7; }
 .game-px { font: 800 13px ui-monospace, Menlo, monospace; letter-spacing: 1px; background: #2f8f3a; color: #ffd23a; padding: 8px 6px; box-shadow: 0 0 0 2px #f6f6ee inset; }
+.rally-seg { margin: 8px 0; }
+.rally-seg > * { padding: 7px 6px; font-size: 14px; }
