@@ -582,12 +582,37 @@ function pause() {
   showOverlay('paused');
 }
 
-// 방향 = 아래 방향 버튼(왼쪽 · 가운데 · 오른쪽, 누르면 그대로 유지) 또는 ←/→ 키
-const AIMS = { L: -0.9, C: 0, R: 0.9 };
-const curAim = () => game.keyAim || AIMS[game.aimKey] || 0;
-function setAim(k) {
-  game.aimKey = k;
-  game.pad?.querySelectorAll('[data-aim]').forEach((b) => b.classList.toggle('on', b.dataset.aim === k));
+// 방향 = 왼쪽 조이스틱(누른 채 좌우로 밀기, 놓으면 가운데) 또는 ←/→ 키
+const curAim = () => game.keyAim || game.stickAim || 0;
+function bindStick(base, knob) {
+  let id = null;
+  const moveTo = (e) => {
+    const r = base.getBoundingClientRect();
+    const R = r.width / 2;
+    let dx = e.clientX - (r.left + R), dy = e.clientY - (r.top + R);
+    const n = Math.hypot(dx, dy), max = R * 0.62;
+    if (n > max) { dx = (dx / n) * max; dy = (dy / n) * max; }
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    game.stickAim = Math.max(-0.9, Math.min(0.9, (dx / max) * 0.9));
+  };
+  base.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    id = e.pointerId;
+    try { base.setPointerCapture(id); } catch {}
+    base.classList.add('down');
+    moveTo(e);
+  });
+  base.addEventListener('pointermove', (e) => { if (e.pointerId === id) moveTo(e); });
+  const end = (e) => {
+    if (e.pointerId !== id) return;
+    id = null;
+    base.classList.remove('down');
+    knob.style.transform = '';
+    game.stickAim = 0;
+  };
+  base.addEventListener('pointerup', end);
+  base.addEventListener('pointercancel', end);
+  base.addEventListener('contextmenu', (e) => e.preventDefault());
 }
 // 스윙 = 꾹 누르기(힘) → 떼기(타이밍). 게임 화면이나 SWING 버튼 어디든
 function bindSwing(el) {
@@ -680,7 +705,7 @@ function showOverlay(kind) {
   if (kind === 'menu') {
     ov.replaceChildren(
       h('div', { class: 'rally-title' }, 'RALLY'),
-      h('p', { class: 'rally-how' }, 'SWING을 꾹 눌러 힘을 모으고, 공이 발 옆에 올 때 떼세요.', h('br'), '방향은 아래 ◀ · ● · ▶ 버튼으로 미리 골라 두세요'),
+      h('p', { class: 'rally-how' }, '오른손: SWING을 꾹 눌러 힘 → 공이 발 옆에 올 때 떼기', h('br'), '왼손: 조이스틱을 좌우로 밀어 방향 (놓으면 가운데)'),
       diffChips(),
       h('p', { class: 'rally-sub' }, `${D().label} 기록 · 점수 ×${D().mult}`),
       recordTable(game.diff),
@@ -714,16 +739,13 @@ export function rallyView() {
     game.g.imageSmoothingEnabled = false;
     game.bg = drawBackground();
     game.ov = h('div', { class: 'rally-ov' });
-    const swingBtn = h('button', { class: 'rally-swing', type: 'button' }, 'SWING', h('small', {}, '꾹 → 떼기'));
-    game.pad = h(
-      'div',
-      { class: 'rally-pad' },
-      h('div', { class: 'rally-dir' }, [['L', '◀', '왼쪽'], ['C', '●', '가운데'], ['R', '▶', '오른쪽']].map(([k, ic, l]) => h('button', { type: 'button', 'data-aim': k, onpointerdown: (e) => { e.preventDefault(); setAim(k); } }, h('b', {}, ic), h('small', {}, l)))),
-      swingBtn
-    );
+    const swingBtn = h('button', { class: 'rally-swing', type: 'button' }, h('span', {}, 'SWING'));
+    const knob = h('div', { class: 'rally-knob' });
+    const stick = h('div', { class: 'rally-stick' }, h('span', { class: 'l' }, '◀'), h('span', { class: 'r' }, '▶'), knob);
+    game.pad = h('div', { class: 'rally-pad' }, h('div', { class: 'rally-pad-side' }, stick, h('small', {}, '방향')), h('div', { class: 'rally-pad-mid' }, '꾹 눌러 힘', h('br'), '떼면 스윙'), h('div', { class: 'rally-pad-side' }, swingBtn, h('small', {}, '힘 · 타이밍')));
+    bindStick(stick, knob);
     bindSwing(swingBtn);
     bindInput(cv);
-    setAim('C');
     resetPlayers();
     const soundBtn = h('button', { class: 'btn ghost small' });
     const setSoundLabel = () => (soundBtn.textContent = game.sound ? '🔊 소리 켜짐' : '🔇 소리 꺼짐');

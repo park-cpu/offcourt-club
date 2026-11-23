@@ -540,13 +540,17 @@ ul.plain { margin: 0; padding-left: 18px; }
 .rally-seg { margin: 8px 0; }
 .rally-seg > * { padding: 7px 6px; font-size: 14px; }
 
-.rally-pad { display: flex; gap: 10px; margin-top: 10px; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.rally-pad { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; padding: 12px 14px; border-radius: 14px; background: radial-gradient(ellipse at center, #2f8f3a 0%, #24742e 100%); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .rally-pad button { -webkit-tap-highlight-color: transparent; touch-action: none; }
-.rally-dir { flex: 1.3; display: flex; gap: 4px; }
-.rally-dir button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 76px; border: 2px solid #1d2b5a; background: #f7f1d6; color: #1d2b5a; border-radius: 6px; }
-.rally-dir button b { font-size: 20px; line-height: 1; }
-.rally-dir button small { font-size: 11px; }
-.rally-dir button.on { background: #1d2b5a; color: #ffd23a; }
-.rally-swing { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 76px; border: 0; border-radius: 6px; background: #e94c2b; color: #fff; font: 800 20px ui-monospace, Menlo, monospace; letter-spacing: 2px; box-shadow: 0 4px 0 #7a1d0e; }
-.rally-swing small { font: 600 11px Pretendard, sans-serif; letter-spacing: 0; opacity: 0.85; }
-.rally-swing.down { transform: translateY(3px); box-shadow: 0 1px 0 #7a1d0e; background: #c93a1c; }
+.rally-pad-side { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.rally-pad-side small { color: #f7f1d6; font-size: 11px; opacity: 0.85; }
+.rally-pad-mid { color: #f7f1d6; font-size: 11px; text-align: center; opacity: 0.55; line-height: 1.5; }
+.rally-stick { position: relative; width: 118px; height: 118px; border-radius: 50%; background: rgba(255, 255, 255, 0.12); border: 3px solid rgba(255, 255, 255, 0.55); box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.08); touch-action: none; }
+.rally-stick.down { background: rgba(255, 255, 255, 0.2); }
+.rally-stick > span { position: absolute; top: 50%; transform: translateY(-50%); color: rgba(255, 255, 255, 0.7); font-size: 14px; }
+.rally-stick > .l { left: 9px; }
+.rally-stick > .r { right: 9px; }
+.rally-knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffffff, #cfd3d6 70%); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35); pointer-events: none; }
+.rally-stick:not(.down) .rally-knob { transition: transform 0.12s; }
+.rally-swing { width: 104px; height: 104px; border-radius: 50%; border: 0; padding: 0; background: radial-gradient(circle at 40% 35%, #f26a4b, #c8341a 75%); box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.35), 0 0 0 8px rgba(233, 76, 43, 0.35), 0 5px 0 4px rgba(0, 0, 0, 0.25); color: #fff; font: 800 19px ui-monospace, Menlo, monospace; letter-spacing: 1px; }
+.rally-swing.down { transform: scale(0.94); background: radial-gradient(circle at 40% 35%, #d94b2c, #a02812 75%); }
