@@ -171,11 +171,11 @@ function pennant() {
 }
 
 export const BUILTIN_ITEMS = [
-  paintItem('b_cap_blue', '블루 캡', 'hat', 60, cap('#1d5294')),
-  paintItem('b_cap_red', '레드 캡', 'hat', 60, cap('#e94c2b')),
-  paintItem('b_band_white', '화이트 헤어밴드', 'hat', 40, headband(WHITE)),
-  paintItem('b_visor_green', '그린 썬바이저', 'hat', 70, visor('#2f7a55')),
-  paintItem('b_beanie_cream', '크림 비니', 'hat', 80, beanie('#e8dcb0')),
+  { ...paintItem('b_cap_blue', '블루 캡', 'hat', 60, cap('#1d5294')), active: false },
+  { ...paintItem('b_cap_red', '레드 캡', 'hat', 60, cap('#e94c2b')), active: false },
+  { ...paintItem('b_band_white', '화이트 헤어밴드', 'hat', 40, headband(WHITE)), active: false },
+  { ...paintItem('b_visor_green', '그린 썬바이저', 'hat', 70, visor('#2f7a55')), active: false },
+  { ...paintItem('b_beanie_cream', '크림 비니', 'hat', 80, beanie('#e8dcb0')), active: false },
   paintItem('b_sun_black', '블랙 선글라스', 'face', 70, sunglasses('#1f1f24')),
   paintItem('b_glasses_round', '동그란 안경', 'face', 50, roundGlasses('#5a3b2c')),
   colorItem('b_tee_blue', '오프코트 블루 상의', 'top', 50, '#1d5294'),

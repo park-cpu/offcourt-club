@@ -198,7 +198,7 @@ export const topPal = (c) => ({ T: mix(c, '#140c10', 0.6), t: c, u: shade(c, -0.
 export const bottomPal = (c) => ({ P: mix(c, '#0a0a10', 0.7), q: c, Q: shade(c, -0.22), g: shade(c, 0.6) });
 export const shoesPal = (c) => ({ O: mix(c, '#0a0a0a', 0.7), f: c, F: shade(c, -0.35), G: shade(c, 0.45) });
 const FIXED = { K: '#080504', W: '#ffffff', o: '#fcc3c3', p: '#ee7678', r: '#d4555f', y: '#f4f2ea', Y: '#cfcbbf', z: '#6f6b62' };
-export const ROLE_GROUP = { top: 'TtucnNab', bottom: 'PqQgv', shoes: 'OfFGwe' };
+export const ROLE_GROUP = { top: 'TtucnNab', bottom: 'PqQgvV', shoes: 'OfFGwe' };
 
 /** 역할 격자(글자) — 템플릿 + 헤어스타일(js/avatar-hair.js) + 옷 무늬 */
 function roleGrid(look, items) {
@@ -230,7 +230,7 @@ function colorize(rg, look, items) {
     ...shoesPal(pick('shoes', D.shoes)),
     ...bottomPal(pick('bottom', D.bottom)),
     // 아이템 강조색 (로고 · 줄무늬 · 밑창)
-    a: '#f4f2ea', b: '#f4f2ea', v: '#f4f2ea', w: '#f4f2ea', e: '#f4f2ea',
+    a: '#f4f2ea', b: '#f4f2ea', v: '#f4f2ea', V: '#cfcbbf', w: '#f4f2ea', e: '#f4f2ea',
     ...items.get(look.wear?.top)?.acc,
     ...items.get(look.wear?.bottom)?.acc,
     ...items.get(look.wear?.shoes)?.acc,
@@ -242,7 +242,7 @@ function colorize(rg, look, items) {
       const r = rg.get(x, y);
       if (!r) continue;
       // 상의 역할(T t u c)은 신발 · 피부 역할과 글자가 겹치지 않게 상의 영역(어깨~허리)에서만
-      const inTop = 'TtucnN'.includes(r) && y >= 26 && y <= 50;
+      const inTop = 'TtucnN'.includes(r) && y >= 26 && y <= 53;
       g.set(x, y, inTop ? tp[r] : pal[r] || tp[r] || '#ff00ff');
     }
   return g;
@@ -352,7 +352,7 @@ function thumbCanvas(item) {
     const items = new Map([[item.id, item]]);
     const rg = roleGrid(look, items);
     const keep = ROLE_GROUP[item.slot];
-    rg.recolor((x, y, r) => !keep.includes(r) || (item.slot === 'top' && (y < 26 || y > 50)) || (item.slot === 'shoes' && y < 54) || (item.slot === 'bottom' && y > 57), null);
+    rg.recolor((x, y, r) => !keep.includes(r) || (item.slot === 'top' && (y < 26 || y > 53)) || (item.slot === 'shoes' && y < 50) || (item.slot === 'bottom' && y > 57), null);
     for (let i = 0; i < rg.px.length; i++) if (rg.px[i] === null) rg.px[i] = null;
     g = colorize(rg, look, items);
   } else if (item.paint) {
