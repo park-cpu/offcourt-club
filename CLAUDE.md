@@ -44,7 +44,8 @@
 
 ## 공개 범위 · 일정 (v1.8.0~)
 - 로그인 안 한 방문자는 홈 · 주간 일정 · 일정 상세만 (`app.js`의 PUBLIC, 나머지는 `membersOnly`). 일정 수정 · 삭제는 등록자 + 관리자 (`canEditSchedule`)
-- 일정 `mapUrl`(네이버 지도 공유 링크, 선택). 없으면 `https://map.naver.com/p/search/경기장명`
+- 경기장 목록 `settings.venues` = [{id, name, address, mapUrl}] (v1.8.1~, `venueList()` in schedule.js — 비어 있으면 지난 일정 경기장명으로 임시 목록). 관리자 `#/admin/venues`, 일정 등록 때 '새 경기장 직접 입력' → 목록 저장 선택. 일정 문서에 venue · address · mapUrl 복사 저장
+- 지도 = `mapUrl`(선택) → 없으면 `https://map.naver.com/p/search/주소(없으면 경기장명)`
 
 ## 정원 · 대기 · 공유
 - 일정 `capacity`(0=무제한). 신청 순서(createdAt)로 정원까지 확정, 나머지 대기 (`rosterOf` in store.js). 신청 마감 없음

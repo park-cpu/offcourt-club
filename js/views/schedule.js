@@ -3,11 +3,22 @@ import {
   state, me, isAdmin, today, weekStart, addDays, parseYmd, DOW, fmtDate, attendanceOf, scheduleById, courtsOf, person, matchesOf, rosterOf, capacityOf, countText,
 } from '../store.js';
 import { put, remove, batch, uid } from '../db.js';
+import { settings } from '../store.js';
 import { weatherChip, WEATHER_PLACE } from '../weather.js';
 import { shareButton, scheduleText } from '../share.js';
 
-// 네이버 지도: 일정에 넣은 지도 링크가 있으면 그것, 없으면 경기장명으로 검색
-export const mapUrlOf = (s) => (s.mapUrl && /^https?:\/\//.test(s.mapUrl) ? s.mapUrl : `https://map.naver.com/p/search/${encodeURIComponent(s.venue || '')}`);
+// 네이버 지도: 지도 링크가 있으면 그것, 없으면 주소(없으면 경기장명)로 검색
+export const mapUrlOf = (s) => (s.mapUrl && /^https?:\/\//.test(s.mapUrl) ? s.mapUrl : `https://map.naver.com/p/search/${encodeURIComponent(s.address || s.venue || '')}`);
+// 경기장 목록: settings.venues = [{id, name, address, mapUrl}]. 아직 없으면 지난 일정의 경기장명으로 임시 목록
+export const venueList = () => {
+  const saved = settings().venues;
+  if (Array.isArray(saved)) return saved;
+  const seen = new Map();
+  [...state.schedules].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).forEach((x) => {
+    if (x.venue && !seen.has(x.venue)) seen.set(x.venue, { id: 'v_' + (seen.size + 1), name: x.venue, address: x.address || '', mapUrl: x.mapUrl || '' });
+  });
+  return [...seen.values()];
+};
 export const mapLink = (s, cls = '') => s.venue && h('a', { class: 'map-link ' + cls, href: mapUrlOf(s), target: '_blank', rel: 'noopener' }, '지도 ›');
 // 일정 수정 · 삭제: 등록한 사람 (+ 관리자)
 export const canEditSchedule = (s) => { const u = me(); return !!u && (s.createdBy === u.id || isAdmin()); };
@@ -98,7 +109,7 @@ export function scheduleView(id) {
       h(
         'dl',
         { class: 'sch-dl' },
-        h('dt', {}, '경기장'), h('dd', {}, s.venue, ' ', mapLink(s, 'on-blue')),
+        h('dt', {}, '경기장'), h('dd', {}, s.venue, ' ', mapLink(s, 'on-blue'), s.address && h('small', { class: 'venue-addr' }, s.address)),
         h('dt', {}, '코트'), h('dd', {}, courtsOf(s).join(', ') || '-'),
         h('dt', {}, '예약자'), h('dd', {}, s.booker || '-'),
         cap > 0 && [h('dt', {}, '정원'), h('dd', {}, `${cap}명`)],
@@ -211,28 +222,51 @@ export function editSchedule(s, date) {
   if (!requireLogin(() => editSchedule(s, date))) return;
   if (s && !canEditSchedule(s)) return toast('일정을 등록한 사람만 수정할 수 있어요');
   const last = [...state.schedules].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
-  const base = s || { date: date || today(), start: last?.start || '07:00', end: last?.end || '09:00', venue: last?.venue || '', mapUrl: last?.mapUrl || '', courts: last?.courts || '', capacity: last?.capacity || '', booker: me().name };
+  const base = s || { date: date || today(), start: last?.start || '07:00', end: last?.end || '09:00', venue: last?.venue || '', address: last?.address || '', mapUrl: last?.mapUrl || '', courts: last?.courts || '', capacity: last?.capacity || '', booker: me().name };
   sheet(s ? '일정 수정' : '일정 등록', (close) => {
-    const venues = [...new Set(state.schedules.map((x) => x.venue).filter(Boolean))];
+    const list = venueList();
+    const NEW = '__new__';
+    const cur = list.find((v) => v.name === base.venue);
     const f = {
       date: h('input', { class: 'input', type: 'date', value: base.date }),
       start: h('input', { class: 'input', type: 'time', value: base.start, step: 1800 }),
       end: h('input', { class: 'input', type: 'time', value: base.end, step: 1800 }),
-      venue: h('input', { class: 'input', value: base.venue, placeholder: '예) 법원읍 테니스장', list: 'venue-list' }),
-      mapUrl: h('input', { class: 'input', type: 'url', value: base.mapUrl || '', placeholder: '비우면 경기장명으로 네이버 지도 검색' }),
+      pick: select({ class: 'input' }, [...list.map((v) => [v.id, v.name]), [NEW, '＋ 새 경기장 직접 입력']], cur ? cur.id : base.venue || !list.length ? NEW : list[0].id),
+      venue: h('input', { class: 'input', value: cur ? '' : base.venue, placeholder: '예) 법원읍 테니스장' }),
+      address: h('input', { class: 'input', value: cur ? '' : base.address || '', placeholder: '예) 경기 파주시 법원읍 …' }),
+      mapUrl: h('input', { class: 'input', type: 'url', value: cur ? '' : base.mapUrl || '', placeholder: '선택 · 비우면 주소로 지도 검색' }),
+      keep: h('input', { type: 'checkbox', checked: true }),
       courts: h('input', { class: 'input', value: base.courts, placeholder: '예) 3, 4' }),
       capacity: h('input', { class: 'input', type: 'number', min: 0, inputMode: 'numeric', value: base.capacity || '', placeholder: '비우면 제한 없음' }),
       repeat: select({ class: 'input' }, [[1, '반복 안 함'], [2, '매주 · 2주'], [4, '매주 · 4주'], [8, '매주 · 8주'], [12, '매주 · 12주']], 1),
       booker: h('input', { class: 'input', value: base.booker || '' }),
       note: h('input', { class: 'input', value: base.note || '', placeholder: '선택 사항' }),
     };
-    f.venue.addEventListener('change', () => {
-      if (f.mapUrl.value.trim()) return;
-      const prev = [...state.schedules].filter((x) => x.venue === f.venue.value.trim() && x.mapUrl).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
-      if (prev) f.mapUrl.value = prev.mapUrl;
-    });
+    // 저장된 경기장 → 주소 · 지도 미리보기, 새 경기장 → 입력칸
+    const venueBox = h('div', { class: 'stack' });
+    const renderVenue = () => {
+      const v = list.find((x) => x.id === f.pick.value);
+      venueBox.replaceChildren(
+        ...(v
+          ? [h('div', { class: 'venue-info' }, h('span', {}, v.address || '주소 미등록 · 경기장명으로 지도 검색'), mapLink({ venue: v.name, address: v.address, mapUrl: v.mapUrl }))]
+          : [
+              field('새 경기장 이름', f.venue),
+              field('주소', f.address, '주소를 넣으면 지도가 자동으로 연결돼요'),
+              field('네이버 지도 링크', f.mapUrl, '선택 사항 · 네이버 지도 앱 → 공유 → 링크 복사'),
+              h('label', { class: 'check' }, f.keep, h('span', {}, '경기장 목록에 저장 (다음에도 고르기)')),
+            ])
+      );
+    };
+    f.pick.addEventListener('change', renderVenue);
+    renderVenue();
+    const pickVenue = () => {
+      const v = list.find((x) => x.id === f.pick.value);
+      if (v) return { venue: v.name, address: v.address || '', mapUrl: v.mapUrl || '' };
+      return { venue: f.venue.value.trim(), address: f.address.value.trim(), mapUrl: f.mapUrl.value.trim(), isNew: true };
+    };
     const save = async () => {
-      if (!f.venue.value.trim()) return toast('경기장명을 입력해 주세요');
+      const pv = pickVenue();
+      if (!pv.venue) return toast('경기장 이름을 입력해 주세요');
       if (!f.date.value) return toast('날짜를 선택해 주세요');
       if (f.end.value <= f.start.value) return toast('종료 시간이 시작보다 늦어야 해요');
       const doc = {
@@ -241,16 +275,21 @@ export function editSchedule(s, date) {
         date: f.date.value,
         start: f.start.value,
         end: f.end.value,
-        venue: f.venue.value.trim(),
+        venue: pv.venue,
+        address: pv.address,
         courts: f.courts.value.trim(),
         capacity: Math.max(0, parseInt(f.capacity.value, 10) || 0),
         booker: f.booker.value.trim(),
         note: f.note.value.trim(),
-        mapUrl: f.mapUrl.value.trim(),
+        mapUrl: pv.mapUrl,
         createdBy: s?.createdBy || me().id,
         createdAt: s?.createdAt || Date.now(),
       };
       const ops = [{ type: 'put', col: 'schedules', doc }];
+      // 새 경기장을 목록에 저장 (같은 이름이 있으면 그대로)
+      if (pv.isNew && f.keep.checked && !list.some((v) => v.name === pv.venue)) {
+        ops.push({ type: 'put', col: 'settings', doc: { ...settings(), id: 'main', venues: [...list, { id: uid('v_'), name: pv.venue, address: pv.address, mapUrl: pv.mapUrl }] } });
+      }
       // 날짜가 바뀌면 출석/경기 날짜도 맞춰줌
       if (s && s.date !== doc.date) {
         attendanceOf(s.id).forEach((a) => ops.push({ type: 'put', col: 'attendance', doc: { ...a, date: doc.date } }));
@@ -269,11 +308,10 @@ export function editSchedule(s, date) {
     return h(
       'div',
       { class: 'stack' },
-      h('datalist', { id: 'venue-list' }, venues.map((v) => h('option', { value: v }))),
       field('날짜', f.date),
       h('div', { class: 'row gap' }, field('시작', f.start), field('종료', f.end)),
-      field('경기장명', f.venue),
-      field('네이버 지도 링크', f.mapUrl, '네이버 지도 앱에서 경기장 → 공유 → 링크 복사 후 붙여넣기'),
+      field('경기장', f.pick),
+      venueBox,
       field('코트 번호', f.courts, '여러 면이면 쉼표로 구분 → 자동 대진 코트 수'),
       field('정원', f.capacity, '코트 수 × 4명 추천 (예: 2면 → 8명). 넘으면 대기로 받아요'),
       !s && field('반복', f.repeat, '같은 요일·시간으로 매주 등록'),

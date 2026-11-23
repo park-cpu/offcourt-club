@@ -5,6 +5,8 @@ import { pageHead, backLink, linkRow, playerForm, genderPicker, GENDER_LABEL } f
 import { seedDemo } from '../demo.js';
 import { itemsAdmin } from './admin-items.js';
 import { ballsAdmin } from './admin-balls.js';
+import { venuesAdmin } from './admin-venues.js';
+import { venueList } from './schedule.js';
 
 const guard = () => {
   if (isAdmin()) return null;
@@ -21,6 +23,7 @@ export function adminView(sub) {
   if (sub === 'data') return dataAdmin();
   if (sub === 'items') return itemsAdmin();
   if (sub === 'balls') return ballsAdmin();
+  if (sub === 'venues') return venuesAdmin();
   const zero = state.players.filter((p) => p.active !== false && (derived().coins.bal.get(p.id) ?? 0) <= 0).length;
   return h(
     'div',
@@ -32,6 +35,7 @@ export function adminView(sub) {
       { class: 'menu' },
       linkRow('회원 관리', '#/admin/players', `${state.players.filter((p) => p.active !== false).length}명 ›`),
       linkRow('코인 지급 · 회수', '#/admin/coins', zero ? `코인 0개 ${zero}명 ›` : '›'),
+      linkRow('경기장 관리', '#/admin/venues', `${venueList().length}곳 ›`),
       linkRow('시즌 관리', '#/admin/seasons', `${settings().seasons.length}개 ›`),
       linkRow('아바타 아이템', '#/admin/items', `${customItems().length}개 ›`),
       linkRow('볼 지급 · 미션 설정', '#/admin/balls'),
