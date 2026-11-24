@@ -6,6 +6,17 @@ import { pageHead, backLink, matchCard, nameTag } from './common.js';
 import { scoreSheet } from './play.js';
 import { avatarBlock } from './avatar.js';
 
+// 화면에 보이는 점수(반올림)가 같으면 같은 등수 (1, 2, 2, 4 …). rows는 이미 정렬된 상태
+export function withPlaces(rows, score) {
+  let prev = null;
+  rows.forEach((r, i) => {
+    const v = Math.round(score(r));
+    r.place = i > 0 && v === prev ? rows[i - 1].place : i + 1;
+    prev = v;
+  });
+  return rows;
+}
+
 // type: 'official'(공식전 시즌 순위) | 'coin'(코인전 랭킹)
 export function rankList(season, type = 'official') {
   const st = seasonStats(season, type);
@@ -13,7 +24,7 @@ export function rankList(season, type = 'official') {
   const rows = activePlayers().map((p) => ({ ...p, ...st.get(p.id) }));
   const sort = (a, b) => b.sp - a.sp || b.winRate - a.winRate || b.games - a.games;
   return {
-    ranked: rows.filter((r) => r.games >= min).sort(sort),
+    ranked: withPlaces(rows.filter((r) => r.games >= min).sort(sort), (r) => r.sp),
     pending: rows.filter((r) => (r.games > 0 || r.adapt > 0) && r.games < min).sort(sort),
     min,
   };
@@ -52,8 +63,8 @@ export function rankView(a, b) {
   const row = (r, i) =>
     h(
       'a',
-      { class: 'rank-row' + (r.id === myId ? ' me' : '') + (i != null && i < 3 ? ' top' : ''), href: `#/p/${r.id}` },
-      h('span', { class: 'rank-num' }, i == null ? '–' : i + 1),
+      { class: 'rank-row' + (r.id === myId ? ' me' : '') + (i != null && r.place <= 3 ? ' top' : ''), href: `#/p/${r.id}` },
+      h('span', { class: 'rank-num' }, i == null ? '–' : r.place),
       h(
         'span',
         { class: 'rank-main' },
@@ -94,6 +105,7 @@ function ratingTable() {
   const rows = activePlayers()
     .map((p) => ({ ...p, r: ratings.get(p.id), s: allStats.get(p.id) }))
     .sort((a, b) => b.r - a.r);
+  withPlaces(rows, (r) => r.r);
   return h(
     'div',
     { class: 'stack' },
@@ -105,7 +117,7 @@ function ratingTable() {
         h(
           'a',
           { class: 'rank-row', href: `#/p/${r.id}` },
-          h('span', { class: 'rank-num' }, i + 1),
+          h('span', { class: 'rank-num' }, r.place),
           h('span', { class: 'rank-main' }, h('strong', {}, r.name), h('small', {}, `NTRP ${ntrpText(r.ntrp)} → 추정 ${ratingToNtrp(r.r).toFixed(1)} · ${r.s.games}경기`)),
           h('span', { class: 'sp' }, Math.round(r.r))
         )
@@ -125,8 +137,8 @@ export function profileView(id) {
   const gs = season ? seasonStats(season, 'singles').get(id) : null;
   const rankOf = (type) => {
     if (!season) return '';
-    const i = rankList(season, type).ranked.findIndex((r) => r.id === id);
-    return i >= 0 ? ` · ${i + 1}위` : '';
+    const r = rankList(season, type).ranked.find((x) => x.id === id);
+    return r ? ` · ${r.place}위` : '';
   };
   const s = allStats.get(id);
   const r = ratings.get(id);

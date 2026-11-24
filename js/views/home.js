@@ -25,12 +25,12 @@ export function homeView() {
   if (u) {
     const { coins, ratings } = derived();
     const st = season ? seasonStats(season, 'official').get(u.id) : null;
-    const pos = ranks ? ranks.ranked.findIndex((r) => r.id === u.id) : -1;
+    const mine = ranks ? ranks.ranked.find((r) => r.id === u.id) : null;
     mineCard = h(
       'a',
       { class: 'block stats4', href: `#/p/${u.id}` },
       stat('코인', coins.bal.get(u.id) ?? 0, (coins.bal.get(u.id) ?? 0) <= 0 ? 'warn' : ''),
-      stat('공식전 순위', pos >= 0 ? `${pos + 1}위` : '-'),
+      stat('공식전 순위', mine ? `${mine.place}위` : '-'),
       stat('공식전 전적', st && st.games ? `${st.wins}-${st.losses}` : '-'),
       stat('레이팅', Math.round(ratings.get(u.id) || 0))
     );
@@ -48,7 +48,7 @@ export function homeView() {
         'div',
         { class: 'podium-cols' },
         top.map((r, i) =>
-          h('a', { class: 'podium-col' + (u && r.id === u.id ? ' me' : ''), href: `#/p/${r.id}` }, h('span', { class: 'rank-num' }, i + 1), h('strong', {}, r.name), h('span', { class: 'muted small' }, `${Math.round(r.sp)} pt`))
+          h('a', { class: 'podium-col' + (u && r.id === u.id ? ' me' : ''), href: `#/p/${r.id}` }, h('span', { class: 'rank-num' }, r.place), h('strong', {}, r.name), h('span', { class: 'muted small' }, `${Math.round(r.sp)} pt`))
         )
       )
     );
