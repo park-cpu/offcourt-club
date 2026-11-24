@@ -23,11 +23,20 @@ const ZC = -0.8;          // 내 타점 (베이스라인 살짝 뒤)
 const ZCPU = LEN + 0.7;   // 상대 타점
 const PLAYER_Z = -1.3, CPU_Z = LEN + 1.0;
 
+// 상대 샷 종류 (v1.12.0~): 어려움 · 프로에서 리듬을 바꿔 타이밍을 뺏음
+// tf = 날아오는 시간 배수, rest = 바운드 높이, damp = 바운드 뒤 속도 (작을수록 늦게 옴)
+const SPINS = {
+  drive: { tf: 1,    rest: 0.6,  damp: 0.88 },
+  flat:  { tf: 0.78, rest: 0.5,  damp: 0.98, tag: 'FLAT',  color: '#ff6b5a' }, // 빠르고 낮게 쭉
+  loop:  { tf: 1.45, rest: 0.72, damp: 0.78, tag: 'LOOP',  color: '#7ad3ff' }, // 높게 떠서 느리게
+  slice: { tf: 1.12, rest: 0.36, damp: 0.66, tag: 'SLICE', color: '#c9a7ff' }, // 낮게 깔리며 멈칫
+  kick:  { tf: 0.95, rest: 0.8,  damp: 1.1,  tag: 'KICK',  color: '#ffd23a' }, // 튀고 나서 빨라짐
+};
 const DIFFS = {
-  easy:   { label: '쉬움',   en: 'EASY',   win: [48, 95, 160], tf: 1.55, minTf: 1.05, spread: 1.6, depth: [3.5, 7.5], cpuSpd: 4.0, react: 0.32, mult: 1,   guide: true,  auto: true,  marker: true },
-  normal: { label: '보통',   en: 'NORMAL', win: [36, 72, 125], tf: 1.3,  minTf: 0.86, spread: 2.6, depth: [2.6, 6.8], cpuSpd: 5.0, react: 0.22, mult: 1.5, guide: false, auto: false, marker: true },
-  hard:   { label: '어려움', en: 'HARD',   win: [27, 56, 98],  tf: 1.1,  minTf: 0.74, spread: 3.3, depth: [1.8, 5.6], cpuSpd: 6.0, react: 0.15, mult: 2,   guide: false, auto: false, marker: false },
-  pro:    { label: '프로',   en: 'PRO',    win: [19, 42, 78],  tf: 0.96, minTf: 0.64, spread: 3.8, depth: [1.2, 4.8], cpuSpd: 7.0, react: 0.1,  mult: 3,   guide: false, auto: false, marker: false },
+  easy:   { label: '쉬움',   en: 'EASY',   win: [48, 95, 160], tf: 1.55, minTf: 1.05, spread: 1.6, depth: [3.5, 7.5], cpuSpd: 4.0, react: 0.32, mult: 1,   guide: true,  auto: true,  marker: true, vary: 0,    jitter: 0 },
+  normal: { label: '보통',   en: 'NORMAL', win: [36, 72, 125], tf: 1.3,  minTf: 0.86, spread: 2.6, depth: [2.6, 6.8], cpuSpd: 5.0, react: 0.22, mult: 1.5, guide: false, auto: false, marker: true, vary: 0,    jitter: 0 },
+  hard:   { label: '어려움', en: 'HARD',   win: [27, 56, 98],  tf: 1.1,  minTf: 0.74, spread: 3.3, depth: [1.8, 5.6], cpuSpd: 6.0, react: 0.15, mult: 2,   guide: false, auto: false, marker: false, vary: 0.5,  jitter: 0.07 },
+  pro:    { label: '프로',   en: 'PRO',    win: [19, 42, 78],  tf: 0.96, minTf: 0.64, spread: 3.8, depth: [1.2, 4.8], cpuSpd: 7.0, react: 0.1,  mult: 3,   guide: false, auto: false, marker: false, vary: 0.7,  jitter: 0.12 },
 };
 const QUAL = {
   perfect: { text: 'PERFECT!', color: '#ffd23a', pts: 100, noise: 0.05, skew: 0, depthN: 0.3, spd: 0.9, big: 2 },
@@ -246,26 +255,26 @@ const SFX = {
 };
 
 // ── 공 (해석적 궤적: 정확한 타이밍 판정용) ─────────────
+const DAMP = 0.88, REST = 0.6;
 function launch(from, to, tf, opts = {}) {
   const [x0, z0, h0] = from, [tx, tz] = to;
   const vx = (tx - x0) / tf, vz = (tz - z0) / tf;
   const vh = (G * tf * tf / 2 - h0) / tf;
-  return { x0, z0, h0, tx, tz, vx, vz, vh, tf, t0: game.t, stop: !!opts.stop, bounces: 0, x: x0, z: z0, h: h0 };
+  return { x0, z0, h0, tx, tz, vx, vz, vh, tf, t0: game.t, stop: !!opts.stop, rest: opts.rest || REST, damp: opts.damp || DAMP, bounces: 0, x: x0, z: z0, h: h0 };
 }
-const DAMP = 0.88, REST = 0.6;
 // 직접 이동일 때 몸과 타점 거리(m): jam 미만 = 너무 붙음, ok 이하 = 정상, max 초과 = 닿지 않음
 const REACH = { jam: 0.25, ok: 1.25, max: 1.9 };
 const RUN = 6.8; // 달리기 속도 (m/s)
 function ballAt(b, t) {
   if (t <= b.tf) return { x: b.x0 + b.vx * t, z: b.z0 + b.vz * t, h: Math.max(0, b.h0 + b.vh * t - (G * t * t) / 2), n: 0 };
   if (b.stop) return { x: b.tx, z: b.tz, h: 0, n: 1 };
-  let s = t - b.tf, v = (G * b.tf - b.vh) * REST, n = 1;
+  let s = t - b.tf, v = (G * b.tf - b.vh) * b.rest, n = 1;
   let seg = (2 * v) / G;
-  while (s > seg && v > 0.4) { s -= seg; v *= REST; seg = (2 * v) / G; n++; }
-  return { x: b.tx + b.vx * DAMP * (t - b.tf), z: b.tz + b.vz * DAMP * (t - b.tf), h: Math.max(0, v * s - (G * s * s) / 2), n };
+  while (s > seg && v > 0.4) { s -= seg; v *= b.rest; seg = (2 * v) / G; n++; }
+  return { x: b.tx + b.vx * b.damp * (t - b.tf), z: b.tz + b.vz * b.damp * (t - b.tf), h: Math.max(0, v * s - (G * s * s) / 2), n };
 }
 // 공이 z 평면을 지나는 시간 (바운드 뒤)
-const timeAtZ = (b, z) => b.tf + (z - b.tz) / (b.vz * DAMP);
+const timeAtZ = (b, z) => b.tf + (z - b.tz) / (b.vz * b.damp);
 
 // ── 게임 상태 ─────────────────────────────────────────
 const game = {
@@ -313,7 +322,18 @@ function cpuShot(slow = 1, fromBall = null) {
   let tf = Math.max(d.minTf, d.tf * (1 - 0.035 * Math.floor(st.rally / 3)));
   if (game.shot) tf *= game.shot.q === 'perfect' ? 1 + 0.18 * game.shot.power : game.shot.q === 'good' ? 0.92 : 1;
   tf *= slow;
-  game.ball = launch(from, [tx, tz], tf);
+  // 리듬 바꾸기: 같은 종류를 연달아 쓰지 않고, 속도도 살짝씩 흔듦 (첫 공 · 서브는 보통 공)
+  let spin = 'drive';
+  if (d.vary && slow === 1 && Math.random() < d.vary) {
+    const pool = ['flat', 'loop', 'slice', 'kick'].filter((k) => k !== game.lastSpin);
+    spin = pool[Math.floor(Math.random() * pool.length)];
+  }
+  game.lastSpin = spin;
+  const S = SPINS[spin];
+  tf = Math.max(d.minTf * 0.8, tf * S.tf * (1 + (Math.random() * 2 - 1) * d.jitter));
+  game.ball = launch(from, [tx, tz], tf, { rest: S.rest, damp: S.damp });
+  game.ball.spin = spin;
+  if (S.tag && game.diff === 'hard') popup(S.tag, S.color, 1, (() => { const [x, y] = proj(from[0], ZCPU, 3); return [x, y - 6]; })());
   game.mode = 'in';
   game.swung = false;
   game.shot = null;
