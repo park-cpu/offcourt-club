@@ -9,7 +9,7 @@ export const RULES = {
   ratingBase: 1000,
   ratingPerNtrp: 200,
   // K 계수: 처음 10경기는 빠르게 자리 잡도록 크게
-  kProvisional: 32,
+  kProvisional: 40, // v1.11.1~ (예전 32)
   kNormal: 20,
   provisionalGames: 10,
   // 시즌 포인트는 경기 수와 상관없이 모두 같은 K로 계산 (신입 포인트 부풀림 방지)
