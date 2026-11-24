@@ -1,7 +1,7 @@
 import { h, empty, pct, fmtNum, ntrpText, toast, confirmSheet } from '../ui.js';
-import { state, settings, currentSeason, seasonStats, derived, activePlayers, careerText, me, isAdmin, fmtShort, today, ballRulesAt, weekRules, weekStart } from '../store.js';
+import { state, settings, currentSeason, seasonStats, derived, activePlayers, careerText, me, isAdmin, fmtShort, today, addDays, playersMap, ballRulesAt, weekRules, weekStart } from '../store.js';
 import { put, uid } from '../db.js';
-import { ratingToNtrp, RULES, matchOrder, canBorrow, computeRelations, missionLabel } from '../rules.js';
+import { ratingToNtrp, RULES, matchOrder, isRated, canBorrow, computeRelations, missionLabel } from '../rules.js';
 import { pageHead, backLink, matchCard, nameTag } from './common.js';
 import { scoreSheet } from './play.js';
 import { avatarBlock } from './avatar.js';
@@ -100,29 +100,38 @@ export function rankView(a, b) {
   );
 }
 
+// 레이팅 탭 (v1.11.3~): 적응 기간(10경기)을 마치고 최근 RULES.ratingActiveDays일 안에 경기한 사람만 등수.
+// 나머지는 '적응 중' · '쉬는 중'으로 등수 없이 표시 (레이팅 값 · 대진 사용은 그대로)
 function ratingTable() {
   const { ratings, allStats } = derived();
+  const players = playersMap();
+  const last = new Map();
+  for (const m of state.matches)
+    if (isRated(m, players)) for (const id of [...m.teamA, ...m.teamB]) if ((last.get(id) || '') < m.date) last.set(id, m.date);
+  const since = addDays(today(), -RULES.ratingActiveDays);
   const rows = activePlayers()
-    .map((p) => ({ ...p, r: ratings.get(p.id), s: allStats.get(p.id) }))
+    .map((p) => ({ ...p, r: ratings.get(p.id), s: allStats.get(p.id), last: last.get(p.id) || '' }))
     .sort((a, b) => b.r - a.r);
-  withPlaces(rows, (r) => r.r);
+  const adapting = rows.filter((r) => r.s.games < RULES.provisionalGames);
+  const resting = rows.filter((r) => r.s.games >= RULES.provisionalGames && r.last < since);
+  const ranked = withPlaces(rows.filter((r) => r.s.games >= RULES.provisionalGames && r.last >= since), (r) => r.r);
+  const row = (r, num, extra) =>
+    h(
+      'a',
+      { class: 'rank-row', href: `#/p/${r.id}` },
+      h('span', { class: 'rank-num' }, num),
+      h('span', { class: 'rank-main' }, h('strong', {}, r.name), h('small', {}, `NTRP ${ntrpText(r.ntrp)} → 추정 ${ratingToNtrp(r.r).toFixed(1)} · ${extra}`)),
+      h('span', { class: 'sp' }, Math.round(r.r))
+    );
   return h(
     'div',
     { class: 'stack' },
-    h('p', { class: 'muted small' }, '레이팅은 시즌과 관계없이 누적되는 실력 지표예요. 대진 밸런스에 사용됩니다.'),
-    h(
-      'div',
-      { class: 'rank-list' },
-      rows.map((r, i) =>
-        h(
-          'a',
-          { class: 'rank-row', href: `#/p/${r.id}` },
-          h('span', { class: 'rank-num' }, r.place),
-          h('span', { class: 'rank-main' }, h('strong', {}, r.name), h('small', {}, `NTRP ${ntrpText(r.ntrp)} → 추정 ${ratingToNtrp(r.r).toFixed(1)} · ${r.s.games}경기`)),
-          h('span', { class: 'sp' }, Math.round(r.r))
-        )
-      )
-    )
+    h('p', { class: 'muted small' }, `레이팅은 시즌과 관계없이 누적되는 실력 지표예요. 대진 밸런스에 사용됩니다. 적응 기간(${RULES.provisionalGames}경기)을 마치고 최근 ${RULES.ratingActiveDays}일 안에 경기한 회원만 등수가 붙어요.`),
+    ranked.length ? h('div', { class: 'rank-list' }, ranked.map((r) => row(r, r.place, `${r.s.games}경기`))) : empty('아직 등수가 붙은 회원이 없어요'),
+    adapting.length > 0 &&
+      h('section', { class: 'block' }, h('h2', {}, `적응 중 (${RULES.provisionalGames}경기 미만)`), h('div', { class: 'rank-list dim' }, adapting.map((r) => row(r, '–', `적응 중 ${r.s.games}/${RULES.provisionalGames}`)))),
+    resting.length > 0 &&
+      h('section', { class: 'block' }, h('h2', {}, `쉬는 중 (${RULES.ratingActiveDays}일 넘게 경기 없음)`), h('div', { class: 'rank-list dim' }, resting.map((r) => row(r, '–', `마지막 경기 ${r.last.replaceAll("-", ".")}`))))
   );
 }
 

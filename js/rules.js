@@ -12,6 +12,8 @@ export const RULES = {
   kProvisional: 40, // v1.11.1~ (예전 32)
   kNormal: 20,
   provisionalGames: 10,
+  // 레이팅 탭 등수: 최근 이 기간(일) 안에 경기한 회원만 (v1.11.3~)
+  ratingActiveDays: 90,
   // 시즌 포인트는 경기 수와 상관없이 모두 같은 K로 계산 (신입 포인트 부풀림 방지)
   kSeason: 20,
   // 시즌 포인트: 경기 참여 보너스
