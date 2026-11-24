@@ -461,7 +461,8 @@ h2.sub { margin-top: 18px; font-size: 15px; color: var(--point); }
 /* ── 아바타 (픽셀) ───────────────────────────── */
 canvas.pixel { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
 .stage-wrap { background: var(--card); border-radius: var(--r); padding: 8px; }
-.stage-wrap canvas.stage { width: 100%; height: auto; aspect-ratio: 1; border-radius: 8px; touch-action: none; }
+.stage-wrap canvas.stage { width: 100%; height: auto; aspect-ratio: 1; border-radius: 8px; touch-action: pan-x pan-y; }
+.stage-wrap canvas.stage.grab { touch-action: none; }
 .stage-wrap.small { max-width: 240px; margin: 0 auto; width: 100%; }
 .avatar-block { display: flex; flex-direction: column; gap: 8px; }
 .avatar-block .stage-wrap { max-width: 320px; width: 100%; margin: 0 auto; }

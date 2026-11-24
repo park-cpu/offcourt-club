@@ -94,8 +94,11 @@ export function avatarView(tab) {
   );
 }
 
+// 평소엔 무대 위에서도 화면 스크롤 가능. 소품을 선택한 동안만 끌기 모드(스크롤 잠금)
 function stageDrag(cv, items, redraw, done) {
   let drag = null;
+  const grab = () => cv.classList.toggle('grab', ed.sel != null);
+  grab();
   const pos = (e) => {
     const r = cv.getBoundingClientRect();
     return [((e.clientX - r.left) / r.width) * STAGE_W, ((e.clientY - r.top) / r.height) * STAGE_H];
@@ -107,6 +110,7 @@ function stageDrag(cv, items, redraw, done) {
       const src = sourceOf(items.get(deco[i].id));
       if (src && x >= deco[i].x && y >= deco[i].y && x < deco[i].x + src.width && y < deco[i].y + src.height) {
         ed.sel = i;
+        grab();
         drag = { i, dx: x - deco[i].x, dy: y - deco[i].y, w: src.width, h: src.height, moved: false };
         try { cv.setPointerCapture(e.pointerId); } catch {}
         redraw();
@@ -115,6 +119,7 @@ function stageDrag(cv, items, redraw, done) {
     }
     if (ed.sel != null) {
       ed.sel = null;
+      grab();
       done();
     }
   });

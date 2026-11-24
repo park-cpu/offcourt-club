@@ -22,14 +22,15 @@ export function rankList(season, type = 'official') {
 const RANK_TABS = [
   ['official', '공식전'],
   ['coin', '코인전'],
+  ['singles', '단식'],
   ['rating', '레이팅'],
 ];
 
 // #/rank → 공식전(현재 시즌) · #/rank/coin[/시즌] · #/rank/official/시즌 · #/rank/rating
 export function rankView(a, b) {
   const seasons = [...settings().seasons].sort((x, y) => y.start.localeCompare(x.start));
-  const mode = a === 'rating' || a === 'coin' || a === 'official' ? a : 'official';
-  const sid = a === 'coin' || a === 'official' ? b : a;
+  const mode = ['rating', 'coin', 'official', 'singles'].includes(a) ? a : 'official';
+  const sid = mode !== 'rating' && a === mode ? b : a;
   const season = mode !== 'rating' ? seasons.find((s) => s.id === sid) || currentSeason() : null;
 
   const tabs = h(
@@ -44,6 +45,7 @@ export function rankView(a, b) {
     return h('div', { class: 'page' }, pageHead('순위', 'Ranking'), tabs, empty('등록된 시즌이 없어요. 관리자 메뉴에서 시즌을 만들어 주세요.'));
 
   const isCoin = mode === 'coin';
+  const label = { official: '공식전', coin: '코인전', singles: '단식' }[mode];
   const { ranked, pending, min } = rankList(season, mode);
   const myId = me()?.id;
   const coinText = (n) => `코인 ${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n)}`;
@@ -68,15 +70,17 @@ export function rankView(a, b) {
     tabs,
     seasons.length > 1 &&
       h('div', { class: 'chips-scroll' }, seasons.map((s) => h('a', { class: 'chip' + (s.id === season.id ? ' on' : ''), href: `#/rank/${mode}/${s.id}` }, s.name))),
-    h('section', { class: 'season-band' }, h('strong', {}, `${season.name} · ${isCoin ? '코인전' : '공식전'}`), h('span', {}, `${fmtShort(season.start)} – ${fmtShort(season.end)}`)),
+    h('section', { class: 'season-band' }, h('strong', {}, `${season.name} · ${label}`), h('span', {}, `${fmtShort(season.start)} – ${fmtShort(season.end)}`)),
     h(
       'p',
       { class: 'muted small' },
       isCoin
         ? `코인전 경기만 반영 · 포인트 = 레이팅 변동 + 경기당 ${RULES.participationBonus}점 + 코인 순수익 × ${RULES.coinPoint}점`
-        : `공식전 경기만 반영 · 포인트 = 레이팅 변동 + 경기당 ${RULES.participationBonus}점`
+        : mode === 'singles'
+          ? `단식(1:1) 공식전 · 코인전 경기만 반영 · 포인트 = 레이팅 변동 + 경기당 ${RULES.participationBonus}점`
+          : `공식전 경기만 반영 · 포인트 = 레이팅 변동 + 경기당 ${RULES.participationBonus}점`
     ),
-    ranked.length ? h('div', { class: 'rank-list' }, ranked.map((r, i) => row(r, i))) : empty(`아직 ${isCoin ? '코인전' : '공식전'} ${min}경기 이상 치른 사람이 없어요`),
+    ranked.length ? h('div', { class: 'rank-list' }, ranked.map((r, i) => row(r, i))) : empty(`아직 ${label} ${min}경기 이상 치른 사람이 없어요`),
     pending.length > 0 &&
       h('section', { class: 'block' }, h('h2', {}, `순위 산정 대기 (${min}경기 미만)`), h('div', { class: 'rank-list dim' }, pending.map((r) => row(r, null)))),
     h('a', { class: 'link-row', href: '#/avatars' }, h('span', {}, '회원 아바타 구경'), h('span', { class: 'muted' }, '›')),
@@ -117,6 +121,7 @@ export function profileView(id) {
   const season = currentSeason();
   const ss = season ? seasonStats(season, 'official').get(id) : null;
   const cs = season ? seasonStats(season, 'coin').get(id) : null;
+  const gs = season ? seasonStats(season, 'singles').get(id) : null;
   const rankOf = (type) => {
     if (!season) return '';
     const i = rankList(season, type).ranked.findIndex((r) => r.id === id);
@@ -150,7 +155,8 @@ export function profileView(id) {
       big('레이팅', Math.round(r), '', `추정 NTRP ${ratingToNtrp(r).toFixed(1)}`),
       big('통산', `${s.wins}-${s.losses}`, '', `승률 ${pct(s.winRate)}`),
       big('공식전 포인트', ss && ss.games ? Math.round(ss.sp) : '-', '', ss && ss.games ? `${ss.wins}승 ${ss.losses}패${rankOf('official')}` : '이번 시즌 기록 없음'),
-      big('코인전 포인트', cs && cs.games ? Math.round(cs.sp) : '-', '', cs && cs.games ? `${cs.wins}승 ${cs.losses}패 · 코인 ${fmtNum(cs.coins)}${rankOf('coin')}` : '이번 시즌 기록 없음')
+      big('코인전 포인트', cs && cs.games ? Math.round(cs.sp) : '-', '', cs && cs.games ? `${cs.wins}승 ${cs.losses}패 · 코인 ${fmtNum(cs.coins)}${rankOf('coin')}` : '이번 시즌 기록 없음'),
+      gs && gs.games ? big('단식 포인트', Math.round(gs.sp), '', `${gs.wins}승 ${gs.losses}패${rankOf('singles')}`) : ''
     ),
     loanBlock(p, coins),
     relationBlocks(id),

@@ -138,7 +138,9 @@ export function computeStats(players, matches, deltas, range, type) {
   for (const id of players.keys())
     stats.set(id, { games: 0, wins: 0, losses: 0, gw: 0, gl: 0, sp: 0, coins: 0, streak: 0, best: 0, form: [] });
   const inRange = (m) => !range || ((!range.start || m.date >= range.start) && (!range.end || m.date <= range.end));
-  const list = matches.filter((m) => isRated(m, players) && inRange(m) && (!type || m.type === type)).sort(matchOrder);
+  // type 'singles' = 단식(1:1) 공식전 · 코인전 합산
+  const typeOk = (m) => !type || (type === 'singles' ? m.teamA.length === 1 && m.teamB.length === 1 && (m.type === 'official' || m.type === 'coin') : m.type === type);
+  const list = matches.filter((m) => isRated(m, players) && inRange(m) && typeOk(m)).sort(matchOrder);
   for (const m of list) {
     const w = winnerSide(m);
     const d = deltas.get(m.id) || new Map();
