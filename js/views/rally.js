@@ -33,11 +33,14 @@ const SPINS = {
   kick:  { tf: 0.95, rest: 0.8,  damp: 1.1,  tag: 'KICK',  color: '#ffd23a' }, // 튀고 나서 빨라짐
 };
 const DIFFS = {
-  easy:   { label: '쉬움',   en: 'EASY',   win: [48, 95, 160], tf: 1.55, minTf: 1.05, spread: 1.6, depth: [3.5, 7.5], cpuSpd: 4.0, react: 0.32, mult: 1,   guide: true,  auto: true,  marker: true, vary: 0,    jitter: 0 },
-  normal: { label: '보통',   en: 'NORMAL', win: [36, 72, 125], tf: 1.3,  minTf: 0.86, spread: 2.6, depth: [2.6, 6.8], cpuSpd: 5.0, react: 0.22, mult: 1.5, guide: false, auto: false, marker: true, vary: 0,    jitter: 0 },
-  hard:   { label: '어려움', en: 'HARD',   win: [27, 56, 98],  tf: 1.1,  minTf: 0.74, spread: 3.3, depth: [1.8, 5.6], cpuSpd: 6.0, react: 0.15, mult: 2,   guide: false, auto: false, marker: false, vary: 0.5,  jitter: 0.07 },
-  pro:    { label: '프로',   en: 'PRO',    win: [19, 42, 78],  tf: 0.96, minTf: 0.64, spread: 3.8, depth: [1.2, 4.8], cpuSpd: 7.0, react: 0.1,  mult: 3,   guide: false, auto: false, marker: false, vary: 0.7,  jitter: 0.12 },
+  easy:   { label: '쉬움',   en: 'EASY',   win: [48, 95, 160], tf: 1.55, minTf: 1.05, spread: 1.6, depth: [3.5, 7.5], cpuSpd: 4.0, react: 0.32, mult: 1,   guide: true,  auto: true,  marker: true, vary: 0,    jitter: 0, band: 0.14 },
+  normal: { label: '보통',   en: 'NORMAL', win: [36, 72, 125], tf: 1.3,  minTf: 0.86, spread: 2.6, depth: [2.6, 6.8], cpuSpd: 5.0, react: 0.22, mult: 1.5, guide: false, auto: false, marker: true, vary: 0,    jitter: 0, band: 0.11 },
+  hard:   { label: '어려움', en: 'HARD',   win: [27, 56, 98],  tf: 1.1,  minTf: 0.74, spread: 3.3, depth: [1.8, 5.6], cpuSpd: 6.0, react: 0.15, mult: 2,   guide: false, auto: false, marker: false, vary: 0.5,  jitter: 0.07, band: 0.09 },
+  pro:    { label: '프로',   en: 'PRO',    win: [19, 42, 78],  tf: 0.96, minTf: 0.64, spread: 3.8, depth: [1.2, 4.8], cpuSpd: 7.0, react: 0.1,  mult: 3,   guide: false, auto: false, marker: false, vary: 0.7,  jitter: 0.12, band: 0.07 },
 };
+// 파워 라인 (v1.12.1~): 공마다 게이지에 목표 라인(pt)이 생김. 퍼펙트 = 타이밍 퍼펙트 + 힘이 라인 ± band 안
+const POWER_T = [0.45, 0.8]; // 목표 라인 범위
+const CHARGE_S = 0.85; // 게이지가 가득 차는 시간(초)
 const QUAL = {
   perfect: { text: 'PERFECT!', color: '#ffd23a', pts: 100, noise: 0.05, skew: 0, depthN: 0.3, spd: 0.9, big: 2 },
   great:   { text: 'GREAT',    color: '#7fe3ff', pts: 60,  noise: 0.13, skew: 0.18, depthN: 0.8, spd: 0.97, big: 1 },
@@ -333,6 +336,7 @@ function cpuShot(slow = 1, fromBall = null) {
   tf = Math.max(d.minTf * 0.8, tf * S.tf * (1 + (Math.random() * 2 - 1) * d.jitter));
   game.ball = launch(from, [tx, tz], tf, { rest: S.rest, damp: S.damp });
   game.ball.spin = spin;
+  game.ball.pt = POWER_T[0] + Math.random() * (POWER_T[1] - POWER_T[0]);
   if (S.tag && game.diff === 'hard') popup(S.tag, S.color, 1, (() => { const [x, y] = proj(from[0], ZCPU, 3); return [x, y - 6]; })());
   game.mode = 'in';
   game.swung = false;
@@ -353,7 +357,7 @@ function cpuShot(slow = 1, fromBall = null) {
 // 손을 뗀 순간 = 스윙
 function swing() {
   const p = game.player;
-  const power = game.charge ? Math.min(1, (game.t - game.charge.t) / 0.85) : 0;
+  const power = game.charge ? Math.min(1, (game.t - game.charge.t) / CHARGE_S) : 0;
   game.charge = null;
   if (game.phase !== 'play' || game.mode !== 'in' || game.swung) { p.pose = 'follow'; p.poseT = 0.3; return; }
   game.swung = true;
@@ -364,6 +368,12 @@ function swing() {
   if (err > d.win[2]) return; // 이미 지나감 (miss 처리됨)
   const a = Math.abs(err);
   let q = a <= d.win[0] ? 'perfect' : a <= d.win[1] ? 'great' : 'good';
+  // 파워 라인: 타이밍이 퍼펙트여도 힘이 라인에서 벗어나면 GREAT
+  const onLine = Math.abs(power - b.pt) <= d.band;
+  if (q === 'perfect' && !onLine) {
+    q = 'great';
+    popup(power < b.pt ? 'WEAK' : 'STRONG', '#ffb36b', 1, (() => { const [x, y] = proj(p.x, PLAYER_Z, 2.4); return [x, y - 18]; })());
+  }
   // 직접 이동: 타점과 몸의 거리 (라켓 자리 0.75m가 가장 좋음)
   if (!d.auto) {
     const dist = Math.abs(b.cx - p.x);
@@ -557,16 +567,25 @@ function draw() {
       for (let t = 0; t < Math.PI * 2; t += 0.3) g.fillRect(Math.round(rx + Math.cos(t) * r * 1.6), Math.round(ry + Math.sin(t) * r * 0.6), 1, 1);
     }
   }
-  // 파워 게이지
-  if (game.charge) {
-    const p = Math.min(1, (game.t - game.charge.t) / 0.85);
+  // 파워 게이지: 공이 오는 동안 목표 라인(흰 구간)을 미리 보여주고, 누르면 차오름
+  const aiming = b && game.phase === 'play' && game.mode === 'in' && !game.swung && b.pt != null;
+  if (game.charge || aiming) {
+    const p = game.charge ? Math.min(1, (game.t - game.charge.t) / CHARGE_S) : 0;
+    const GH = 36;
     const [px, py] = proj(game.player.x, PLAYER_Z);
-    const gx = Math.round(px) + (game.player.side > 0 ? -12 : 10), gy = Math.round(py) - 26;
-    g.fillStyle = '#000'; g.fillRect(gx - 1, gy - 1, 5, 26);
-    g.fillStyle = p >= 0.85 ? '#ff4a3a' : p >= 0.6 ? '#ffd23a' : '#5fe36a';
-    const hgt = Math.round(24 * p);
-    g.fillRect(gx, gy + 24 - hgt, 3, hgt);
-    g.fillStyle = '#fff'; g.fillRect(gx - 1, gy + Math.round(24 * 0.15), 5, 1);
+    const gx = Math.round(px) + (game.player.side > 0 ? -14 : 11), gy = Math.round(py) - GH - 4;
+    g.globalAlpha = game.charge ? 1 : 0.75;
+    g.fillStyle = '#000'; g.fillRect(gx - 1, gy - 1, 6, GH + 2);
+    if (aiming) {
+      const top = gy + GH - Math.round(GH * Math.min(1, b.pt + d.band)), bot = gy + GH - Math.round(GH * Math.max(0, b.pt - d.band));
+      g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(gx, top, 4, Math.max(1, bot - top));
+    }
+    const on = aiming && Math.abs(p - b.pt) <= d.band;
+    g.fillStyle = on ? '#ffd23a' : p >= 0.85 ? '#ff4a3a' : '#5fe36a';
+    const hgt = Math.round(GH * p);
+    g.fillRect(gx, gy + GH - hgt, 4, hgt);
+    if (aiming) { const ly = gy + GH - Math.round(GH * b.pt); g.fillStyle = '#fff'; g.fillRect(gx - 2, ly, 8, 1); }
+    g.globalAlpha = 1;
   }
   drawHud(g);
   // 글자 팝업
@@ -815,6 +834,7 @@ export function rallyView() {
         h('summary', {}, '점수 규칙'),
         h('ul', {},
           h('li', {}, '타이밍: PERFECT 100 · GREAT 60 · GOOD 30점 (난이도 배수 적용)'),
+          h('li', {}, '파워 라인: 공이 오면 게이지에 흰 선이 생겨요. 타이밍도 맞고 힘도 선에 맞아야 PERFECT (선을 벗어나면 WEAK · STRONG → GREAT)'),
           h('li', {}, '랠리 5개마다 콤보 +0.1배 (최대 2배), 퍼펙트 연속이면 보너스'),
           h('li', {}, '세게(빨간 칸) 치면 빠르지만, 퍼펙트가 아니면 길게 나갈 수 있어요'),
           h('li', {}, '구석으로 빠르게 치면 상대가 못 받아요 → WINNER +300'),
