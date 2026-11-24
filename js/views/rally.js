@@ -38,18 +38,29 @@ const DIFFS = {
   hard:   { label: '어려움', en: 'HARD',   win: [27, 56, 98],  tf: 1.1,  minTf: 0.74, spread: 3.3, depth: [1.8, 5.6], cpuSpd: 6.0, react: 0.15, mult: 2,   guide: false, auto: false, marker: false, vary: 0.5,  jitter: 0.07, band: 0.09 },
   pro:    { label: '프로',   en: 'PRO',    win: [19, 42, 78],  tf: 0.96, minTf: 0.64, spread: 3.8, depth: [1.2, 4.8], cpuSpd: 7.0, react: 0.1,  mult: 3,   guide: false, auto: false, marker: false, vary: 0.7,  jitter: 0.12, band: 0.07 },
 };
-// 파워 라인 (v1.12.1~): 공마다 게이지에 목표 라인(pt)이 생김. 퍼펙트 = 타이밍 퍼펙트 + 힘이 라인 ± band 안
-const POWER_T = [0.45, 0.8]; // 목표 라인 범위
+// 파워 라인 (v1.12.1~, v1.12.2부터 고정): 게이지의 목표 라인. 퍼펙트 = 타이밍 퍼펙트 + 힘이 라인 ± band 안
+const POWER_LINE = 0.65;
 const CHARGE_S = 0.85; // 게이지가 가득 차는 시간(초)
 const QUAL = {
-  perfect: { text: 'PERFECT!', color: '#ffd23a', pts: 100, noise: 0.05, skew: 0, depthN: 0.3, spd: 0.9, big: 2 },
-  great:   { text: 'GREAT',    color: '#7fe3ff', pts: 60,  noise: 0.13, skew: 0.18, depthN: 0.8, spd: 0.97, big: 1 },
-  good:    { text: 'GOOD',     color: '#ffffff', pts: 30,  noise: 0.24, skew: 0.38, depthN: 1.5, spd: 1.05, big: 1 },
+  perfect: { text: 'PERFECT!', color: '#ffd23a', pts: 10, noise: 0.05, skew: 0, depthN: 0.3, spd: 0.9, big: 2 },
+  great:   { text: 'GREAT',    color: '#7fe3ff', pts: 6,   noise: 0.13, skew: 0.18, depthN: 0.8, spd: 0.97, big: 1 },
+  good:    { text: 'GOOD',     color: '#ffffff', pts: 3,   noise: 0.24, skew: 0.38, depthN: 1.5, spd: 1.05, big: 1 },
 };
 
 // ── 저장 (이 기기) ─────────────────────────────────────
 const REC_KEY = 'oc_rally_v1';
-const loadRec = () => { try { return JSON.parse(localStorage.getItem(REC_KEY)) || {}; } catch { return {}; } };
+// 점수 단위 (v1.12.2~ 1/10로 낮춤). 예전 기록(sv 없음)은 10으로 나눠 바꿈
+const SCORE_V = 2;
+const loadRec = () => {
+  let r = {};
+  try { r = JSON.parse(localStorage.getItem(REC_KEY)) || {}; } catch {}
+  if (r._sv !== SCORE_V) {
+    for (const [k, v] of Object.entries(r)) if (v && typeof v === 'object' && v.score) v.score = Math.round(v.score / 10);
+    r._sv = SCORE_V;
+    saveRec(r);
+  }
+  return r;
+};
 const saveRec = (r) => { try { localStorage.setItem(REC_KEY, JSON.stringify(r)); } catch {} };
 const loadPref = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch { return d; } };
 const savePref = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
@@ -336,7 +347,7 @@ function cpuShot(slow = 1, fromBall = null) {
   tf = Math.max(d.minTf * 0.8, tf * S.tf * (1 + (Math.random() * 2 - 1) * d.jitter));
   game.ball = launch(from, [tx, tz], tf, { rest: S.rest, damp: S.damp });
   game.ball.spin = spin;
-  game.ball.pt = POWER_T[0] + Math.random() * (POWER_T[1] - POWER_T[0]);
+  game.ball.pt = POWER_LINE;
   if (S.tag && game.diff === 'hard') popup(S.tag, S.color, 1, (() => { const [x, y] = proj(from[0], ZCPU, 3); return [x, y - 6]; })());
   game.mode = 'in';
   game.swung = false;
@@ -414,7 +425,7 @@ function swing() {
   st.streak = q === 'perfect' ? st.streak + 1 : 0;
   st.maxStreak = Math.max(st.maxStreak, st.streak);
   const combo = comboOf(st.rally);
-  st.score += Math.round((Q.pts + (st.streak > 1 ? 20 * (st.streak - 1) : 0)) * combo * d.mult);
+  st.score += Math.round((Q.pts + (st.streak > 1 ? 2 * (st.streak - 1) : 0)) * combo * d.mult);
   popup(st.streak > 1 ? `${Q.text.replace('!', '')} x${st.streak}` : Q.text, Q.color, Q.big);
   if (q === 'perfect') SFX.perfect();
   // 상대가 받을 수 있나? (위너 판정)
@@ -508,7 +519,7 @@ function step(dt) {
       if (lt >= b.tf && !b.saidWinner) {
         b.saidWinner = true;
         st.winners++;
-        st.score += Math.round(300 * comboOf(st.rally) * D().mult);
+        st.score += Math.round(30 * comboOf(st.rally) * D().mult);
         popup('WINNER!', '#ffd23a', 2, [CX, 70]);
         game.cheer = 1.6;
         SFX.win();
@@ -717,7 +728,9 @@ function bindInput(cv) {
 }
 
 // ── 클럽 랭킹 (Firestore rallyScores, id = 회원_난이도, 최고 기록만) ──
-const clubDoc = (pid, diff) => state.rallyScores.find((x) => x.id === `${pid}_${diff}`);
+// 예전 단위로 저장된 문서(sv 없음)는 보여줄 때 10으로 나눔 → 다음 기록 때 새 단위(sv: 2)로 저장
+const clubRows = () => (state.rallyScores || []).map((x) => (x.sv === SCORE_V ? x : { ...x, score: Math.round((x.score || 0) / 10), sv: SCORE_V }));
+const clubDoc = (pid, diff) => clubRows().find((x) => x.id === `${pid}_${diff}`);
 function submitClub(st) {
   const u = me();
   if (!u) return false;
@@ -725,7 +738,7 @@ function submitClub(st) {
   const acc = st.hits ? Math.round(((st.perfect + st.great) / st.hits) * 100) : 0;
   const better = st.score > (old.score || 0);
   const doc = {
-    id: `${u.id}_${game.diff}`, playerId: u.id, diff: game.diff,
+    id: `${u.id}_${game.diff}`, playerId: u.id, diff: game.diff, sv: SCORE_V,
     score: Math.max(old.score || 0, st.score), rally: Math.max(old.rally || 0, st.maxRally), perfect: Math.max(old.perfect || 0, st.perfect),
     streak: Math.max(old.streak || 0, st.maxStreak), winners: Math.max(old.winners || 0, st.winners),
     acc: better ? acc : old.acc ?? acc, plays: (old.plays || 0) + 1, at: better ? Date.now() : old.at || Date.now(),
@@ -741,7 +754,9 @@ function renderRank() {
   const diff = rankView.diff || game.diff;
   const key = rankView.sort;
   const names = new Map(state.players.map((p) => [p.id, p.name]));
-  const rows = state.rallyScores.filter((x) => x.diff === diff && names.has(x.playerId) && (x[key] || 0) > 0).sort((a, b) => (b[key] || 0) - (a[key] || 0) || (b.score || 0) - (a.score || 0)).slice(0, 20);
+  const rows = clubRows().filter((x) => x.diff === diff && names.has(x.playerId) && (x[key] || 0) > 0).sort((a, b) => (b[key] || 0) - (a[key] || 0) || (b.score || 0) - (a.score || 0)).slice(0, 20);
+  // 같은 값이면 같은 등수
+  const place = (i) => { let j = i; while (j > 0 && (rows[j - 1][key] || 0) === (rows[i][key] || 0)) j--; return j + 1; };
   const u = me();
   const rerank = (f) => { f(); renderRank(); };
   box.replaceChildren(
@@ -750,8 +765,8 @@ function renderRank() {
     h('div', { class: 'seg rally-seg' }, RANK_SORT.map(([k, l]) => h('button', { class: key === k ? 'on' : '', onclick: () => rerank(() => (rankView.sort = k)) }, l))),
     rows.length
       ? h('div', { class: 'rank-list rally-rank' }, rows.map((x, i) =>
-          h('a', { class: 'rank-row' + (u && x.playerId === u.id ? ' me' : '') + (i < 3 ? ' top' : ''), href: `#/p/${x.playerId}` },
-            h('span', { class: 'rank-num' }, i + 1),
+          h('a', { class: 'rank-row' + (u && x.playerId === u.id ? ' me' : '') + (place(i) <= 3 ? ' top' : ''), href: `#/p/${x.playerId}` },
+            h('span', { class: 'rank-num' }, place(i)),
             h('span', { class: 'rank-main' }, h('strong', {}, names.get(x.playerId)), h('small', {}, `랠리 ${x.rally || 0} · 퍼펙트 ${x.perfect || 0} · 위너 ${x.winners || 0} · ${x.plays || 0}판`)),
             h('span', { class: 'sp' }, (x[key] || 0).toLocaleString(), h('small', {}, key === 'score' ? '점' : key === 'rally' ? '회' : '개'))
           )))
@@ -833,11 +848,11 @@ export function rallyView() {
         { class: 'block rally-help' },
         h('summary', {}, '점수 규칙'),
         h('ul', {},
-          h('li', {}, '타이밍: PERFECT 100 · GREAT 60 · GOOD 30점 (난이도 배수 적용)'),
-          h('li', {}, '파워 라인: 공이 오면 게이지에 흰 선이 생겨요. 타이밍도 맞고 힘도 선에 맞아야 PERFECT (선을 벗어나면 WEAK · STRONG → GREAT)'),
+          h('li', {}, '타이밍: PERFECT 10 · GREAT 6 · GOOD 3점 (난이도 배수 적용)'),
+          h('li', {}, '파워 라인: 게이지의 흰 선(항상 같은 높이)에 힘을 맞추고 타이밍도 맞아야 PERFECT (선을 벗어나면 WEAK · STRONG → GREAT)'),
           h('li', {}, '랠리 5개마다 콤보 +0.1배 (최대 2배), 퍼펙트 연속이면 보너스'),
           h('li', {}, '세게(빨간 칸) 치면 빠르지만, 퍼펙트가 아니면 길게 나갈 수 있어요'),
-          h('li', {}, '구석으로 빠르게 치면 상대가 못 받아요 → WINNER +300'),
+          h('li', {}, '구석으로 빠르게 치면 상대가 못 받아요 → WINNER +30'),
           h('li', {}, '빠르게 떼면 왼쪽, 늦게 떼면 오른쪽으로 쏠려요. 너무 빗나가면 OUT'),
           h('li', {}, '공 3개를 놓치면 끝. 기록은 이 기기에 저장돼요')
         )

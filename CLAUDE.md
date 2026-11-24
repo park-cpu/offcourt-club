@@ -52,9 +52,9 @@
 - 공유 텍스트는 `js/share.js` (navigator.share → 클립보드 → 복사용 창)
 
 ## 랠리 게임 (v1.9.0~)
-- `js/views/rally.js` 하나에 전부 (캔버스 256×240, 원근 `proj`, 5×7 글꼴 `FONT`, 공 궤적은 해석식 `ballAt` → 타이밍 판정 정확). 난이도 `DIFFS`, 샷 품질 `QUAL`. 상대 샷 종류 `SPINS`(v1.12.0~, 공마다 rest·damp) — 어려움·프로만 `vary` 확률로 리듬 변화 + `jitter`. 파워 라인(v1.12.1~): 공마다 목표 `b.pt`(0.45~0.8), 퍼펙트는 타이밍 퍼펙트 + |힘−pt| ≤ `DIFFS.band`. 화면이 다시 그려져도 게임이 안 끊기게 `game.root`를 재사용. 기록은 localStorage `oc_rally_v1` (Firestore 아님). `_rally` export는 테스트용
+- `js/views/rally.js` 하나에 전부 (캔버스 256×240, 원근 `proj`, 5×7 글꼴 `FONT`, 공 궤적은 해석식 `ballAt` → 타이밍 판정 정확). 난이도 `DIFFS`, 샷 품질 `QUAL`. 상대 샷 종류 `SPINS`(v1.12.0~, 공마다 rest·damp) — 어려움·프로만 `vary` 확률로 리듬 변화 + `jitter`. 파워 라인(v1.12.1~): 목표 `POWER_LINE` 0.65 고정(v1.12.2~), 퍼펙트는 타이밍 퍼펙트 + |힘−pt| ≤ `DIFFS.band`. 화면이 다시 그려져도 게임이 안 끊기게 `game.root`를 재사용. 기록은 localStorage `oc_rally_v1` (Firestore 아님). `_rally` export는 테스트용
 - 조작(v1.9.4~): 왼쪽 조이스틱(`game.stick`) + 오른쪽 SWING. 쉬움은 자동 이동(`DIFFS.auto`), 나머지는 조이스틱으로 직접 이동(`RUN`) + 칠 때 민 쪽이 방향, 타점 거리 `REACH`
-- 클럽 랭킹(v1.9.1~): `rallyScores` 컬렉션, id `회원_난이도`, 항목별 최고값만 저장 (`submitClub`). 로그인 회원만 올라감
+- 클럽 랭킹(v1.9.1~): `rallyScores` 컬렉션, id `회원_난이도`, 항목별 최고값만 저장 (`submitClub`). 로그인 회원만 올라감. 점수 단위 v1.12.2~ 1/10 (`SCORE_V`=2): 예전 문서(sv 없음)는 `clubRows()`가 /10 해서 보여주고 다음 제출 때 sv:2로 저장, 이 기기 기록은 `loadRec`이 한 번 변환
 - 그래픽은 레퍼런스 분위기(NES 테니스)만 참고한 자체 그림 — 특정 게임 로고 · 캐릭터는 쓰지 않음
 
 ## 나중에 할 것
