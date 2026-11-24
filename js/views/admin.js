@@ -1,5 +1,6 @@
 import { h, sheet, toast, field, select, go, confirmSheet, empty, ntrpText } from '../ui.js';
 import { state, me, isAdmin, settings, derived, today, fmtShort, careerText, hashPin, session, customItems } from '../store.js';
+import { ratingToNtrp, RULES } from '../rules.js';
 import { put, remove, batch, uid, db, COLLECTIONS } from '../db.js';
 import { pageHead, backLink, linkRow, playerForm, genderPicker, GENDER_LABEL } from './common.js';
 import { seedDemo } from '../demo.js';
@@ -24,12 +25,32 @@ export function adminView(sub) {
   if (sub === 'items') return itemsAdmin();
   if (sub === 'balls') return ballsAdmin();
   if (sub === 'venues') return venuesAdmin();
+  const checks = ntrpChecks();
   const zero = state.players.filter((p) => p.active !== false && (derived().coins.bal.get(p.id) ?? 0) <= 0).length;
   return h(
     'div',
     { class: 'page' },
     backLink('#/me', '내 정보'),
     pageHead('관리자', 'Admin'),
+    checks.length > 0 &&
+      h(
+        'section',
+        { class: 'block stack' },
+        h('h2', {}, `NTRP 확인 필요 ${checks.length}명`),
+        h('p', { class: 'muted small' }, `경기 결과로 계산한 추정 NTRP가 등록 NTRP와 ${NTRP_GAP} 이상 달라요. 회원 관리에서 NTRP를 고치면 지난 경기까지 다시 계산돼요.`),
+        h(
+          'div',
+          { class: 'rank-list' },
+          checks.map(({ p, est, gap, games }) =>
+            h(
+              'a',
+              { class: 'rank-row', href: '#/admin/players' },
+              h('span', { class: 'rank-main' }, h('strong', {}, p.name), h('small', {}, `등록 ${ntrpText(p.ntrp)} → 추정 ${est.toFixed(1)} · ${games}경기`)),
+              h('span', { class: 'sp' }, `${gap > 0 ? '▲' : '▼'}${Math.abs(gap).toFixed(1)}`)
+            )
+          )
+        )
+      ),
     h(
       'nav',
       { class: 'menu' },
@@ -45,9 +66,22 @@ export function adminView(sub) {
   );
 }
 
+// 추정 NTRP가 등록 NTRP와 0.5 이상 차이 나는 회원 (적응 기간이 끝난 회원만)
+export const NTRP_GAP = 0.5;
+export function ntrpChecks() {
+  const { ratings, allStats } = derived();
+  return state.players
+    .filter((p) => p.active !== false && (allStats.get(p.id)?.games || 0) >= RULES.provisionalGames)
+    .map((p) => ({ p, est: ratingToNtrp(ratings.get(p.id)), games: allStats.get(p.id).games }))
+    .map((x) => ({ ...x, gap: x.est - (Number(x.p.ntrp) || 3) }))
+    .filter((x) => Math.abs(x.gap) >= NTRP_GAP - 1e-9)
+    .sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap));
+}
+
 // ── 회원 ──────────────────────────────────────────────
 function playersAdmin() {
   const { coins } = derived();
+  const flag = new Map(ntrpChecks().map((x) => [x.p.id, x.est]));
   const list = [...state.players].sort((a, b) => (a.active === false) - (b.active === false) || a.name.localeCompare(b.name, 'ko'));
   const open = (p) =>
     sheet(p ? `${p.name} 수정` : '회원 추가', (close) =>
@@ -72,7 +106,7 @@ function playersAdmin() {
         h(
           'button',
           { class: 'rank-row' + (p.active === false ? ' dim' : ''), onclick: () => open(p) },
-          h('span', { class: 'rank-main' }, h('strong', {}, p.name, p.id === settings().adminId ? ' · 관리자' : ''), h('small', {}, `${GENDER_LABEL[p.gender] || '성별 미입력'} · NTRP ${ntrpText(p.ntrp)} · 구력 ${careerText(p.since)}${p.active === false ? ' · 비활성' : ''}`)),
+          h('span', { class: 'rank-main' }, h('strong', {}, p.name, p.id === settings().adminId ? ' · 관리자' : ''), h('small', {}, `${GENDER_LABEL[p.gender] || '성별 미입력'} · NTRP ${ntrpText(p.ntrp)} · 구력 ${careerText(p.since)}${p.active === false ? ' · 비활성' : ''}${flag.has(p.id) ? ` · ⚠ 추정 ${flag.get(p.id).toFixed(1)}` : ''}`)),
           h('span', { class: 'sp' }, coins.bal.get(p.id) ?? 0, h('small', {}, '코인'))
         )
       )

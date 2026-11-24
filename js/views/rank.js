@@ -14,7 +14,7 @@ export function rankList(season, type = 'official') {
   const sort = (a, b) => b.sp - a.sp || b.winRate - a.winRate || b.games - a.games;
   return {
     ranked: rows.filter((r) => r.games >= min).sort(sort),
-    pending: rows.filter((r) => r.games > 0 && r.games < min).sort(sort),
+    pending: rows.filter((r) => (r.games > 0 || r.adapt > 0) && r.games < min).sort(sort),
     min,
   };
 }
@@ -58,7 +58,7 @@ export function rankView(a, b) {
         'span',
         { class: 'rank-main' },
         h('strong', {}, r.name),
-        h('small', {}, isCoin ? `${r.wins}승 ${r.losses}패 · ${pct(r.winRate)} · ${coinText(r.coins)}` : `${r.wins}승 ${r.losses}패 · ${pct(r.winRate)} · NTRP ${ntrpText(r.ntrp)}`)
+        h('small', {}, (isCoin ? `${r.wins}승 ${r.losses}패 · ${pct(r.winRate)} · ${coinText(r.coins)}` : `${r.wins}승 ${r.losses}패 · ${pct(r.winRate)} · NTRP ${ntrpText(r.ntrp)}`) + (i == null && r.adapt ? ` · 적응 ${r.adapt}경기 제외` : ''))
       ),
       h('span', { class: 'sp' }, Math.round(r.sp), h('small', {}, 'pt'))
     );
@@ -80,6 +80,7 @@ export function rankView(a, b) {
           ? `단식(1:1) 공식전 · 코인전 경기만 반영 · 포인트 = 레이팅 변동 + 경기당 ${RULES.participationBonus}점`
           : `공식전 경기만 반영 · 포인트 = 레이팅 변동 + 경기당 ${RULES.participationBonus}점`
     ),
+    h('p', { class: 'muted small' }, `회원마다 처음 ${RULES.provisionalGames}경기는 적응 기간이라 순위에 들어가지 않아요 (레이팅만 반영)`),
     ranked.length ? h('div', { class: 'rank-list' }, ranked.map((r, i) => row(r, i))) : empty(`아직 ${label} ${min}경기 이상 치른 사람이 없어요`),
     pending.length > 0 &&
       h('section', { class: 'block' }, h('h2', {}, `순위 산정 대기 (${min}경기 미만)`), h('div', { class: 'rank-list dim' }, pending.map((r) => row(r, null)))),
@@ -304,7 +305,7 @@ export function rulesView() {
         h('li', {}, h('strong', {}, '코인전 포인트'), ` = 코인전 레이팅 변동 합계 + 경기당 ${RULES.participationBonus}점 + 코인 순수익 × ${RULES.coinPoint}점`)
       ),
       h('p', { class: 'muted' }, `코인 순수익 = 코인전에서 딴 코인 − 잃은 코인 (베이글 ±2 포함). 출석·관리자 지급·대출 코인은 포함하지 않아요. 예) 코인전 5승 3패, 베이글 승 1번 → 순수익 +3 → +${3 * RULES.coinPoint}점`),
-      h('p', { class: 'muted' }, `레이팅은 처음 ${RULES.provisionalGames}경기 동안 크게 움직이지만, 시즌 포인트는 모두 같은 기준(K=${RULES.kSeason})으로 계산해요. 그래서 신입 회원이라고 포인트가 더 크게 오르내리지 않아요.`),
+      h('p', { class: 'muted' }, `적응 기간: 회원마다 처음 ${RULES.provisionalGames}경기(공식전 · 코인전 합산)는 레이팅만 맞추고 시즌 포인트 · 경기 수에는 넣지 않아요. 시작 NTRP가 실제와 달라도 순위에서 이득이나 손해를 보지 않게 하기 위해서예요. 그 뒤로는 모두 같은 기준(K=${RULES.kSeason})으로 계산해요.`),
       h('p', {}, '원래 잘 치는 사람이 항상 1등이 되지 않도록, "자기 수준 대비 얼마나 잘했는지"로 순위를 매겨요. 입문자도 기대 이상으로 이기면 1등이 될 수 있어요.'),
       h('p', {}, `각 순위마다 그 유형으로 최소 ${settings().minGames}경기를 치러야 순위에 올라요 (몇 판만 이기고 멈추는 것 방지). 동점이면 승률 → 경기 수 순.`)
     ),

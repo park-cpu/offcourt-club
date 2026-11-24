@@ -108,12 +108,14 @@ export function computeRatings(players, guests, matches) {
     const sd = new Map();
     const apply = (id, s, e) => {
       if (isGuest(id)) return; // 게스트 레이팅은 고정
-      const k = games.get(id) < RULES.provisionalGames ? RULES.kProvisional : RULES.kNormal;
+      const prov = games.get(id) < RULES.provisionalGames;
+      const k = prov ? RULES.kProvisional : RULES.kNormal;
       const delta = k * mult * (s - e);
       ratings.set(id, ratings.get(id) + delta);
       games.set(id, games.get(id) + 1);
       d.set(id, delta);
-      sd.set(id, RULES.kSeason * mult * (s - e));
+      // 적응 기간(처음 provisionalGames경기)은 시즌 포인트 제외 → null (v1.11.0~, NTRP를 낮게 잡아 얻는 이득 방지)
+      sd.set(id, prov ? null : RULES.kSeason * mult * (s - e));
     };
     m.teamA.forEach((id) => apply(id, sa, ea));
     m.teamB.forEach((id) => apply(id, 1 - sa, 1 - ea));
@@ -136,7 +138,7 @@ const avg = (arr) => arr.reduce((s, x) => s + x, 0) / (arr.length || 1);
 export function computeStats(players, matches, deltas, range, type) {
   const stats = new Map();
   for (const id of players.keys())
-    stats.set(id, { games: 0, wins: 0, losses: 0, gw: 0, gl: 0, sp: 0, coins: 0, streak: 0, best: 0, form: [] });
+    stats.set(id, { adapt: 0, games: 0, wins: 0, losses: 0, gw: 0, gl: 0, sp: 0, coins: 0, streak: 0, best: 0, form: [] });
   const inRange = (m) => !range || ((!range.start || m.date >= range.start) && (!range.end || m.date <= range.end));
   // type 'singles' = 단식(1:1) 공식전 · 코인전 합산
   const typeOk = (m) => !type || (type === 'singles' ? m.teamA.length === 1 && m.teamB.length === 1 && (m.type === 'official' || m.type === 'coin') : m.type === type);
@@ -149,6 +151,8 @@ export function computeStats(players, matches, deltas, range, type) {
       ids.forEach((id) => {
         const s = stats.get(id);
         if (!s) return;
+        // 시즌 집계에서는 적응 기간 경기를 빼고 따로 셈
+        if (range && d.has(id) && d.get(id) === null) return void s.adapt++;
         s.games++;
         won ? s.wins++ : s.losses++;
         s.gw += me;
