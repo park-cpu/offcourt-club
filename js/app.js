@@ -12,6 +12,7 @@ import { loadWeather } from './weather.js';
 import { setupApp } from './install.js';
 import { membersOnly } from './views/common.js';
 import { rallyView } from './views/rally.js';
+import { featureOn } from './features.js';
 
 const TABS = [
   ['#/', '홈', 'home', ['', 'home', 'rally']],
@@ -59,7 +60,8 @@ function route() {
     case 'avatars': return ['avatars', galleryView()];
     case 'admin': return ['admin', adminView(a)];
     case 'rally': return ['rally', rallyView()];
-    case 'analysis': return ['analysis', analysisView(a, b)];
+    // 영상 분석은 숨김 중이면 관리자만 (v1.19.0~, js/features.js)
+    case 'analysis': return featureOn('analysis', true) ? ['analysis', analysisView(a, b)] : ['', homeView()];
     default: return ['', homeView()];
   }
 }

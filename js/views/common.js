@@ -2,6 +2,7 @@ import { h, sheet, toast, field, select, go, fmtNum } from '../ui.js';
 import { state, me, isAdmin, session, scheduleById, recordOpen, hashPin, activePlayers, person, isGuestId, derived, fmtDate, settings } from '../store.js';
 import { MATCH_TYPES, winnerSide, coinStake } from '../rules.js';
 import { put, uid } from '../db.js';
+import { featureOn } from '../features.js';
 
 // ── 로그인 ─────────────────────────────────────────────
 export function loginSheet(onDone) {
@@ -168,7 +169,7 @@ export function matchCard(m, { onEdit, showDate = false } = {}) {
     foot && h('div', { class: 'mfoot' }, foot),
     m.recordedBy && h('div', { class: 'mfoot muted' }, `기록 ${person(m.recordedBy).name}${m.history?.length > 1 ? ` · 수정 ${m.history.length - 1}회` : ''}`),
     // 영상 분석이 끝난 경기면 바로가기 (v1.15.0~)
-    done && (state.analyses || []).some((a) => a.matchId === m.id && a.status === 'done') && h('a', { class: 'btn small ghost', href: `#/analysis/${state.analyses.find((a) => a.matchId === m.id && a.status === 'done').id}` }, '🎥 영상 분석'),
+    done && featureOn('analysis') && (state.analyses || []).some((a) => a.matchId === m.id && a.status === 'done') && h('a', { class: 'btn small ghost', href: `#/analysis/${state.analyses.find((a) => a.matchId === m.id && a.status === 'done').id}` }, '🎥 영상 분석'),
     onEdit && canRecord(m) && h('button', { class: 'btn small ghost', onclick: () => onEdit(m) }, done ? '기록 수정' : '점수 입력')
   );
 }

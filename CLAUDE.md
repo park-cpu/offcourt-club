@@ -59,6 +59,7 @@
 - 그래픽은 레퍼런스 분위기(NES 테니스)만 참고한 자체 그림 — 특정 게임 로고 · 캐릭터는 쓰지 않음
 
 ## 영상 분석 (v1.15.0~)
+- **v1.19.0~ 회원에게 숨김** (정확도 부족, 사용자 결정): `js/features.js`의 `FEATURES.analysis = false` → `featureOn('analysis')`로 메뉴 · 버튼 · 회원 페이지 블록을 숨기고, `#/analysis`는 관리자만 (`featureOn('analysis', true)`). 다시 켜려면 true로 바꾸고 버전 올리기. 분석기 작업(analyzer/)은 계속 가능
 - 결과 형식 `analyzer/FORMAT.md` (코트 좌표 m, 원점 네트 중앙, 카메라 쪽 y<0). 컬렉션 `analyses` (firestore.rules에 추가 → 콘솔 규칙도 바꿔야 저장됨)
 - 계산 `js/analysis.js` (방향 · 깊이 · `shotStats` · `memberShots` · `demoAnalysis`), 화면 `js/views/analysis.js` (`#/analysis[/id|demo[/rally|map|stats]]`). 영상 iframe은 `player`로 재사용(다시 그려져도 안 끊김), 샷 누르면 postMessage seekTo
 - 흐름: 회원이 유튜브 링크로 요청(status queued) → 분석기(Mac 시험판, 나중에 서버)가 JSON 생성 → 관리자 '결과 파일 넣기' → done. 관리자가 Mac에서 돌리는 동안 '분석 시작'으로 processing 표시(v1.15.1~, `statusBox`). 영상 속 P1·P2(가까운 쪽) P3·P4(먼 쪽)를 회원과 지정

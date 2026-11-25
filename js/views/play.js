@@ -8,6 +8,7 @@ import { MATCH_TYPES, coinStake, RULES } from '../rules.js';
 import { requireLogin, pageHead, nameTag, matchCard, canRecord, recordDeniedMsg, teamNames, FORMAT_LABEL } from './common.js';
 import { addGuest } from './schedule.js';
 import { shareButton, drawText, resultsText } from '../share.js';
+import { featureOn } from '../features.js';
 
 // 대진 옵션은 기기에 기억
 const prefs = {
@@ -39,7 +40,7 @@ export function playView(sid, tab) {
         ? h('section', { class: 'block' }, h('h2', {}, '오늘 일정을 선택하세요'), todays.map(item))
         : empty('지금 진행 중인 일정이 없어요', h('a', { class: 'btn primary', href: '#/week' }, '일정 보기')),
       recent.length > 0 && h('section', { class: 'block' }, h('h2', {}, '지난 일정 결과'), h('p', { class: 'muted small' }, '최근 일주일'), recent.map(item)),
-      h('nav', { class: 'menu' }, h('a', { class: 'link-row', href: '#/analysis' }, h('span', {}, '🎥 영상 분석'), h('span', { class: 'muted' }, `${state.analyses.filter((a) => a.status === 'done').length}개 ›`)))
+      featureOn('analysis') && h('nav', { class: 'menu' }, h('a', { class: 'link-row', href: '#/analysis' }, h('span', {}, '🎥 영상 분석'), h('span', { class: 'muted' }, `${state.analyses.filter((a) => a.status === 'done').length}개 ›`)))
     );
   }
 

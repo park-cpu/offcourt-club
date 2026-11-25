@@ -7,6 +7,7 @@ import { scoreSheet } from './play.js';
 import { avatarBlock } from './avatar.js';
 import { bounceMap, statsBlock } from './analysis.js';
 import { memberShots, shotStats } from '../analysis.js';
+import { featureOn } from '../features.js';
 
 // 화면에 보이는 점수(반올림)가 같으면 같은 등수 (1, 2, 2, 4 …). rows는 이미 정렬된 상태
 export function withPlaces(rows, score) {
@@ -184,7 +185,7 @@ export function profileView(id) {
     ),
     loanBlock(p, coins),
     relationBlocks(id),
-    analysisBlock(id),
+    featureOn('analysis') && analysisBlock(id),
     h(
       'section',
       { class: 'block' },
