@@ -40,6 +40,7 @@
 ## 앱 설치 · 서비스 워커 (v1.5.0~)
 - `sw.js`는 `js/install.js`가 `sw.js?v=APP_VERSION`으로 등록 → 버전을 올리면 새 서비스 워커·캐시로 교체됨. 같은 사이트 파일은 항상 서버 먼저(no-cache), 오프라인일 때만 캐시. Firebase·날씨 등 외부 요청은 건드리지 않음
 - 아이콘: `assets/icon-192/512/180.png`, `icon-maskable-512.png` (badge.png + 크림 배경)
+- 새 버전 적용(v1.13.5~): `controllerchange` 때 컨트롤러 sw의 v가 `APP_VERSION`과 같으면 무시, 다르면 자동 `hardReload`(입력 창 · 랠리 중이면 update-bar 버튼). 당겨서 새로고침도 같은 hardReload(app.js에 복사본 — 파일 섞임 대비로 export 안 함)
 - 미리보기 브라우저 창은 서비스 워커를 막아 로컬 테스트 불가 → 배포 후 실제 사이트에서 확인
 
 ## 공개 범위 · 일정 (v1.8.0~)

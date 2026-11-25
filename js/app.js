@@ -114,6 +114,20 @@ async function boot() {
 // 랠리 게임 · 그림(캔버스) · 열린 창(시트) 위에서는 동작하지 않음
 (() => {
   const READY = 64;
+  // 최신 파일로 다시 불러오기 (install.js의 hardReload와 같은 내용 — 일부러 import 안 함)
+  const hardReload = async () => {
+    const reg = await navigator.serviceWorker?.getRegistration?.().catch(() => null);
+    const urls = performance
+      .getEntriesByType('resource')
+      .map((e) => e.name)
+      .filter((u) => u.startsWith(location.origin) && /\/(js|css)\//.test(u));
+    urls.push(new URL('js/version.js', location.href).href);
+    await Promise.race([
+      Promise.all([...urls.map((u) => fetch(u, { cache: 'reload' }).catch(() => {})), reg?.update().catch(() => {})]),
+      new Promise((r) => setTimeout(r, 4000)),
+    ]);
+    location.reload();
+  };
   const ind = h('div', { class: 'ptr', 'aria-hidden': 'true' }, h('span', {}, '↻'));
   document.body.append(ind);
   let y0 = null;
@@ -146,7 +160,7 @@ async function boot() {
     if (pull >= READY) {
       y0 = null;
       ind.classList.add('spin');
-      setTimeout(() => location.reload(), 150);
+      hardReload();
     } else reset();
   });
   document.addEventListener('touchcancel', () => y0 != null && reset());
