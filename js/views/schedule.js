@@ -3,7 +3,7 @@ import {
   state, me, isAdmin, today, weekStart, addDays, parseYmd, DOW, fmtDate, attendanceOf, scheduleById, courtsOf, person, matchesOf, rosterOf, capacityOf, countText,
 } from '../store.js';
 import { put, remove, batch, uid } from '../db.js';
-import { settings } from '../store.js';
+import { settings, scheduleEnded } from '../store.js';
 import { weatherChip, WEATHER_PLACE } from '../weather.js';
 import { shareButton, scheduleText } from '../share.js';
 
@@ -120,8 +120,10 @@ export function scheduleView(id) {
     h(
       'div',
       { class: 'row gap' },
-      s.date >= t && h('button', { class: 'btn grow ' + (mine ? 'ghost' : 'primary'), onclick: () => toggleRsvp(s) }, rsvpLabel(mine, myRow, full)),
-      s.date <= t && u && h('a', { class: 'btn primary grow', href: `#/play/${s.id}` }, '출석 · 대진 ›')
+      s.date >= t && !scheduleEnded(s) && h('button', { class: 'btn grow ' + (mine ? 'ghost' : 'primary'), onclick: () => toggleRsvp(s) }, rsvpLabel(mine, myRow, full)),
+      // 경기 시간이 끝나면 결과 보기 (v1.13.3~)
+      u && scheduleEnded(s) && h('a', { class: 'btn primary grow', href: `#/play/${s.id}/done` }, '결과 보기 ›'),
+      u && s.date <= t && !scheduleEnded(s) && h('a', { class: 'btn primary grow', href: `#/play/${s.id}` }, '출석 · 대진 ›')
     ),
     h(
       'section',

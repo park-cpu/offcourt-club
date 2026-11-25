@@ -24,18 +24,19 @@ const prefs = {
 export function playView(sid, tab) {
   const t = today();
   if (!sid) {
-    const todays = state.schedules.filter((s) => s.date === t).sort((a, b) => a.start.localeCompare(b.start));
+    // 경기 시간이 끝난 일정은 '오늘 일정'에서 빠지고 지난 일정으로 (v1.13.3~)
+    const todays = state.schedules.filter((s) => s.date === t && !scheduleEnded(s)).sort((a, b) => a.start.localeCompare(b.start));
     if (todays.length === 1) return playView(todays[0].id, tab);
-    const recent = state.schedules.filter((s) => s.date < t).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
-    const item = (s) => h('a', { class: 'link-row', href: `#/play/${s.id}` }, h('span', {}, h('strong', {}, fmtDate(s.date)), h('br'), h('span', { class: 'muted small' }, `${s.start}–${s.end} · ${s.venue}`)), h('span', { class: 'muted' }, s.date === t && scheduleEnded(s) ? '종료 ›' : `${attendanceOf(s.id).length}명 ›`));
+    const recent = state.schedules.filter((s) => s.date <= t && scheduleEnded(s)).sort((a, b) => (b.date + b.start).localeCompare(a.date + a.start)).slice(0, 5);
+    const item = (s) => h('a', { class: 'link-row', href: scheduleEnded(s) ? `#/play/${s.id}/done` : `#/play/${s.id}` }, h('span', {}, h('strong', {}, fmtDate(s.date)), h('br'), h('span', { class: 'muted small' }, `${s.start}–${s.end} · ${s.venue}`)), h('span', { class: 'muted' }, scheduleEnded(s) ? `${matchesOf(s.id).filter((m) => m.status === 'done').length}경기 ›` : `${attendanceOf(s.id).length}명 ›`));
     return h(
       'div',
       { class: 'page' },
       pageHead('경기', 'Match Day'),
       todays.length
         ? h('section', { class: 'block' }, h('h2', {}, '오늘 일정을 선택하세요'), todays.map(item))
-        : empty('오늘 등록된 일정이 없어요', h('a', { class: 'btn primary', href: '#/week' }, '일정 등록하기')),
-      recent.length > 0 && h('section', { class: 'block' }, h('h2', {}, '지난 일정 기록하기'), recent.map(item))
+        : empty('지금 진행 중인 일정이 없어요', h('a', { class: 'btn primary', href: '#/week' }, '일정 보기')),
+      recent.length > 0 && h('section', { class: 'block' }, h('h2', {}, '지난 일정 결과'), recent.map(item))
     );
   }
 

@@ -1,5 +1,5 @@
 import { h, fmtShortRange, onMount } from '../ui.js';
-import { state, me, today, attendanceOf, rosterOf, capacityOf, countText, derived, currentSeason, seasonStats, courtsOf, dowOf, parseYmd, weekStart, addDays } from '../store.js';
+import { state, me, today, scheduleEnded, attendanceOf, rosterOf, capacityOf, countText, derived, currentSeason, seasonStats, courtsOf, dowOf, parseYmd, weekStart, addDays } from '../store.js';
 import { toggleRsvp } from './schedule.js';
 import { weatherChip } from '../weather.js';
 import { rankList } from './rank.js';
@@ -100,7 +100,7 @@ function sessionsBlock(t, u) {
   // 처음엔 오늘 이후 첫 일정부터 보여줌 (모두 지났으면 마지막)
   const key = view.offset + ':' + list.map((s) => s.id).join(',');
   if (view.index == null || view.key !== key) {
-    const firstUpcoming = list.findIndex((s) => s.date >= t);
+    const firstUpcoming = list.findIndex((s) => s.date >= t && !scheduleEnded(s));
     view.index = firstUpcoming >= 0 ? firstUpcoming : list.length - 1;
     view.key = key;
   }
@@ -150,10 +150,11 @@ function slide(s, t, u) {
   const mine = !!myRow;
   const full = capacityOf(s) > 0 && att.length >= capacityOf(s);
   const d = parseYmd(s.date);
-  const isToday = s.date === t;
-  const past = s.date < t;
+  // 경기 시간이 끝난 일정은 오늘이어도 지난 일정처럼 '결과 보기' (v1.13.3~)
+  const past = s.date < t || scheduleEnded(s);
+  const isToday = s.date === t && !past;
   const days = Math.round((parseYmd(s.date) - parseYmd(t)) / 864e5);
-  const tag = isToday ? 'Today' : past ? '지난 일정' : `D-${days}`;
+  const tag = isToday ? 'Today' : past ? (s.date === t ? '오늘 · 종료' : '지난 일정') : `D-${days}`;
   let action;
   if (!u && (isToday || past)) action = h('a', { class: 'btn ghost grow', href: `#/s/${s.id}` }, '일정 보기');
   else if (isToday) action = h('a', { class: 'btn primary grow', href: `#/play/${s.id}` }, '경기 시작하기');
