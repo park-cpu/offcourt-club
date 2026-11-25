@@ -36,7 +36,8 @@ YOLO 모델(`models/yolo11s.pt`)은 처음 실행할 때 Ultralytics 공식 저�
    .venv/bin/python events.py --name match --youtube <유튜브 영상 id> --video match.mp4   # --video: 선수별 옷 색
    ```
    → `out/match.result.json`을 앱에 넣기
-5. 점검: `debug.py --name match --t0 30 --t1 60` (시간축 그림), `--frames 40.5,41.0 --video match.mp4` (장면에 표시)
+5. **그래픽 영상 만들기**(선택): `render.py match.mp4 --name match --t0 670 --t1 696 --out out/overlay.mp4` → 선수 상자 · 관절 · 공 꼬리 · 샷 이름 · 바운드 · 미니 코트를 그린 새 영상
+6. 점검: `debug.py --name match --t0 30 --t1 60` (시간축 그림), `--frames 40.5,41.0 --video match.mp4` (장면에 표시)
 
 ## 지금 수준 (0.2) — 자세한 숫자는 ACCURACY.md
 

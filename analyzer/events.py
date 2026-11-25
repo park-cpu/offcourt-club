@@ -601,7 +601,7 @@ def build2(name, calib=None, video_id=None):
         'shots': out_shots,
     }
     seen_ball = sum(p is not None for p in pos) / max(1, len(pos))
-    return result, {'hits': hits, 'bounces': bounces, 'ball_seen': seen_ball, **info}
+    return result, {'hits': hits, 'bounces': bounces, 'ball_seen': seen_ball, 'pos': pos, 'f0': f0, 'C': C, 'fps': fps, **info}
 
 
 if __name__ == '__main__':

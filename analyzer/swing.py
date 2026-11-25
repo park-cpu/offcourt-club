@@ -310,7 +310,7 @@ def fuse(frames, pose, aud, ball_hits, C, fps, aud_min=8.0, swing_min=1.5):
             slots[k] = rest.pop(0)
     for h in hits:
         h['slot'] = slots.get(h['pid'])
-    return hits, {'tracks': len(trs), 'ided': len(idmap)}
+    return hits, {'tracks': len(trs), 'ided': len(idmap), 'trs': trs, 'idmap': idmap, 'slots': slots}
 
 
 # ── 선수별 윗옷 색 (앱에서 P1~P4가 누군지 알아보게) ─────────
