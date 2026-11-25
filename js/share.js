@@ -14,7 +14,7 @@ const dateLabel = (s) => {
   return `${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]})`;
 };
 const weatherLine = (s) => {
-  const w = weatherFor(s.date, s.start, s.end);
+  const w = weatherFor(s.date, s.start, s.end, s);
   if (!w) return null;
   const deg = (n) => `${n}°`;
   return `🌡 ${w.min === w.max ? deg(w.min) : `${deg(w.min)}~${deg(w.max)}`}${w.pop != null ? ` · 강수 ${w.pop}%` : ''}`;
