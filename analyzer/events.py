@@ -291,8 +291,8 @@ def classify(events, pos, players, C, fps):
             near = pl['court'][1] < 0
             away = e['v2'][1] < 0  # 화면 위로 = 카메라에서 멀어짐
             if away == near:
-                if last_hit is not None and e['i'] - last_hit['i'] < fps * 0.5 and (last_hit['pl']['court'][1] < 0) == near:
-                    continue  # 같은 쪽이 0.5초 안에 두 번 치는 건 같은 타구
+                if last_hit is not None and e['i'] - last_hit['i'] < fps * 1.5 and (last_hit['pl']['court'][1] < 0) == near:
+                    continue  # 같은 쪽이 1.5초 안에 또 치는 건 같은 타구 · 서브 전 공 튀기기
                 shots.append({**e, 'kind': 'hit'})
                 last_hit = e
                 continue
@@ -336,9 +336,17 @@ def build(name, calib=None, video_id=None, start=None):
     hits, bounces = classify(events, pos, players, C, fps)
 
     # 랠리 나누기: 공이 2초 넘게 안 보이거나 타구 간격이 4초를 넘으면 새 랠리
+    def long_miss(a, b, n):
+        run = 0
+        for p in pos[a:b]:
+            run = run + 1 if p is None else 0
+            if run > n:
+                return True
+        return False
+
     rallies, cur = [], []
     for h in hits:
-        if cur and (h['i'] - cur[-1]['i'] > fps * 4 or all(p is None for p in pos[cur[-1]['i'] + 1: h['i']][int(fps * 2):])):
+        if cur and (h['i'] - cur[-1]['i'] > fps * 4 or long_miss(cur[-1]['i'] + 1, h['i'], int(fps * 2))):
             rallies.append(cur)
             cur = []
         cur.append(h)
