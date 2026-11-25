@@ -429,13 +429,193 @@ def build(name, calib=None, video_id=None, start=None):
     return result, {'pos': pos, 'players': players, 'hits': hits, 'bounces': bounces, 'ids': ids, 'C': C, 'fps': fps, 'f0': f0, 'ball_seen': seen_ball}
 
 
+def build2(name, calib=None, video_id=None):
+    """0.2: 소리 + 자세 + 공을 합쳐 타구를 찾음 (pose.py · audio.py 결과가 있을 때)"""
+    import swing
+
+    frames, meta = load(name, calib)
+    fps = meta['fps']
+    f0 = frames[0]['f']
+    C = Court(meta['courts'])
+    players = players_on_court(frames, C)
+    pos = ball_track(frames, fps, C)
+    events = find_events(pos, players, C, fps, f0)
+    ball_hits, bounces = classify(events, pos, players, C, fps)
+    pose = swing.load_pose(name)
+    aud = json.load(open(f'out/{name}.audio.json'))
+    hits, info = swing.fuse(frames, pose, aud, ball_hits, C, fps)
+    hits = [h for h in hits if h['slot']]
+    for h in hits:
+        h['i'] = h['f'] - f0
+
+    is_serve_pos = lambda h: abs(h['court'][1]) > HL - 1.6
+    side = lambda h: h['court'][1] < 0
+    strong = lambda h: h['desc']['overhead'] or h['snd'] >= 40 or h['sw'][1] >= 3.5
+
+    def returned(k):
+        """k번 타구 뒤 0.7~2.6초 안에 반대쪽 타구가 있으면 (= 서브가 넘어가 리턴됨)"""
+        for j in range(k + 1, len(hits)):
+            dt = (hits[j]['f'] - hits[k]['f']) / fps
+            if dt > 2.6:
+                break
+            if dt >= 0.7 and side(hits[j]) != side(hits[k]):
+                return True
+        return False
+
+    # 덩어리: 타구 사이가 3.5초 넘게 비면 나눔 → 덩어리마다 서브(또는 첫 주고받기)부터 랠리
+    chunks, cur = [], []
+    for k, h in enumerate(hits):
+        if cur and (h['f'] - hits[cur[-1]]['f']) / fps > 3.5:
+            chunks.append(cur)
+            cur = []
+        cur.append(k)
+    if cur:
+        chunks.append(cur)
+    rallies = []
+    serve_set = set()
+    for ch in chunks:
+        start = None
+        # 서브: 베이스라인 + 0.7~2.6초 뒤 반대쪽 리턴, 그 앞은 같은 편 준비 동작(공 튀기기)뿐
+        for n, k in enumerate(ch):
+            if is_serve_pos(hits[k]) and returned(k) and all(side(hits[j]) == side(hits[k]) for j in ch[:n] if (hits[k]['f'] - hits[j]['f']) / fps < 6):
+                start = n
+        if start is not None:
+            serve_set.add(ch[start])
+        else:
+            # 서브를 못 봤지만 양쪽이 주고받은 구간
+            for n, k in enumerate(ch[:-1]):
+                if side(hits[ch[n + 1]]) != side(hits[k]) and 0.6 <= (hits[ch[n + 1]]['f'] - hits[k]['f']) / fps <= 3:
+                    start = n
+                    break
+        if start is None:
+            # 한 번만 친 덩어리: 뚜렷한 서브 자세면 에이스 · 폴트로 남김
+            k = max(ch, key=lambda k: hits[k]['snd'] * hits[k]['sw'][1])
+            if is_serve_pos(hits[k]) and hits[k]['desc']['overhead'] and strong(hits[k]):
+                serve_set.add(k)
+                rallies.append([hits[k]])
+            continue
+        r = [hits[ch[start]]]
+        for k in ch[start + 1:]:
+            h, last = hits[k], r[-1]
+            if side(h) == side(last) and (h['f'] - last['f']) / fps < 1.2:
+                continue  # 같은 편이 1.2초 안에 또 = 같은 타구 · 잡음
+            r.append(h)
+        for h in r:
+            h['_serve'] = False
+        if ch[start] in serve_set:
+            r[0]['_serve'] = True
+        rallies.append(r)
+    for k in serve_set:
+        hits[k]['_serve'] = True
+
+    # 손잡이: 서브 때 빠르게 움직인 손목
+    hand_votes = {}
+    for r in rallies:
+        h = r[0]
+        if is_serve_pos(h):
+            hand_votes.setdefault(h['slot'], Counter())[h['desc']['hand']] += 1
+    hand = {k: v.most_common(1)[0][0] for k, v in hand_votes.items()}
+
+    def kind_of(h, first, prev_bounce):
+        d = h['desc']
+        px, py = h['court']
+        if first and h.get('_serve'):
+            return 'serve'
+        if d['overhead']:
+            return 'overhead'
+        if abs(py) < SV - 1.0 and not prev_bounce:
+            return 'volley'
+        if d['side'] is None:
+            return 'fh'
+        near = py < 0
+        own_right = (d['side'] > 0) if near else (d['side'] < 0)  # 가까운 쪽은 등, 먼 쪽은 얼굴이 보임
+        return 'fh' if own_right == (hand.get(h['slot'], 'R') == 'R') else 'bh'
+
+    out_rallies, out_shots = [], []
+    for r_i, rally in enumerate(rallies):
+        t0 = max(0, rally[0]['f'] / fps - 1)
+        t1 = rally[-1]['f'] / fps + 2
+        nxt_rally = rallies[r_i + 1] if r_i + 1 < len(rallies) else None
+        for s_i, h in enumerate(rally):
+            nxt = rally[s_i + 1]['i'] if s_i + 1 < len(rally) else h['i'] + int(fps * 3)
+            near = h['court'][1] < 0
+            bs = [b for b in bounces if h['i'] < b['i'] < nxt]
+            opp = [b for b in bs if (b['by'] > 0) == near]
+            b = opp[0] if opp else None
+            prev = rally[s_i - 1] if s_i else None
+            prev_bounce = prev is not None and any(prev['i'] < x['i'] < h['i'] and (x['by'] < 0) == near for x in bounces)
+            kind = kind_of(h, s_i == 0, prev_bounce)
+            res = 'unknown'
+            if s_i + 1 < len(rally) and (rally[s_i + 1]['court'][1] < 0) != near:
+                res = 'in'  # 상대가 받아쳤으면 들어간 공
+            elif b is not None:
+                if kind == 'serve':
+                    inside = abs(b['bx']) <= SW + 0.15 and 0 <= abs(b['by']) <= SV + 0.15
+                else:
+                    inside = abs(b['bx']) <= HW + 0.15 and abs(b['by']) <= HL + 0.15
+                res = 'in' if inside else 'out'
+            elif bs and all((x['by'] > 0) != near for x in bs):
+                res = 'net'
+            fault = False
+            if kind == 'serve' and len(rally) == 1 and nxt_rally and nxt_rally[0]['slot'] == h['slot'] and is_serve_pos(nxt_rally[0]) and (nxt_rally[0]['f'] - h['f']) / fps < 30:
+                fault = True
+                if res in ('in', 'unknown'):
+                    res = 'out'
+            px, py = h['court']
+            d = h['desc']
+            shot = {'t': round(h['f'] / fps, 2), 'r': r_i, 'p': h['slot'], 'k': kind, 'hx': round(px, 2), 'hy': round(py, 2), 'res': res}
+            if b is not None:
+                shot['bx'], shot['by'] = round(b['bx'], 2), round(b['by'], 2)
+            if d.get('height'):
+                shot['h'] = d['height']
+            if d.get('reach'):
+                shot['reach'] = d['reach']
+            if d.get('run') is not None:
+                shot['run'] = round(d['run'], 1)
+            if fault:
+                shot['fault'] = 1
+            out_shots.append(shot)
+        rs = [s for s in out_shots if s['r'] == r_i]
+        last = rs[-1]
+        last_near = last['hy'] < 0
+        win = None
+        if last['res'] == 'in':
+            win = 'near' if last_near else 'far'
+        elif last['res'] in ('out', 'net'):
+            win = 'far' if last_near else 'near'
+        ro = {'t0': round(t0, 2), 't1': round(t1, 2), 'win': win, 'end': 'fault' if last.get('fault') else 'winner' if last['res'] == 'in' else 'error' if last['res'] in ('out', 'net') else 'unknown'}
+        if rs[0]['k'] == 'serve':
+            ro['srv'] = rs[0]['p']
+        out_rallies.append(ro)
+
+    result = {
+        'v': 1,
+        'title': name,
+        'video': {'kind': 'youtube', 'id': video_id} if video_id else None,
+        'duration': round(len(frames) / fps),
+        'status': 'done',
+        'engine': 'oc-analyzer 0.2',
+        'players': {'P1': None, 'P2': None, 'P3': None, 'P4': None},
+        'hands': hand,
+        'rallies': out_rallies,
+        'shots': out_shots,
+    }
+    seen_ball = sum(p is not None for p in pos) / max(1, len(pos))
+    return result, {'hits': hits, 'bounces': bounces, 'ball_seen': seen_ball, **info}
+
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--name', default='match')
     ap.add_argument('--calib', default='out/calib.json')
     ap.add_argument('--youtube', default=None)
     a = ap.parse_args()
-    res, dbg = build(a.name, a.calib, a.youtube)
+    import os
+
+    if os.path.exists(f'out/{a.name}.pose.jsonl') and os.path.exists(f'out/{a.name}.audio.json'):
+        res, dbg = build2(a.name, a.calib, a.youtube)
+    else:
+        res, dbg = build(a.name, a.calib, a.youtube)
     json.dump(res, open(f'out/{a.name}.result.json', 'w'), ensure_ascii=False)
     kinds = Counter(s['k'] for s in res['shots'])
     resc = Counter(s['res'] for s in res['shots'])

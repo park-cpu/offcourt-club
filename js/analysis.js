@@ -135,7 +135,11 @@ export function demoAnalysis() {
         else bx = Math.sign(bx || 1) * (COURT.singlesW + 0.2 + rnd() * 1.2);
       }
       if (res === 'net') by = 0;
-      shots.push({ t: Math.round((t + 0.4) * 10) / 10, r, p, k, hx: +hx.toFixed(2), hy: +hy.toFixed(2), bx: +bx.toFixed(2), by: +by.toFixed(2), res });
+      // 타점 · 이동 (분석기 0.2 필드): 실수한 공은 낮은 타점 · 뛰면서 친 경우가 많게
+      const hgt = k === 'serve' || k === 'overhead' ? 'high' : err && rnd() < 0.5 ? 'low' : pick(['low', 'mid', 'mid', 'mid', 'high']);
+      const run = +(err && rnd() < 0.5 ? 2.5 + rnd() * 2 : rnd() * 2.6).toFixed(1);
+      const reach = pick(['close', 'normal', 'normal', 'far']);
+      shots.push({ t: Math.round((t + 0.4) * 10) / 10, r, p, k, hx: +hx.toFixed(2), hy: +hy.toFixed(2), bx: +bx.toFixed(2), by: +by.toFixed(2), res, h: hgt, run, reach });
       t += 1.1 + rnd() * 0.6;
       last = { near, res };
       near = !near;

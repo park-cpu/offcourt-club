@@ -62,6 +62,8 @@
 - 결과 형식 `analyzer/FORMAT.md` (코트 좌표 m, 원점 네트 중앙, 카메라 쪽 y<0). 컬렉션 `analyses` (firestore.rules에 추가 → 콘솔 규칙도 바꿔야 저장됨)
 - 계산 `js/analysis.js` (방향 · 깊이 · `shotStats` · `memberShots` · `demoAnalysis`), 화면 `js/views/analysis.js` (`#/analysis[/id|demo[/rally|map|stats]]`). 영상 iframe은 `player`로 재사용(다시 그려져도 안 끊김), 샷 누르면 postMessage seekTo
 - 흐름: 회원이 유튜브 링크로 요청(status queued) → 분석기(Mac 시험판, 나중에 서버)가 JSON 생성 → 관리자 '결과 파일 넣기' → done. 관리자가 Mac에서 돌리는 동안 '분석 시작'으로 processing 표시(v1.15.1~, `statusBox`). 영상 속 P1·P2(가까운 쪽) P3·P4(먼 쪽)를 회원과 지정
+- 피드백(v1.16.0~): `js/coach.js` (`missCauses` · `bounceSummary` · `feedback`) — 샷의 h · reach · run · 위치 · 바운드로 문장 생성. 분석 상세 첫 탭 '피드백'
+- 분석기 0.2 = detect(사람·공) + motion + pose(관절, `pose.py`) + audio(타구음, `audio.py`) → `events.py`의 `build2`(소리+스윙+공 → 타구, 서브 = 베이스라인 + 0.7~2.6초 뒤 반대쪽 리턴)
 - 정확도 기록장 `analyzer/ACCURACY.md` (Claude가 주도 · 갱신). 결과 파일은 `analyzer/out/`(git 제외)
 - 계획: 1) 화면(완료) 2) Mac 시험판 분석기 `analyzer/` 3) 서버(Blaze) 자동 분석
 

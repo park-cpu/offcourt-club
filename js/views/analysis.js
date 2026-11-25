@@ -10,6 +10,7 @@ import { state, me, isAdmin, person, fmtDate, activePlayers, today, addDays, isG
 import { put, remove, uid } from '../db.js';
 import { pageHead, backLink, requireLogin, teamNames } from './common.js';
 import { COURT, SHOT_KINDS, DIRS, DEPTHS, RESULTS, SLOTS, dirOf, fromNear, shotStats, rallyStats, fmtTime, youtubeId, demoAnalysis } from '../analysis.js';
+import { missCauses, bounceSummary, feedback } from '../coach.js';
 
 const STATUS = { queued: '분석 대기', processing: '분석 중', done: '완료', error: '오류' };
 const view = { pick: 'all', kind: 'all', demo: null };
@@ -28,7 +29,7 @@ export function analysisView(id, tab) {
   if (!a) return h('div', { class: 'page' }, backLink('#/analysis', '영상 분석'), empty('없는 분석이에요'));
   if (view.id !== a.id) Object.assign(view, { id: a.id, pick: 'all', kind: 'all' });
   if (a.status !== 'done') return pendingView(a);
-  return detailView(a, tab || 'rally');
+  return detailView(a, tab || 'coach');
 }
 
 // ── 목록 ──────────────────────────────────────────────
@@ -233,6 +234,7 @@ function detailView(a, tab) {
   const rerender = () => window.dispatchEvent(new Event('rerender'));
   const base = `#/analysis/${a.id}`;
   const tabs = [
+    ['coach', '피드백'],
     ['rally', '랠리'],
     ['map', '바운드 지도'],
     ['stats', '통계'],
@@ -245,7 +247,7 @@ function detailView(a, tab) {
     ),
     canEdit(a) && h('button', { class: 'chip ghost', onclick: () => mapSheet(a) }, '선수 지정')
   );
-  const body = tab === 'map' ? mapTab(a) : tab === 'stats' ? statsTab(a) : rallyTab(a);
+  const body = tab === 'map' ? mapTab(a) : tab === 'stats' ? statsTab(a) : tab === 'rally' ? rallyTab(a) : coachTab(a);
   return h(
     'div',
     { class: 'page' },
@@ -298,7 +300,8 @@ function rallyTab(a) {
       h('b', {}, slotName(a, s.p)),
       ` ${SHOT_KINDS[s.k] || '기타'}`,
       dirOf(s) && h('small', {}, ` ${DIRS[dirOf(s)]}`),
-      s.res !== 'in' && h('em', {}, ` ${RESULTS[s.res] || ''}`)
+      s.res !== 'in' && h('em', {}, ` ${RESULTS[s.res] || ''}`),
+      missCauses(s).length > 0 && h('small', { class: 'an-cause' }, missCauses(s).filter((c) => c !== '서브 실수').slice(0, 2).join(' · '))
     );
   return h(
     'div',
@@ -364,7 +367,62 @@ function mapTab(a) {
     { class: 'stack' },
     h('div', { class: 'an-chips' }, kinds.map((k) => h('button', { class: 'chip' + (view.kind === k ? ' on' : ''), onclick: () => { view.kind = k; rerender(); } }, k === 'all' ? '모든 샷' : SHOT_KINDS[k]))),
     h('section', { class: 'block' }, bounceMap(shots), h('div', { class: 'an-legend' }, h('span', { class: 'lg in' }, `인 ${n('in')}`), h('span', { class: 'lg out' }, `아웃 ${n('out')}`), h('span', { class: 'lg net' }, `네트 ${n('net')}`))),
-    h('p', { class: 'muted small' }, '친 사람이 아래쪽에 있는 것처럼 돌려서 보여줘요. 위쪽 코트에 점이 고르게 깊이 찍힐수록 좋아요.')
+    h('section', { class: 'block an-read' }, h('h2', {}, '이 지도에서 볼 것'), h('ul', {}, bounceSummary(shots).map((t) => h('li', {}, t)))),
+    h(
+      'details',
+      { class: 'an-how' },
+      h('summary', {}, '지도 읽는 법'),
+      h(
+        'ul',
+        {},
+        h('li', {}, '친 사람이 아래쪽에서 위쪽으로 친 것처럼 돌려서 보여줘요. 점 = 공이 처음 떨어진 곳이에요.'),
+        h('li', {}, '노란 점(인)이 위쪽 베이스라인 가까이 모일수록 깊은 공이에요. 서비스 라인(가운데 가로선) 안쪽은 짧은 공이에요.'),
+        h('li', {}, '빨간 점(아웃)이 위쪽 끝 밖이면 길게, 양옆 밖이면 옆으로 나간 공이에요. 회색 점(네트)은 네트 바로 아래에 모아 보여줘요.'),
+        h('li', {}, '점을 누르면(길게 누르면) 샷 종류와 시간이 나와요.')
+      )
+    )
+  );
+}
+
+// ── 피드백 (v1.16.0~) ────────────────────────────────
+function coachTab(a) {
+  const slots = view.pick === 'all' ? SLOTS.filter((k) => a.shots.some((s) => s.p === k)) : [view.pick];
+  const list = (title, items, cls) => items.length > 0 && h('div', { class: 'an-fb ' + cls }, h('p', { class: 'eyebrow' }, title), h('ul', {}, items.map((t) => h('li', {}, t))));
+  const card = (k) => {
+    const shots = a.shots.filter((s) => s.p === k);
+    const fb = feedback(shots);
+    const errs = shots.filter((s) => s.res === 'out' || s.res === 'net');
+    return h(
+      'section',
+      { class: 'block' },
+      h('h2', {}, slotName(a, k)),
+      fb.note ? h('p', { class: 'muted' }, fb.note) : [h('p', { class: 'an-fb-sum' }, fb.summary), list('잘한 점', fb.good, 'good'), list('고칠 점', fb.fix, 'fix'), list('연습 팁', fb.tips, 'tip')],
+      errs.length > 0 &&
+        h(
+          'details',
+          { class: 'an-how' },
+          h('summary', {}, `실수 장면 ${errs.length}개 · 원인 보기`),
+          h(
+            'div',
+            { class: 'an-miss' },
+            errs.map((s) =>
+              h(
+                'button',
+                { class: 'an-miss-row', onclick: () => seek(s.t) },
+                h('span', { class: 'an-miss-t' }, fmtTime(s.t)),
+                h('span', {}, h('b', {}, `${SHOT_KINDS[s.k] || '샷'} ${RESULTS[s.res]}`), h('br'), h('small', { class: 'muted' }, missCauses(s).join(' · ') || '원인 추정 정보 없음')),
+                h('span', { class: 'muted' }, '▶')
+              )
+            )
+          )
+        )
+    );
+  };
+  return h(
+    'div',
+    { class: 'stack' },
+    slots.map(card),
+    h('p', { class: 'muted small' }, `시험판 분석(${a.engine || '-'})이라 놓친 샷이 있고, 실수 원인은 영상에서 보이는 자세 · 위치로 추정한 거예요. 실수 장면을 눌러 영상으로 직접 확인해 보세요.`)
   );
 }
 

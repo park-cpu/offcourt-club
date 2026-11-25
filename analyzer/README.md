@@ -24,7 +24,13 @@ YOLO 모델(`models/yolo11s.pt`)은 처음 실행할 때 Ultralytics 공식 저�
    ```bash
    .venv/bin/python detect.py match.mp4 --name match --rough '<2번에서 나온 네 점>'
    .venv/bin/python motion.py match.mp4 --name match
+   .venv/bin/python pose.py match.mp4 --name match        # 관절(자세), 약 10분
    ```
+   소리(타구음): 유튜브면 `yt-dlp -f 140 -o audio.m4a <링크>` → `ffmpeg -i audio.m4a -ac 1 -ar 22050 audio.wav` →
+   ```bash
+   .venv/bin/python audio.py audio.wav --name match           # 1초
+   ```
+   pose · audio 결과가 있으면 4번이 자동으로 0.2 방식(소리 + 스윙 + 공)을 씀
 4. **타구 · 바운드 · 샷 만들기** (몇 초):
    ```bash
    .venv/bin/python events.py --name match --youtube <유튜브 영상 id>
@@ -32,7 +38,12 @@ YOLO 모델(`models/yolo11s.pt`)은 처음 실행할 때 Ultralytics 공식 저�
    → `out/match.result.json`을 앱에 넣기
 5. 점검: `debug.py --name match --t0 30 --t1 60` (시간축 그림), `--frames 40.5,41.0 --video match.mp4` (장면에 표시)
 
-## 지금 수준 (0.1)
+## 지금 수준 (0.2) — 자세한 숫자는 ACCURACY.md
+
+- 0.2: 공만 보던 방식 → 타구음 + 손목 스윙 + 공을 함께 봄. 서브 전 공 튀기기 · 공 주고받기를 덜 세고, 먼 쪽 타구를 더 잡음
+- 타점 높이 · 공과의 거리 · 이동 속도 → 앱이 실수 원인 · 피드백 문장을 만듦
+
+## 0.1 때 기록
 
 - 코트 선 맞추기: 정확 (평균 1px). 15초마다 다시 맞춰 카메라가 밀려도 따라감
 - 선수 찾기: 잘 됨. 옷 색으로 4명 구분

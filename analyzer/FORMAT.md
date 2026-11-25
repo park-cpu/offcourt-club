@@ -24,7 +24,7 @@
   "engine": "oc-analyzer 0.1",
   "players": { "P1": "p_abc", "P2": null, "P3": null, "P4": null },  // 영상 속 선수 → 회원 id (앱에서 지정)
   "rallies": [
-    { "t0": 12.4, "t1": 21.0, "win": "far", "end": "error" }       // win: near|far|null, end: winner|error|unknown
+    { "t0": 12.4, "t1": 21.0, "win": "far", "end": "error", "srv": "P1" }  // win: near|far|null, end: winner|error|fault|unknown, srv: 서버(0.2~, 선택)
   ],
   "shots": [
     {
@@ -34,11 +34,18 @@
       "k": "serve",       // serve · fh(포핸드) · bh(백핸드) · volley · overhead · unknown
       "hx": 1.2, "hy": -12.0,   // 친 위치 (선택)
       "bx": -2.1, "by": 4.8,    // 바운드 위치 (네트면 by≈0, 모르면 생략)
-      "res": "in"         // in · out · net · unknown
+      "res": "in",        // in · out · net · unknown
+      // ↓ 분석기 0.2~ (자세 · 소리), 모두 선택
+      "h": "mid",         // 타점 높이 low(무릎 아래쪽) · mid · high(어깨 위)
+      "reach": "normal",  // 공과 몸 거리 close(붙음) · normal · far(뻗음)
+      "run": 1.2,         // 치기 직전 0.5초 이동 속도 m/s (2.5 이상 = 뛰면서 침)
+      "fault": 1          // 서브 폴트
     }
   ]
 }
 ```
 
 - 방향(크로스 · 스트레이트 · 가운데)과 깊이(짧게 · 중간 · 깊게)는 앱이 `hx`·`bx`·`by`로 계산
+- 실수 원인 · 선수별 피드백 문장은 앱이 `h`·`reach`·`run`·위치·바운드로 만듦 (`js/coach.js`)
+- `hands`(선택): 슬롯별 손잡이 추정 {"P1": "R"} — 서브 때 움직인 손목
 - 문서 하나에 25분 경기 약 150랠리 · 700샷 ≈ 70KB (Firestore 1MB 제한 안쪽)

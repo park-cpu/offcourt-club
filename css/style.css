@@ -646,3 +646,19 @@ html, body { overscroll-behavior-y: contain; }
 .an-bar .c2, .an-bar-key .c2::before { background: var(--ink-3); }
 .an-bar-key { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--ink-2); margin-bottom: 12px; }
 .an-bar-key span::before { content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 5px; }
+
+/* ── 영상 분석 피드백 (v1.16.0) ───────────────────── */
+.an-fb { margin-top: 10px; }
+.an-fb ul, .an-read ul, .an-how ul { margin: 4px 0 0; padding-left: 18px; }
+.an-fb li, .an-read li { margin: 4px 0; line-height: 1.5; }
+.an-fb.good .eyebrow { color: var(--blue); }
+.an-fb.fix .eyebrow { color: var(--point); }
+.an-fb.tip .eyebrow { color: #8a5a33; }
+.an-how { margin-top: 10px; }
+.an-how summary { cursor: pointer; font-weight: 700; padding: 6px 0; }
+.an-how li { margin: 4px 0; line-height: 1.5; font-size: 14px; color: var(--ink-2); }
+.an-miss { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.an-miss-row { display: grid; grid-template-columns: 44px 1fr auto; gap: 8px; align-items: center; text-align: left; background: var(--slide-bg, #e7e3d9); border: 0; border-radius: 10px; padding: 8px 10px; font: inherit; color: inherit; }
+.an-miss-t { font-family: 'Newsreader', serif; font-weight: 700; }
+.an-cause { display: block; font-size: 11px; color: var(--ink-3); }
+.an-fb-sum { font-weight: 700; margin: 2px 0 0; color: var(--ink-2); }
