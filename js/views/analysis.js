@@ -163,10 +163,33 @@ function pendingView(a) {
     backLink('#/analysis', '영상 분석'),
     pageHead(a.title || '영상 분석', a.date ? fmtDate(a.date) : ''),
     videoBox(a),
-    h('section', { class: 'block center' }, h('p', { class: 'an-status big st-' + a.status }, STATUS[a.status]), h('p', { class: 'muted small' }, a.status === 'error' ? a.error || '분석하지 못했어요' : '분석이 끝나면 이 화면에 결과가 나와요.')),
+    statusBox(a),
+    isAdmin() && a.status === 'queued' && h('button', { class: 'btn ghost block', onclick: () => setStatus(a, 'processing') }, '분석 시작 (회원에게 \'분석 중\'으로 보여요)'),
+    isAdmin() && a.status === 'processing' && h('button', { class: 'btn ghost block', onclick: () => setStatus(a, 'queued') }, '대기로 되돌리기'),
     isAdmin() && h('button', { class: 'btn ghost block', onclick: () => importSheet(a) }, '결과 파일 넣기'),
     (isAdmin() || a.createdBy === me()?.id) && h('button', { class: 'btn ghost block danger-text', onclick: () => del(a) }, '요청 삭제')
   );
+}
+
+// 상태 안내 (v1.15.1~): 분석 중이면 돌아가는 표시, 대기면 순서 · 안내
+function statusBox(a) {
+  if (a.status === 'processing')
+    return h('section', { class: 'block center an-wait' }, h('div', { class: 'an-spin' }), h('p', { class: 'an-wait-t' }, '현재 분석 중입니다'), h('p', { class: 'muted small' }, '보통 영상 길이의 1~2배 걸려요. 끝나면 이 화면에 결과가 나와요.'));
+  if (a.status === 'error') return h('section', { class: 'block center' }, h('p', { class: 'an-status big st-error' }, STATUS.error), h('p', { class: 'muted small' }, a.error || '분석하지 못했어요'));
+  const line = state.analyses.filter((x) => x.status === 'queued' || x.status === 'processing').sort((x, y) => (x.createdAt || 0) - (y.createdAt || 0));
+  const n = line.findIndex((x) => x.id === a.id) + 1;
+  return h(
+    'section',
+    { class: 'block center an-wait' },
+    h('div', { class: 'an-dots' }, h('span'), h('span'), h('span')),
+    h('p', { class: 'an-wait-t' }, '분석 순서를 기다리고 있어요'),
+    h('p', { class: 'muted small' }, `${n > 1 ? `앞에 ${n - 1}개가 있어요 · ` : ''}지금은 시험 운영 중이라 관리자가 분석을 시작하면 '분석 중'으로 바뀌어요.`)
+  );
+}
+
+async function setStatus(a, status) {
+  await put('analyses', { ...a, status });
+  toast(status === 'processing' ? '분석 중으로 바꿨어요' : '대기로 되돌렸어요');
 }
 
 async function del(a) {
