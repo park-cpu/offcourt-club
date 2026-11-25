@@ -167,6 +167,8 @@ export function matchCard(m, { onEdit, showDate = false } = {}) {
     h('div', { class: 'mbody' }, side(m.teamA, m.scoreA, w === 'A'), h('div', { class: 'vs' }, 'vs'), side(m.teamB, m.scoreB, w === 'B')),
     foot && h('div', { class: 'mfoot' }, foot),
     m.recordedBy && h('div', { class: 'mfoot muted' }, `기록 ${person(m.recordedBy).name}${m.history?.length > 1 ? ` · 수정 ${m.history.length - 1}회` : ''}`),
+    // 영상 분석이 끝난 경기면 바로가기 (v1.15.0~)
+    done && (state.analyses || []).some((a) => a.matchId === m.id && a.status === 'done') && h('a', { class: 'btn small ghost', href: `#/analysis/${state.analyses.find((a) => a.matchId === m.id && a.status === 'done').id}` }, '🎥 영상 분석'),
     onEdit && canRecord(m) && h('button', { class: 'btn small ghost', onclick: () => onEdit(m) }, done ? '기록 수정' : '점수 입력')
   );
 }

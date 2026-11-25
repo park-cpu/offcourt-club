@@ -4,7 +4,7 @@ service cloud.firestore {
     // Offcourt 앱이 쓰는 경로만 허용하고, 그 외 경로는 모두 차단합니다.
     match /clubs/{clubId}/{collection}/{docId} {
       allow read: if true;
-      allow write: if collection in ['players', 'guests', 'schedules', 'attendance', 'matches', 'coinLogs', 'settings', 'items', 'purchases', 'avatars', 'ballLogs', 'rallyScores'];
+      allow write: if collection in ['players', 'guests', 'schedules', 'attendance', 'matches', 'coinLogs', 'settings', 'items', 'purchases', 'avatars', 'ballLogs', 'rallyScores', 'analyses'];
     }
   }
 }

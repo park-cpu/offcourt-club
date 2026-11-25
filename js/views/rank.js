@@ -5,6 +5,8 @@ import { ratingToNtrp, RULES, MATCH_TYPES, winnerSide, matchOrder, isRated, canB
 import { pageHead, backLink, nameTag, canRecord } from './common.js';
 import { scoreSheet } from './play.js';
 import { avatarBlock } from './avatar.js';
+import { bounceMap, statsBlock } from './analysis.js';
+import { memberShots, shotStats } from '../analysis.js';
 
 // 화면에 보이는 점수(반올림)가 같으면 같은 등수 (1, 2, 2, 4 …). rows는 이미 정렬된 상태
 export function withPlaces(rows, score) {
@@ -182,6 +184,7 @@ export function profileView(id) {
     ),
     loanBlock(p, coins),
     relationBlocks(id),
+    analysisBlock(id),
     h(
       'section',
       { class: 'block' },
@@ -195,6 +198,17 @@ export function profileView(id) {
       h('ul', { class: 'ledger' }, ledger.map((l) => h('li', {}, h('span', { class: 'muted small' }, l.date ? fmtShort(l.date) : ''), h('span', { class: 'grow' }, l.reason), h('strong', { class: l.amount > 0 ? 'up' : 'down' }, fmtNum(l.amount)))))
     )
   );
+}
+
+// ── 영상 분석으로 본 내 샷 (v1.15.0~) ─────────────────────
+function analysisBlock(id) {
+  const shots = memberShots(state.analyses || [], id);
+  if (!shots.length) return null;
+  const games = new Set(shots.map((s) => s._a)).size;
+  return [
+    statsBlock(shotStats(shots), { title: `영상 분석 · ${games}경기` }),
+    h('section', { class: 'block' }, h('h2', {}, '내 공이 떨어진 곳'), bounceMap(shots, { size: 'small' }), h('a', { class: 'link small', href: '#/analysis' }, '영상 분석 전체 보기 ›')),
+  ];
 }
 
 // ── 최근 경기 (v1.13.0~ 한 줄 요약 + 더 보기) ─────────────

@@ -38,7 +38,8 @@ export function playView(sid, tab) {
       todays.length
         ? h('section', { class: 'block' }, h('h2', {}, '오늘 일정을 선택하세요'), todays.map(item))
         : empty('지금 진행 중인 일정이 없어요', h('a', { class: 'btn primary', href: '#/week' }, '일정 보기')),
-      recent.length > 0 && h('section', { class: 'block' }, h('h2', {}, '지난 일정 결과'), h('p', { class: 'muted small' }, '최근 일주일'), recent.map(item))
+      recent.length > 0 && h('section', { class: 'block' }, h('h2', {}, '지난 일정 결과'), h('p', { class: 'muted small' }, '최근 일주일'), recent.map(item)),
+      h('nav', { class: 'menu' }, h('a', { class: 'link-row', href: '#/analysis' }, h('span', {}, '🎥 영상 분석'), h('span', { class: 'muted' }, `${state.analyses.filter((a) => a.status === 'done').length}개 ›`)))
     );
   }
 

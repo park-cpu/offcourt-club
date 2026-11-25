@@ -6,7 +6,7 @@
 // ─────────────────────────────────────────────────────────────
 import { FIREBASE_CONFIG, CLUB_ID } from './config.js';
 
-export const COLLECTIONS = ['players', 'guests', 'schedules', 'attendance', 'matches', 'coinLogs', 'settings', 'items', 'purchases', 'avatars', 'ballLogs', 'rallyScores'];
+export const COLLECTIONS = ['players', 'guests', 'schedules', 'attendance', 'matches', 'coinLogs', 'settings', 'items', 'purchases', 'avatars', 'ballLogs', 'rallyScores', 'analyses'];
 
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 

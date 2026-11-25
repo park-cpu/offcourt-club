@@ -47,6 +47,7 @@ export function meView() {
       linkRow('내 아바타 꾸미기', '#/avatar', `🎾 ${derived().balls.bal.get(u.id) ?? 0} ›`),
       linkRow('회원 아바타 구경', '#/avatars'),
       linkRow('내 전적 · 코인 내역', `#/p/${u.id}`),
+      linkRow('🎥 영상 분석', '#/analysis'),
       h('button', { class: 'link-row', onclick: () => editMe(u) }, h('span', {}, '내 정보 · PIN 변경'), h('span', { class: 'muted' }, '›')),
       linkRow('점수 · 코인 규칙', '#/rules'),
       installRow(),

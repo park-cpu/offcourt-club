@@ -58,6 +58,12 @@
 - 클럽 랭킹(v1.9.1~): `rallyScores` 컬렉션, id `회원_난이도`, 항목별 최고값만 저장 (`submitClub`). 로그인 회원만 올라감. 점수 단위 v1.12.2~ 1/10 (`SCORE_V`=2): 예전 문서(sv 없음)는 `clubRows()`가 /10 해서 보여주고 다음 제출 때 sv:2로 저장, 이 기기 기록은 `loadRec`이 한 번 변환
 - 그래픽은 레퍼런스 분위기(NES 테니스)만 참고한 자체 그림 — 특정 게임 로고 · 캐릭터는 쓰지 않음
 
+## 영상 분석 (v1.15.0~)
+- 결과 형식 `analyzer/FORMAT.md` (코트 좌표 m, 원점 네트 중앙, 카메라 쪽 y<0). 컬렉션 `analyses` (firestore.rules에 추가 → 콘솔 규칙도 바꿔야 저장됨)
+- 계산 `js/analysis.js` (방향 · 깊이 · `shotStats` · `memberShots` · `demoAnalysis`), 화면 `js/views/analysis.js` (`#/analysis[/id|demo[/rally|map|stats]]`). 영상 iframe은 `player`로 재사용(다시 그려져도 안 끊김), 샷 누르면 postMessage seekTo
+- 흐름: 회원이 유튜브 링크로 요청(status queued) → 분석기(Mac 시험판, 나중에 서버)가 JSON 생성 → 관리자 '결과 파일 넣기' → done. 영상 속 P1·P2(가까운 쪽) P3·P4(먼 쪽)를 회원과 지정
+- 계획: 1) 화면(완료) 2) Mac 시험판 분석기 `analyzer/` 3) 서버(Blaze) 자동 분석
+
 ## 나중에 할 것
 - 카카오 로그인 연동 (보류 중). 간단 버전 = 카카오 계정을 기존 회원에 연결(GitHub Pages 그대로), 보안 강화 버전 = Firebase Blaze + Cloud Functions 커스텀 토큰
 
