@@ -53,7 +53,7 @@ export function rankView(a, b) {
     RANK_TABS.map(([k, label]) => h('a', { class: mode === k ? 'on' : '', href: k === 'rating' ? '#/rank/rating' : `#/rank/${k}${season ? '/' + season.id : ''}` }, label))
   );
 
-  if (mode === 'rating') return h('div', { class: 'page' }, pageHead('순위', 'Ranking'), tabs, ratingTable());
+  if (mode === 'rating') return h('div', { class: 'page' }, pageHead('순위', 'Ranking'), h('div', { class: 'sticky-bar' }, tabs), ratingTable());
 
   if (!season)
     return h('div', { class: 'page' }, pageHead('순위', 'Ranking'), tabs, empty('등록된 시즌이 없어요. 관리자 메뉴에서 시즌을 만들어 주세요.'));
@@ -81,9 +81,13 @@ export function rankView(a, b) {
     'div',
     { class: 'page' },
     pageHead('순위', 'Ranking'),
-    tabs,
-    seasons.length > 1 &&
-      h('div', { class: 'chips-scroll' }, seasons.map((s) => h('a', { class: 'chip' + (s.id === season.id ? ' on' : ''), href: `#/rank/${mode}/${s.id}` }, s.name))),
+    h(
+      'div',
+      { class: 'sticky-bar' },
+      tabs,
+      seasons.length > 1 &&
+        h('div', { class: 'chips-scroll' }, seasons.map((s) => h('a', { class: 'chip' + (s.id === season.id ? ' on' : ''), href: `#/rank/${mode}/${s.id}` }, s.name)))
+    ),
     h('section', { class: 'season-band' }, h('strong', {}, `${season.name} · ${label}`), h('span', {}, `${fmtShort(season.start)} – ${fmtShort(season.end)}`)),
     h(
       'p',

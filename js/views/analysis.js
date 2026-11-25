@@ -322,7 +322,7 @@ function detailView(a, tab) {
     videoBox(a),
     overlayToggle(a),
     chips,
-    h('nav', { class: 'seg' }, tabs.map(([k, l]) => h('a', { class: k === tab ? 'on' : '', href: a.demo ? `#/analysis/demo/${k}` : `${base}/${k}` }, l))),
+    h('div', { class: 'sticky-bar' }, h('nav', { class: 'seg' }, tabs.map(([k, l]) => h('a', { class: k === tab ? 'on' : '', href: a.demo ? `#/analysis/demo/${k}` : `${base}/${k}` }, l)))),
     body,
     !a.demo && isAdmin() && h('button', { class: 'btn ghost block danger-text', onclick: () => del(a) }, '분석 삭제')
   );

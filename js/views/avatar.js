@@ -89,7 +89,7 @@ export function avatarView(tab) {
         h('button', { class: 'btn ghost', onclick: () => { ed.look = structuredClone(pick(lookOf(u.id))); ed.dirty = false; ed.sel = null; rerender(); } }, '되돌리기'),
         h('button', { class: 'btn primary grow', onclick: save }, '저장하기')
       ),
-    tabs,
+    h('div', { class: 'sticky-bar' }, tabs),
     body
   );
 }

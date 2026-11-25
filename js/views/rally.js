@@ -761,8 +761,12 @@ function renderRank() {
   const rerank = (f) => { f(); renderRank(); };
   box.replaceChildren(
     h('div', { class: 'row between' }, h('h2', {}, '클럽 랭킹'), h('small', { class: 'muted' }, '회원 최고 기록')),
-    h('div', { class: 'chips-scroll' }, Object.entries(DIFFS).map(([k, v]) => h('button', { class: 'chip' + (diff === k ? ' on' : ''), onclick: () => rerank(() => (rankView.diff = k)) }, v.label))),
-    h('div', { class: 'seg rally-seg' }, RANK_SORT.map(([k, l]) => h('button', { class: key === k ? 'on' : '', onclick: () => rerank(() => (rankView.sort = k)) }, l))),
+    h(
+      'div',
+      { class: 'sticky-bar' },
+      h('div', { class: 'chips-scroll' }, Object.entries(DIFFS).map(([k, v]) => h('button', { class: 'chip' + (diff === k ? ' on' : ''), onclick: () => rerank(() => (rankView.diff = k)) }, v.label))),
+      h('div', { class: 'seg rally-seg' }, RANK_SORT.map(([k, l]) => h('button', { class: key === k ? 'on' : '', onclick: () => rerank(() => (rankView.sort = k)) }, l)))
+    ),
     rows.length
       ? h('div', { class: 'rank-list rally-rank' }, rows.map((x, i) =>
           h('a', { class: 'rank-row' + (u && x.playerId === u.id ? ' me' : '') + (place(i) <= 3 ? ' top' : ''), href: `#/p/${x.playerId}` },

@@ -58,7 +58,7 @@ export function itemsAdmin() {
     backLink('#/admin', '관리자'),
     pageHead('아바타 아이템', 'Items', h('button', { class: 'btn primary small', onclick: () => itemSheet() }, '+ 추가')),
     h('p', { class: 'muted small' }, '종류를 골라서 보고, 아이템을 누르면 이름 · 가격 · 판매 여부를 고칠 수 있어요.'),
-    h('div', { class: 'chips-scroll' }, FILTERS.map(([k, l]) => h('button', { class: 'chip' + (view.filter === k ? ' on' : ''), onclick: () => { view.filter = k; rerender(); } }, `${l} ${count(k)}`))),
+    h('div', { class: 'sticky-bar' }, h('div', { class: 'chips-scroll' }, FILTERS.map(([k, l]) => h('button', { class: 'chip' + (view.filter === k ? ' on' : ''), onclick: () => { view.filter = k; rerender(); } }, `${l} ${count(k)}`)))),
     view.filter !== 'all' && onSale.length + mine.length > 0 &&
       h('button', { class: 'btn ghost block', onclick: () => bulkPriceSheet(catLabel, [...mine.filter((it) => it.active !== false), ...onSale]) }, `${catLabel} 가격 한꺼번에 바꾸기`),
     mine.length > 0 && [h('h2', {}, `직접 등록한 아이템 ${mine.length}개`), h('div', { class: 'rank-list' }, mine.map((it) => row(it, () => itemSheet(it))))],

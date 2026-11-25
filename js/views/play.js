@@ -58,7 +58,7 @@ export function playView(sid, tab) {
     'div',
     { class: 'page' },
     pageHead(s.venue, `${fmtDate(s.date)} · ${s.start}–${s.end}`, h('a', { class: 'btn small ghost', href: `#/s/${s.id}` }, '일정')),
-    h('nav', { class: 'seg' }, tabs.map(([k, l]) => h('a', { class: k === tab ? 'on' : '', href: `#/play/${s.id}/${k}` }, l, k === 'done' ? h('small', {}, ` ${matchesOf(s.id).filter((m) => m.status === 'done').length}`) : null))),
+    h('div', { class: 'sticky-bar' }, h('nav', { class: 'seg' }, tabs.map(([k, l]) => h('a', { class: k === tab ? 'on' : '', href: `#/play/${s.id}/${k}` }, l, k === 'done' ? h('small', {}, ` ${matchesOf(s.id).filter((m) => m.status === 'done').length}`) : null)))),
     body
   );
 }

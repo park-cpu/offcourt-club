@@ -75,7 +75,7 @@ export function weekView(param) {
     'div',
     { class: 'page' },
     pageHead('일정', 'Weekly', h('button', { class: 'btn primary small', onclick: () => editSchedule(null, t > start && t <= end ? t : start < t ? t : start) }, '+ 등록')),
-    nav,
+    h('div', { class: 'sticky-bar' }, nav),
     h('div', { class: 'week' }, days),
     h('p', { class: 'muted small center' }, '굵은 테두리 = 내가 참가한 일정')
   );
