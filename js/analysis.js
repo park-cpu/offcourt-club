@@ -159,6 +159,7 @@ export function demoAnalysis() {
     status: 'done',
     engine: 'demo',
     players: { P1: null, P2: null, P3: null, P4: null },
+    looks: { P1: { c: '#36363a', n: '진회색' }, P2: { c: '#5aa0b9', n: '하늘색' }, P3: { c: '#e9e6e0', n: '흰색' }, P4: { c: '#161815', n: '검은색' } },
     rallies,
     shots,
   };

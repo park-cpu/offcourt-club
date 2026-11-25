@@ -609,11 +609,17 @@ if __name__ == '__main__':
     ap.add_argument('--name', default='match')
     ap.add_argument('--calib', default='out/calib.json')
     ap.add_argument('--youtube', default=None)
+    ap.add_argument('--video', default=None, help='영상 파일 (선수별 옷 색을 재려면)')
     a = ap.parse_args()
     import os
 
     if os.path.exists(f'out/{a.name}.pose.jsonl') and os.path.exists(f'out/{a.name}.audio.json'):
         res, dbg = build2(a.name, a.calib, a.youtube)
+        if a.video:
+            import swing
+
+            res['looks'] = swing.looks(a.video, dbg['hits'])
+            print('옷 색', {k: v['n'] for k, v in res['looks'].items()})
     else:
         res, dbg = build(a.name, a.calib, a.youtube)
     json.dump(res, open(f'out/{a.name}.result.json', 'w'), ensure_ascii=False)

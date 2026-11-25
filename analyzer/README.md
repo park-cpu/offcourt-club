@@ -33,7 +33,7 @@ YOLO 모델(`models/yolo11s.pt`)은 처음 실행할 때 Ultralytics 공식 저�
    pose · audio 결과가 있으면 4번이 자동으로 0.2 방식(소리 + 스윙 + 공)을 씀
 4. **타구 · 바운드 · 샷 만들기** (몇 초):
    ```bash
-   .venv/bin/python events.py --name match --youtube <유튜브 영상 id>
+   .venv/bin/python events.py --name match --youtube <유튜브 영상 id> --video match.mp4   # --video: 선수별 옷 색
    ```
    → `out/match.result.json`을 앱에 넣기
 5. 점검: `debug.py --name match --t0 30 --t1 60` (시간축 그림), `--frames 40.5,41.0 --video match.mp4` (장면에 표시)

@@ -311,3 +311,60 @@ def fuse(frames, pose, aud, ball_hits, C, fps, aud_min=8.0, swing_min=1.5):
     for h in hits:
         h['slot'] = slots.get(h['pid'])
     return hits, {'tracks': len(trs), 'ided': len(idmap)}
+
+
+# ── 선수별 윗옷 색 (앱에서 P1~P4가 누군지 알아보게) ─────────
+def color_name(bgr):
+    """대표 색 → 한국어 이름"""
+    import cv2
+
+    h, s, v = cv2.cvtColor(np.uint8([[bgr]]), cv2.COLOR_BGR2HSV)[0][0]
+    h = int(h) * 2  # 0~360
+    if v < 55:
+        return '검은색'
+    if s < 45:
+        return '흰색' if v > 185 else '밝은 회색' if v > 130 else '진회색'
+    if h < 15 or h >= 340:
+        return '빨간색' if v > 110 else '자주색'
+    if h < 40:
+        return '주황색' if s > 120 else '베이지색'
+    if h < 70:
+        return '노란색'
+    if h < 160:
+        return '초록색' if v > 90 else '진초록색'
+    if h < 215:
+        return '하늘색' if v > 140 else '청록색'
+    if h < 255:
+        return '파란색' if v > 120 else '남색'
+    if h < 300:
+        return '보라색'
+    return '분홍색'
+
+
+def looks(video, hits, per=15):
+    """각 슬롯의 타구 장면에서 상체(어깨~허리) 가운데 색의 중앙값"""
+    import cv2
+
+    cap = cv2.VideoCapture(video)
+    W = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+    out = {}
+    for slot in ['P1', 'P2', 'P3', 'P4']:
+        hs = [h for h in hits if h.get('slot') == slot and h['box'][0] > 5 and h['box'][2] < W - 5]
+        if not hs:
+            continue
+        pick = [hs[int(i * (len(hs) - 1) / max(1, per - 1))] for i in range(min(per, len(hs)))]
+        cols = []
+        for h in pick:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, h['f'])
+            ok, im = cap.read()
+            if not ok:
+                continue
+            x1, y1, x2, y2 = map(int, h['box'])
+            bh, bw = y2 - y1, x2 - x1
+            crop = im[y1 + int(bh * 0.22): y1 + int(bh * 0.45), x1 + int(bw * 0.3): x2 - int(bw * 0.3)]
+            if crop.size:
+                cols.append(np.median(crop.reshape(-1, 3), axis=0))
+        if cols:
+            bgr = np.median(np.array(cols), axis=0).astype(int)
+            out[slot] = {'c': '#%02x%02x%02x' % (bgr[2], bgr[1], bgr[0]), 'n': color_name(bgr)}
+    return out

@@ -15,6 +15,10 @@ import { missCauses, bounceSummary, feedback } from '../coach.js';
 const STATUS = { queued: '분석 대기', processing: '분석 중', done: '완료', error: '오류' };
 const view = { pick: 'all', kind: 'all', demo: null };
 const slotName = (a, k) => (a.players?.[k] ? person(a.players[k]).name : k);
+// 옷 색 (분석기가 잰 윗옷 색, v1.16.1~): 동그라미 + '진회색 상의'
+const lookOf = (a, k) => a.looks?.[k] || null;
+const swatch = (a, k) => lookOf(a, k) && h('i', { class: 'an-sw', style: `background:${lookOf(a, k).c}` });
+const lookText = (a, k) => (lookOf(a, k) ? `${k} · ${lookOf(a, k).n} 상의` : k);
 const canEdit = (a) => {
   const u = me();
   if (!u) return false;
@@ -243,7 +247,7 @@ function detailView(a, tab) {
     'div',
     { class: 'an-chips' },
     [['all', '전체'], ...SLOTS.filter((k) => a.shots.some((s) => s.p === k)).map((k) => [k, slotName(a, k)])].map(([k, l]) =>
-      h('button', { class: 'chip' + (view.pick === k ? ' on' : ''), onclick: () => { view.pick = k; rerender(); } }, l)
+      h('button', { class: 'chip' + (view.pick === k ? ' on' : ''), onclick: () => { view.pick = k; rerender(); } }, k !== 'all' && swatch(a, k), l)
     ),
     canEdit(a) && h('button', { class: 'chip ghost', onclick: () => mapSheet(a) }, '선수 지정')
   );
@@ -279,9 +283,9 @@ function mapSheet(a) {
     return h(
       'div',
       { class: 'stack' },
-      h('p', { class: 'muted small' }, 'P1 · P2 = 처음에 카메라 가까운 쪽, P3 · P4 = 먼 쪽 선수예요.'),
+      h('p', { class: 'muted small' }, a.looks ? '분석기가 잰 윗옷 색을 보고 골라 주세요. (P1 · P2 = 처음에 카메라 가까운 쪽, P3 · P4 = 먼 쪽)' : 'P1 · P2 = 처음에 카메라 가까운 쪽, P3 · P4 = 먼 쪽 선수예요.'),
       m && h('p', { class: 'muted small' }, '경기: ', teamNames(m.teamA), ' vs ', teamNames(m.teamB)),
-      h('div', { class: 'grid2' }, SLOTS.map((k) => field(k, sel[k]))),
+      h('div', { class: 'grid2' }, SLOTS.map((k) => field([swatch(a, k), lookText(a, k)], sel[k]))),
       h('button', { class: 'btn primary block', onclick: save }, '저장')
     );
   });
@@ -395,7 +399,8 @@ function coachTab(a) {
     return h(
       'section',
       { class: 'block' },
-      h('h2', {}, slotName(a, k)),
+      h('h2', {}, swatch(a, k), slotName(a, k)),
+      lookOf(a, k) && h('p', { class: 'muted small an-look' }, lookText(a, k)),
       fb.note ? h('p', { class: 'muted' }, fb.note) : [h('p', { class: 'an-fb-sum' }, fb.summary), list('잘한 점', fb.good, 'good'), list('고칠 점', fb.fix, 'fix'), list('연습 팁', fb.tips, 'tip')],
       errs.length > 0 &&
         h(
@@ -456,7 +461,7 @@ function statsTab(a) {
   return h(
     'div',
     { class: 'stack' },
-    slots.map((k) => statsBlock(shotStats(a.shots.filter((s) => s.p === k)), { title: slotName(a, k) })),
+    slots.map((k) => statsBlock(shotStats(a.shots.filter((s) => s.p === k)), { title: lookOf(a, k) && a.players?.[k] ? `${slotName(a, k)} (${lookOf(a, k).n})` : lookOf(a, k) ? lookText(a, k) : slotName(a, k) })),
     h('p', { class: 'muted small' }, '성공률 = 인 ÷ (인 + 아웃 + 네트). 방향 · 깊이는 바운드 위치로 계산해요.')
   );
 }
