@@ -1,5 +1,8 @@
 # Changelog
 
+## v1.18.0 — 2026-11-25
+- 날씨에 바람 추가: 일정 시간대 최대 풍속(m/s) 표시, 초속 5m 이상이면 💨 빨간 글씨로 강조 (Open-Meteo `wind_speed_10m`). 날씨 저장 키 `offcourt-weather-v3`
+
 ## v1.17.0 — 2026-11-25
 - 영상 분석: 유튜브 영상 위에 그래픽 (선수 이름표 · 위치 표시 · 공 꼬리 · 샷 이름 · 바운드 · 랠리 몇 구째), 영상 아래 켜기/끄기 — `js/tracks.js`
 - 위치 데이터는 새 컬렉션 `analysisTracks`에 따로 저장 (분석 화면을 열 때만 받음). **Firebase 콘솔 규칙에 analysisTracks 추가 필요**

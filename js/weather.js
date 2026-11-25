@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────
 // 날씨 예보 (Open-Meteo, 무료 · 키 없음)
-// 일정 시간대의 기온 범위와 최대 강수확률을 보여줍니다.
+// 일정 시간대의 기온 범위, 최대 강수확률, 최대 풍속(v1.18.0~)을 보여줍니다.
 // 범위: 지난 7일 ~ 앞으로 16일. 1시간마다 새로 받아옵니다.
 // v1.14.0~ 경기장마다 위치(settings.venues[].lat/lon)가 있으면 그 지역 날씨,
 //          없으면 기본 위치(WEATHER_PLACE).
@@ -11,9 +11,10 @@ import { settings } from './store.js';
 // 경기장 위치를 못 찾았을 때 쓰는 기본 위치
 export const WEATHER_PLACE = { name: '고양시 일산', lat: 37.66, lon: 126.77 };
 
-const KEY = 'offcourt-weather-v2';
+const KEY = 'offcourt-weather-v3'; // v3: 풍속 추가
 const MAX_AGE = 60 * 60 * 1000;
 const RETRY = 5 * 60 * 1000; // 실패하면 5분 뒤 다시
+const WINDY = 5; // 초속 5m 이상이면 강조 (공이 눈에 띄게 흔들리는 정도)
 
 const places = new Map(); // locKey → { hours: Map<'YYYY-MM-DDTHH', {t, p}>, at }
 const loading = new Set();
@@ -29,8 +30,8 @@ function placeOf(s) {
 
 function toHours(data) {
   const m = new Map();
-  const { time, temperature_2m: t, precipitation_probability: p } = data.hourly;
-  time.forEach((x, i) => m.set(x.slice(0, 13), { t: t[i], p: p[i] }));
+  const { time, temperature_2m: t, precipitation_probability: p, wind_speed_10m: w } = data.hourly;
+  time.forEach((x, i) => m.set(x.slice(0, 13), { t: t[i], p: p[i], w: w?.[i] }));
   return m;
 }
 
@@ -50,7 +51,7 @@ function fetchPlace(p) {
   loading.add(k);
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${Number(p.lat).toFixed(3)}&longitude=${Number(p.lon).toFixed(3)}` +
-    '&hourly=temperature_2m,precipitation_probability&timezone=Asia%2FSeoul&forecast_days=16&past_days=7';
+    '&hourly=temperature_2m,precipitation_probability,wind_speed_10m&wind_speed_unit=ms&timezone=Asia%2FSeoul&forecast_days=16&past_days=7';
   fetch(url)
     .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
     .then((data) => {
@@ -84,7 +85,7 @@ export function loadWeather() {
   (settings().venues || []).forEach((v) => v.lat != null && v.lon != null && fetchPlace(v));
 }
 
-/** 일정 시간대(start~end)의 기온 범위와 최대 강수확률. 예보 범위 밖이면 null
+/** 일정 시간대(start~end)의 기온 범위 · 최대 강수확률 · 최대 풍속(m/s). 예보 범위 밖이면 null
  *  네 번째 값으로 일정(s)을 주면 그 경기장 위치의 날씨 */
 export function weatherFor(date, start, end, s) {
   if (!date || !start) return null;
@@ -104,10 +105,11 @@ export function weatherFor(date, start, end, s) {
   if (!list.length) return null;
   const temps = list.map((v) => Math.round(v.t));
   const pops = list.map((v) => v.p).filter((x) => x != null);
-  return { min: Math.min(...temps), max: Math.max(...temps), pop: pops.length ? Math.max(...pops) : null };
+  const winds = list.map((v) => v.w).filter((x) => x != null);
+  return { min: Math.min(...temps), max: Math.max(...temps), pop: pops.length ? Math.max(...pops) : null, wind: winds.length ? Math.round(Math.max(...winds)) : null };
 }
 
-/** 작은 날씨 표시: "3~5° · 강수 20%" */
+/** 작은 날씨 표시: "3~5° · 강수 20% · 바람 3m/s" */
 export function weatherChip(s, cls = '') {
   const w = weatherFor(s.date, s.start, s.end, s);
   if (!w) return null;
@@ -118,6 +120,7 @@ export function weatherChip(s, cls = '') {
     'span',
     { class: 'wx ' + cls + (rainy ? ' rainy' : ''), title: `${placeOf(s).name} 예보` },
     h('span', { class: 'wx-t' }, temp),
-    w.pop != null && h('span', { class: 'wx-p' }, `${rainy ? '☔ ' : ''}강수 ${w.pop}%`)
+    w.pop != null && h('span', { class: 'wx-p' }, `${rainy ? '☔ ' : ''}강수 ${w.pop}%`),
+    w.wind != null && h('span', { class: 'wx-p wx-w' + (w.wind >= WINDY ? ' windy' : '') }, `${w.wind >= WINDY ? '💨 ' : ''}바람 ${w.wind}m/s`)
   );
 }
