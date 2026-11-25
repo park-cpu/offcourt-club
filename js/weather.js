@@ -109,18 +109,23 @@ export function weatherFor(date, start, end, s) {
   return { min: Math.min(...temps), max: Math.max(...temps), pop: pops.length ? Math.max(...pops) : null, wind: winds.length ? Math.round(Math.max(...winds)) : null };
 }
 
-/** 작은 날씨 표시: "3~5° · 강수 20% · 바람 3m/s" */
+/** 작은 날씨 표시: "3~5° · 강수 20% · 바람 3m/s"
+ *  cls에 'compact'가 있으면 글자 대신 아이콘으로 한 줄: "3~5° ☔20% 💨3m/s" (홈 카드, v1.20.0~) */
 export function weatherChip(s, cls = '') {
   const w = weatherFor(s.date, s.start, s.end, s);
   if (!w) return null;
-  const deg = (n) => `${n < 0 ? '−' : ''}${Math.abs(n)}°`;
-  const temp = w.min === w.max ? deg(w.min) : `${deg(w.min)} ~ ${deg(w.max)}`;
+  const compact = cls.split(' ').includes('compact');
+  const deg = (n) => `${n < 0 ? '−' : ''}${Math.abs(n)}`;
+  const temp = w.min === w.max ? `${deg(w.min)}°` : compact ? `${deg(w.min)}~${deg(w.max)}°` : `${deg(w.min)}° ~ ${deg(w.max)}°`;
   const rainy = w.pop != null && w.pop >= 50;
+  const windy = w.wind != null && w.wind >= WINDY;
+  const rain = compact ? `☔${w.pop}%` : `${rainy ? '☔ ' : ''}강수 ${w.pop}%`;
+  const wind = compact ? `💨${w.wind}m/s` : `${windy ? '💨 ' : ''}바람 ${w.wind}m/s`;
   return h(
     'span',
-    { class: 'wx ' + cls + (rainy ? ' rainy' : ''), title: `${placeOf(s).name} 예보` },
+    { class: 'wx ' + cls + (rainy ? ' rainy' : ''), title: `${placeOf(s).name} 예보 · 강수확률 ${w.pop ?? '-'}% · 바람 ${w.wind ?? '-'}m/s` },
     h('span', { class: 'wx-t' }, temp),
-    w.pop != null && h('span', { class: 'wx-p' }, `${rainy ? '☔ ' : ''}강수 ${w.pop}%`),
-    w.wind != null && h('span', { class: 'wx-p wx-w' + (w.wind >= WINDY ? ' windy' : '') }, `${w.wind >= WINDY ? '💨 ' : ''}바람 ${w.wind}m/s`)
+    w.pop != null && h('span', { class: 'wx-p' }, rain),
+    w.wind != null && h('span', { class: 'wx-p wx-w' + (windy ? ' windy' : '') }, wind)
   );
 }

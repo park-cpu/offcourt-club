@@ -173,10 +173,11 @@ function slide(s, t, u) {
         { class: 'next-info' },
         h('strong', {}, s.venue),
         h('span', {}, `${s.start}–${s.end}`),
-        h('span', {}, `코트 ${courtsOf(s).join(', ') || '-'} · 예약 ${s.booker || '-'}`),
-        weatherChip(s)
+        h('span', {}, `코트 ${courtsOf(s).join(', ') || '-'} · 예약 ${s.booker || '-'}`)
       ),
-      h('div', { class: 'next-count' }, h('span', { class: 'num' }, countText(s)), h('span', {}, capacityOf(s) ? '정원' : '명'))
+      h('div', { class: 'next-count' }, h('span', { class: 'num' }, countText(s)), h('span', {}, capacityOf(s) ? '정원' : '명')),
+      // 날씨는 가운데 + 오른쪽 칸 폭을 같이 써서 한 줄로 (v1.20.0~)
+      weatherChip(s, 'compact next-wx')
     ),
     h('div', { class: 'row gap' }, action)
   );
