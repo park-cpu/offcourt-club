@@ -109,23 +109,21 @@ export function weatherFor(date, start, end, s) {
   return { min: Math.min(...temps), max: Math.max(...temps), pop: pops.length ? Math.max(...pops) : null, wind: winds.length ? Math.round(Math.max(...winds)) : null };
 }
 
-/** 작은 날씨 표시: "3~5° · 강수 20% · 바람 3m/s"
- *  cls에 'compact'가 있으면 글자 대신 아이콘으로 한 줄: "🌡️3~5° ☔20% 💨3m/s" (홈 카드, v1.20.0~, 온도계 v1.20.1~) */
+/** 작은 날씨 표시 (v1.22.0~ 모든 화면 같은 모양): "8~11℃ | 9% | 5m/s"
+ *  비 올 확률 50% 이상 = 파란 굵게, 바람 초속 5m 이상 = 빨간 굵게. 무엇인지는 title(길게 누르면 나오는 설명)에 */
 export function weatherChip(s, cls = '') {
   const w = weatherFor(s.date, s.start, s.end, s);
   if (!w) return null;
-  const compact = cls.split(' ').includes('compact');
   const deg = (n) => `${n < 0 ? '−' : ''}${Math.abs(n)}`;
-  const temp = w.min === w.max ? `${deg(w.min)}°` : compact ? `${deg(w.min)}~${deg(w.max)}°` : `${deg(w.min)}° ~ ${deg(w.max)}°`;
+  const temp = w.min === w.max ? `${deg(w.min)}℃` : `${deg(w.min)}~${deg(w.max)}℃`;
   const rainy = w.pop != null && w.pop >= 50;
   const windy = w.wind != null && w.wind >= WINDY;
-  const rain = compact ? `☔${w.pop}%` : `${rainy ? '☔ ' : ''}강수 ${w.pop}%`;
-  const wind = compact ? `💨${w.wind}m/s` : `${windy ? '💨 ' : ''}바람 ${w.wind}m/s`;
+  const bar = () => h('span', { class: 'wx-bar', 'aria-hidden': 'true' }, '|');
   return h(
     'span',
-    { class: 'wx ' + cls + (rainy ? ' rainy' : ''), title: `${placeOf(s).name} 예보 · 강수확률 ${w.pop ?? '-'}% · 바람 ${w.wind ?? '-'}m/s` },
-    h('span', { class: 'wx-t' }, compact ? `🌡️${temp}` : temp),
-    w.pop != null && h('span', { class: 'wx-p' }, rain),
-    w.wind != null && h('span', { class: 'wx-p wx-w' + (windy ? ' windy' : '') }, wind)
+    { class: 'wx ' + cls + (rainy ? ' rainy' : ''), title: `${placeOf(s).name} 예보 · 기온 ${temp} · 강수확률 ${w.pop ?? '-'}% · 바람 ${w.wind ?? '-'}m/s` },
+    h('span', { class: 'wx-t' }, temp),
+    w.pop != null && [bar(), h('span', { class: 'wx-p', 'aria-label': `강수확률 ${w.pop}%` }, `${w.pop}%`)],
+    w.wind != null && [bar(), h('span', { class: 'wx-p wx-w' + (windy ? ' windy' : ''), 'aria-label': `바람 ${w.wind}m/s` }, `${w.wind}m/s`)]
   );
 }
