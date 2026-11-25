@@ -1,11 +1,11 @@
 import { h, sheet, toast, field, select, go, confirmSheet, empty } from '../ui.js';
 import {
-  state, me, isAdmin, today, fmtDate, attendanceOf, matchesOf, scheduleById, courtsOf, person, derived, activePlayers, isGuestId, ratingOf, ratingMap, rosterOf,
+  state, me, isAdmin, today, fmtDate, attendanceOf, matchesOf, scheduleById, courtsOf, person, derived, activePlayers, isGuestId, ratingOf, ratingMap, rosterOf, scheduleEnded, scheduleTime,
 } from '../store.js';
 import { put, remove, batch, uid } from '../db.js';
 import { generate, capacity } from '../matchmaker.js';
-import { MATCH_TYPES, coinStake } from '../rules.js';
-import { requireLogin, pageHead, nameTag, matchCard, canRecord, teamNames, FORMAT_LABEL } from './common.js';
+import { MATCH_TYPES, coinStake, RULES } from '../rules.js';
+import { requireLogin, pageHead, nameTag, matchCard, canRecord, recordDeniedMsg, teamNames, FORMAT_LABEL } from './common.js';
 import { addGuest } from './schedule.js';
 import { shareButton, drawText, resultsText } from '../share.js';
 
@@ -21,13 +21,13 @@ const prefs = {
   set: (p) => localStorage.setItem('offcourt-play', JSON.stringify({ ...prefs.get(), ...p })),
 };
 
-export function playView(sid, tab = 'draw') {
+export function playView(sid, tab) {
   const t = today();
   if (!sid) {
     const todays = state.schedules.filter((s) => s.date === t).sort((a, b) => a.start.localeCompare(b.start));
     if (todays.length === 1) return playView(todays[0].id, tab);
     const recent = state.schedules.filter((s) => s.date < t).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
-    const item = (s) => h('a', { class: 'link-row', href: `#/play/${s.id}` }, h('span', {}, h('strong', {}, fmtDate(s.date)), h('br'), h('span', { class: 'muted small' }, `${s.start} · ${s.venue}`)), h('span', { class: 'muted' }, `${attendanceOf(s.id).length}명 ›`));
+    const item = (s) => h('a', { class: 'link-row', href: `#/play/${s.id}` }, h('span', {}, h('strong', {}, fmtDate(s.date)), h('br'), h('span', { class: 'muted small' }, `${s.start}–${s.end} · ${s.venue}`)), h('span', { class: 'muted' }, s.date === t && scheduleEnded(s) ? '종료 ›' : `${attendanceOf(s.id).length}명 ›`));
     return h(
       'div',
       { class: 'page' },
@@ -41,6 +41,8 @@ export function playView(sid, tab = 'draw') {
 
   const s = scheduleById(sid);
   if (!s) return h('div', { class: 'page' }, empty('없는 일정이에요'));
+  // 경기 시간이 끝난 일정은 결과 탭부터 (v1.13.0~)
+  if (!tab) tab = scheduleEnded(s) ? 'done' : 'draw';
   const tabs = [
     ['att', '출석'],
     ['draw', '대진'],
@@ -136,6 +138,23 @@ function addWalkIn(s, notIn) {
 }
 
 // ── 대진 탭 ───────────────────────────────────────────
+// 경기 시간이 끝난 일정: 새 대진 · 취소는 관리자만 (v1.13.0~)
+const drawLocked = (s) => scheduleEnded(s) && !isAdmin();
+const hm = (ms) => {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+function endedNotice(s, playing) {
+  const until = hm(scheduleTime(s, 'end') + RULES.recordGraceMin * 60000);
+  return h(
+    'section',
+    { class: 'block notice-ended' },
+    h('h2', {}, `경기 시간 종료 · ${s.end}`),
+    h('p', { class: 'muted small' }, isAdmin() ? '회원은 새 대진을 만들 수 없어요. 관리자는 계속 기록 · 수정할 수 있어요.' : '정해진 경기 시간이 끝나 새 대진을 만들 수 없어요.'),
+    playing.length > 0 && h('p', { class: 'muted small' }, `진행 중이던 경기의 점수는 ${until}까지 참가자가 입력할 수 있어요. 그 뒤에는 관리자만 입력해요.`)
+  );
+}
+
 function drawTab(s) {
   const courts = courtsOf(s).length ? courtsOf(s) : ['1'];
   const att = attendanceOf(s.id);
@@ -169,8 +188,8 @@ function drawTab(s) {
       h(
         'div',
         { class: 'row gap' },
-        h('button', { class: 'btn primary grow', onclick: () => (canRecord(m) ? scoreSheet(m) : toast('경기 참가자 또는 관리자만 입력할 수 있어요')) }, m.type === 'friendly' ? '경기 종료' : '점수 입력'),
-        h('button', { class: 'btn ghost', onclick: () => cancelMatch(m) }, '취소')
+        h('button', { class: 'btn primary grow', onclick: () => (canRecord(m) ? scoreSheet(m) : toast(recordDeniedMsg(m))) }, m.type === 'friendly' ? '경기 종료' : '점수 입력'),
+        !drawLocked(s) && h('button', { class: 'btn ghost', onclick: () => cancelMatch(m) }, '취소')
       )
     );
   });
@@ -183,10 +202,12 @@ function drawTab(s) {
       : p.format === 'mixed'
         ? '남 2명 · 여 2명 이상 필요해요'
         : `${per}명 이상 도착해야 해요`;
+  const ended = scheduleEnded(s);
   return h(
     'div',
     { class: 'stack' },
-    h(
+    ended && endedNotice(s, playing),
+    !drawLocked(s) && h(
       'section',
       { class: 'block' },
       h('div', { class: 'summary3' }, sum('대진 가능', pool.length + '명'), sum('빈 코트', `${freeCourts.length}/${courts.length}`), sum('진행 중', playing.length + '경기')),
@@ -198,8 +219,8 @@ function drawTab(s) {
       h('button', { class: 'btn ghost block', onclick: () => manualSheet(s, pool, freeCourts.length ? freeCourts : courts, p) }, '직접 대진 만들기')
     ),
     playing.length > 0 && h('div', { class: 'row end' }, shareButton('대진 카톡 공유', () => drawText(s))),
-    h('div', { class: 'courts' }, courtCards),
-    h(
+    h('div', { class: 'courts' }, drawLocked(s) && !playing.length ? h('p', { class: 'muted center' }, '진행 중인 경기가 없어요. 결과 탭에서 기록을 확인하세요.') : courtCards),
+    !drawLocked(s) && h(
       'section',
       { class: 'block' },
       h('h2', {}, `대기 ${pool.length}명`),
@@ -225,6 +246,7 @@ function coinBlockReason(ids) {
 
 async function autoDraw(s, pool, freeCourts, p) {
   if (!requireLogin()) return;
+  if (drawLocked(s)) return toast('경기 시간이 끝나 새 대진을 만들 수 없어요');
   const plan = generate({ pool, courts: freeCourts, format: p.format, ratings: ratingMap(pool), todayMatches: matchesOf(s.id), genders: genderMap() });
   if (!plan.length) return toast('대진을 만들 수 없어요');
   const notes = [];
@@ -250,6 +272,7 @@ function newMatch(s, court, format, type, teamA, teamB, createdAt = Date.now()) 
 
 function manualSheet(s, pool, courts, p) {
   if (!requireLogin(() => manualSheet(s, pool, courts, p))) return;
+  if (drawLocked(s)) return toast('경기 시간이 끝나 새 대진을 만들 수 없어요');
   const all = attendanceOf(s.id).filter((a) => a.arrived).map((a) => a.playerId);
   if (all.length < 2) return toast('도착한 사람이 2명 이상이어야 해요');
   sheet('직접 대진', (close) => {
@@ -301,7 +324,7 @@ async function cancelMatch(m) {
 // ── 점수 입력 ─────────────────────────────────────────
 export function scoreSheet(m) {
   if (!requireLogin(() => scoreSheet(m))) return;
-  if (!canRecord(m)) return toast('경기 참가자 또는 관리자만 입력할 수 있어요');
+  if (!canRecord(m)) return toast(recordDeniedMsg(m));
   const done = m.status === 'done';
   sheet(done ? '기록 수정' : '점수 입력', (close) => {
     let a = m.scoreA ?? 6;

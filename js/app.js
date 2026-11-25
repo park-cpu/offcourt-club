@@ -110,6 +110,48 @@ async function boot() {
   document.addEventListener('selectstart', (e) => { if (!isInput(e.target)) e.preventDefault(); }, opt);
 })();
 
+// 당겨서 새로고침 (v1.13.0~): 맨 위에서 아래로 끌어당기면 앱 전체를 다시 불러옴
+// 랠리 게임 · 그림(캔버스) · 열린 창(시트) 위에서는 동작하지 않음
+(() => {
+  const READY = 64;
+  const ind = h('div', { class: 'ptr', 'aria-hidden': 'true' }, h('span', {}, '↻'));
+  document.body.append(ind);
+  let y0 = null;
+  let pull = 0;
+  const skip = (t) => location.hash.startsWith('#/rally') || document.querySelector('.sheet-wrap') || t?.closest?.('canvas, input, textarea, select, .stage-wrap');
+  const show = (v) => {
+    pull = v;
+    ind.style.transform = `translate(-50%, ${Math.round(v - 48)}px) rotate(${Math.round(v * 4)}deg)`;
+    ind.style.opacity = v > 4 ? Math.min(1, v / READY) : 0;
+    ind.classList.toggle('ready', v >= READY);
+  };
+  const reset = () => {
+    y0 = null;
+    ind.classList.add('back');
+    show(0);
+    setTimeout(() => ind.classList.remove('back'), 200);
+  };
+  document.addEventListener('touchstart', (e) => {
+    y0 = e.touches.length === 1 && window.scrollY <= 0 && !skip(e.target) ? e.touches[0].clientY : null;
+    pull = 0;
+  }, { passive: true });
+  document.addEventListener('touchmove', (e) => {
+    if (y0 == null) return;
+    if (e.touches.length > 1 || window.scrollY > 0) return reset();
+    const dy = e.touches[0].clientY - y0;
+    show(dy > 0 ? Math.min(dy * 0.5, 100) : 0);
+  }, { passive: true });
+  document.addEventListener('touchend', () => {
+    if (y0 == null) return;
+    if (pull >= READY) {
+      y0 = null;
+      ind.classList.add('spin');
+      setTimeout(() => location.reload(), 150);
+    } else reset();
+  });
+  document.addEventListener('touchcancel', () => y0 != null && reset());
+})();
+
 // 놓친 저장 오류도 화면에 알림
 window.addEventListener('unhandledrejection', (e) => reportError(e.reason));
 

@@ -1,5 +1,5 @@
 import { h, sheet, toast, field, select, go, fmtNum } from '../ui.js';
-import { state, me, isAdmin, session, hashPin, activePlayers, person, isGuestId, derived, fmtDate, settings } from '../store.js';
+import { state, me, isAdmin, session, scheduleById, recordOpen, hashPin, activePlayers, person, isGuestId, derived, fmtDate, settings } from '../store.js';
 import { MATCH_TYPES, winnerSide, coinStake } from '../rules.js';
 import { put, uid } from '../db.js';
 
@@ -125,10 +125,17 @@ export const teamNames = (ids) => {
   return out;
 };
 
+// 점수 입력 · 기록 수정: 관리자는 언제나, 참가자는 경기 시간 동안(종료 후 여유 시간까지) (v1.13.0~)
 export const canRecord = (m) => {
   const u = me();
   if (!u) return false;
-  return isAdmin() || m.teamA.includes(u.id) || m.teamB.includes(u.id);
+  if (isAdmin()) return true;
+  return (m.teamA.includes(u.id) || m.teamB.includes(u.id)) && recordOpen(scheduleById(m.scheduleId));
+};
+export const recordDeniedMsg = (m) => {
+  const u = me();
+  if (u && (m.teamA.includes(u.id) || m.teamB.includes(u.id))) return '경기 시간이 끝나 관리자만 수정할 수 있어요';
+  return '경기 참가자 또는 관리자만 입력할 수 있어요';
 };
 
 // ── 경기 카드 ─────────────────────────────────────────

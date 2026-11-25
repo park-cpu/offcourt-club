@@ -1,8 +1,8 @@
 import { h, empty, pct, fmtNum, ntrpText, toast, confirmSheet } from '../ui.js';
 import { state, settings, currentSeason, seasonStats, derived, activePlayers, careerText, me, isAdmin, fmtShort, today, addDays, playersMap, ballRulesAt, weekRules, weekStart } from '../store.js';
 import { put, uid } from '../db.js';
-import { ratingToNtrp, RULES, matchOrder, isRated, canBorrow, computeRelations, missionLabel } from '../rules.js';
-import { pageHead, backLink, matchCard, nameTag } from './common.js';
+import { ratingToNtrp, RULES, MATCH_TYPES, winnerSide, matchOrder, isRated, canBorrow, computeRelations, missionLabel } from '../rules.js';
+import { pageHead, backLink, nameTag, canRecord } from './common.js';
 import { scoreSheet } from './play.js';
 import { avatarBlock } from './avatar.js';
 
@@ -185,8 +185,8 @@ export function profileView(id) {
     h(
       'section',
       { class: 'block' },
-      h('h2', {}, '최근 경기'),
-      myMatches.length ? myMatches.slice(0, 8).map((m) => matchCard(m, { showDate: true, onEdit: scoreSheet })) : h('p', { class: 'muted' }, '기록된 경기가 없어요')
+      h('div', { class: 'row between' }, h('h2', {}, '최근 경기'), myMatches.length > 0 && h('span', { class: 'muted small' }, `${myMatches.length}경기`)),
+      myMatches.length ? recentList(id, myMatches) : h('p', { class: 'muted' }, '기록된 경기가 없어요')
     ),
     h(
       'details',
@@ -195,6 +195,56 @@ export function profileView(id) {
       h('ul', { class: 'ledger' }, ledger.map((l) => h('li', {}, h('span', { class: 'muted small' }, l.date ? fmtShort(l.date) : ''), h('span', { class: 'grow' }, l.reason), h('strong', { class: l.amount > 0 ? 'up' : 'down' }, fmtNum(l.amount)))))
     )
   );
+}
+
+// ── 최근 경기 (v1.13.0~ 한 줄 요약 + 더 보기) ─────────────
+const RECENT_FIRST = 5;
+const RECENT_MORE = 10;
+function recentList(id, ms) {
+  const { deltas } = derived();
+  const names = (ids) => ids.map((x) => state.players.find((p) => p.id === x)?.name || state.guests.find((g) => g.id === x)?.name || '?').join(' · ');
+  const row = (m) => {
+    const mine = m.teamA.includes(id) ? 'A' : 'B';
+    const w = winnerSide(m);
+    const res = !w ? '-' : w === mine ? '승' : '패';
+    const my = mine === 'A' ? m.teamA : m.teamB;
+    const op = mine === 'A' ? m.teamB : m.teamA;
+    const partner = my.filter((x) => x !== id);
+    const score = mine === 'A' ? `${m.scoreA}:${m.scoreB}` : `${m.scoreB}:${m.scoreA}`;
+    const d = deltas.get(m.id)?.get(id);
+    const edit = canRecord(m);
+    return h(
+      edit ? 'button' : 'div',
+      { class: 'rm-row' + (edit ? ' tap' : ''), onclick: edit ? () => scoreSheet(m) : null },
+      h('span', { class: 'rm-res ' + (res === '승' ? 'w' : res === '패' ? 'l' : '') }, res),
+      h(
+        'span',
+        { class: 'rm-main' },
+        h('span', { class: 'rm-top' }, h('strong', { class: 'num' }, score), h('span', { class: 'type type-' + m.type }, MATCH_TYPES[m.type].label), h('span', { class: 'muted small' }, fmtShort(m.date))),
+        h('span', { class: 'rm-who' }, partner.length ? `${withJosa(names(partner))} ` : '', `vs ${names(op).replace(/ · /g, '·')}`)
+      ),
+      d != null ? h('small', { class: 'delta ' + (d >= 0 ? 'up' : 'down') }, fmtNum(d, 1)) : h('small', {})
+    );
+  };
+  // 받침 있으면 '과', 없으면 '와'
+  const withJosa = (w) => {
+    const c = w.charCodeAt(w.length - 1);
+    return w + (c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 ? '과' : '와');
+  };
+  const list = h('div', { class: 'rm-list' });
+  let shown = 0;
+  const more = h('button', { class: 'btn ghost block small' });
+  const fill = () => {
+    const next = ms.slice(shown, shown + (shown ? RECENT_MORE : RECENT_FIRST));
+    next.forEach((m) => list.append(row(m)));
+    shown += next.length;
+    const left = ms.length - shown;
+    more.textContent = `더 보기 (${left}경기 남음)`;
+    more.style.display = left > 0 ? '' : 'none';
+  };
+  more.onclick = fill;
+  fill();
+  return [list, more, ms.some(canRecord) && h('p', { class: 'muted small' }, isAdmin() ? '경기를 누르면 기록을 고칠 수 있어요' : '경기 시간 중에는 눌러서 기록을 고칠 수 있어요')];
 }
 
 // ── 파트너 궁합 · 상대 전적 ─────────────────────────────
@@ -332,7 +382,7 @@ export function rulesView() {
     ),
     sec(
       '4. 경기 유형',
-      h('ul', {}, h('li', {}, '코인전: 승패 · 레이팅 · 코인 모두 반영'), h('li', {}, '공식전: 승패 · 레이팅 반영, 코인 없음'), h('li', {}, '친선전: 출석만, 승패 기록 없음'), h('li', {}, '게스트가 낀 경기: 점수는 남지만 승패·레이팅·순위에서 제외'))
+      h('ul', {}, h('li', {}, '코인전: 승패 · 레이팅 · 코인 모두 반영'), h('li', {}, '공식전: 승패 · 레이팅 반영, 코인 없음'), h('li', {}, '친선전: 출석만, 승패 기록 없음'), h('li', {}, '게스트가 낀 경기: 점수는 남지만 승패·레이팅·순위에서 제외'), h('li', {}, `점수 입력 · 기록 수정: 경기 참가자는 일정 종료 후 ${RULES.recordGraceMin}분까지, 그 뒤에는 관리자만`), h('li', {}, '일정의 종료 시간이 지나면 새 대진을 만들 수 없어요 (관리자 제외)'))
     ),
     sec(
       '5. 코인',

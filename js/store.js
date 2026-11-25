@@ -85,6 +85,16 @@ export const seasonStats = (season, type) => {
 
 // ── 일정/출석 ─────────────────────────────────────────
 export const scheduleById = (id) => state.schedules.find((s) => s.id === id);
+// 일정 시작 · 종료 시각 (ms)
+export const scheduleTime = (s, key = 'end') => {
+  const [y, mo, d] = s.date.split('-').map(Number);
+  const [hh, mm] = (s[key] || '23:59').split(':').map(Number);
+  return new Date(y, mo - 1, d, hh, mm).getTime();
+};
+// 정해진 경기 시간이 끝났는지 (v1.13.0~ 끝나면 새 대진 불가)
+export const scheduleEnded = (s, now = Date.now()) => !!s && now >= scheduleTime(s, 'end');
+// 참가자가 점수 입력 · 수정할 수 있는 시간인지 (종료 후 RULES.recordGraceMin분까지)
+export const recordOpen = (s, now = Date.now()) => !!s && now < scheduleTime(s, 'end') + RULES.recordGraceMin * 60000;
 export const attendanceOf = (scheduleId) =>
   state.attendance.filter((a) => a.scheduleId === scheduleId).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 export const matchesOf = (scheduleId) =>
