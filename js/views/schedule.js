@@ -4,17 +4,12 @@ import {
 } from '../store.js';
 import { put, remove, batch, uid } from '../db.js';
 import { settings, scheduleEnded } from '../store.js';
-import { weatherChip, WEATHER_PLACE } from '../weather.js';
+import { weatherChip } from '../weather.js';
 import { shareButton, scheduleText } from '../share.js';
 
 // 네이버 지도: 지도 링크가 있으면 그것, 없으면 주소(없으면 경기장명)로 검색
 export const mapUrlOf = (s) => (s.mapUrl && /^https?:\/\//.test(s.mapUrl) ? s.mapUrl : `https://map.naver.com/p/search/${encodeURIComponent(s.address || s.venue || '')}`);
 // 경기장 목록: settings.venues = [{id, name, address, mapUrl}]. 아직 없으면 지난 일정의 경기장명으로 임시 목록
-// 날씨 위치 이름 (경기장에 위치가 저장돼 있으면 그 지역, 아니면 기본 위치) — v1.14.0~
-const wxPlaceName = (s) => {
-  const v = (settings().venues || []).find((x) => x.name === s.venue && x.lat != null);
-  return v ? v.wxPlace || v.name : WEATHER_PLACE.name;
-};
 export const venueList = () => {
   const saved = settings().venues;
   if (Array.isArray(saved)) return saved;
@@ -118,7 +113,7 @@ export function scheduleView(id) {
         h('dt', {}, '코트'), h('dd', {}, courtsOf(s).join(', ') || '-'),
         h('dt', {}, '예약자'), h('dd', {}, s.booker || '-'),
         cap > 0 && [h('dt', {}, '정원'), h('dd', {}, `${cap}명`)],
-        weatherChip(s) && [h('dt', {}, '날씨'), h('dd', {}, weatherChip(s, 'on-blue'), h('small', { class: 'wx-src' }, ` ${wxPlaceName(s)}`))],
+        weatherChip(s) && [h('dt', {}, '날씨'), h('dd', {}, weatherChip(s, 'on-blue'))],
         s.note && [h('dt', {}, '메모'), h('dd', {}, s.note)]
       )
     ),

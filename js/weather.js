@@ -110,7 +110,7 @@ export function weatherFor(date, start, end, s) {
 }
 
 /** 작은 날씨 표시: "3~5° · 강수 20% · 바람 3m/s"
- *  cls에 'compact'가 있으면 글자 대신 아이콘으로 한 줄: "3~5° ☔20% 💨3m/s" (홈 카드, v1.20.0~) */
+ *  cls에 'compact'가 있으면 글자 대신 아이콘으로 한 줄: "🌡️3~5° ☔20% 💨3m/s" (홈 카드, v1.20.0~, 온도계 v1.20.1~) */
 export function weatherChip(s, cls = '') {
   const w = weatherFor(s.date, s.start, s.end, s);
   if (!w) return null;
@@ -124,7 +124,7 @@ export function weatherChip(s, cls = '') {
   return h(
     'span',
     { class: 'wx ' + cls + (rainy ? ' rainy' : ''), title: `${placeOf(s).name} 예보 · 강수확률 ${w.pop ?? '-'}% · 바람 ${w.wind ?? '-'}m/s` },
-    h('span', { class: 'wx-t' }, temp),
+    h('span', { class: 'wx-t' }, compact ? `🌡️${temp}` : temp),
     w.pop != null && h('span', { class: 'wx-p' }, rain),
     w.wind != null && h('span', { class: 'wx-p wx-w' + (windy ? ' windy' : '') }, wind)
   );

@@ -35,7 +35,7 @@
 - 화면: `#/avatar[/closet|shop|missions]`, `#/avatars`(구경), `#/admin/items`
 
 ## 날씨
-- `js/weather.js`: Open-Meteo(무료·키 없음). 경기장별 위치(v1.14.0~): `settings.venues[].lat/lon/wxPlace`, 일정의 venue 이름으로 찾음(`placeOf`), 없으면 기본 `WEATHER_PLACE` 고양시 일산(37.66, 126.77). 위치는 `admin-venues.js`의 `findPlace`가 Nominatim(OpenStreetMap, 1초 1회)으로 주소 → 이름 순서로 검색. 일정 시간대 기온 범위 + 최대 강수확률 + 최대 풍속(v1.18.0~, m/s, 5 이상 `WINDY` 강조). 홈 카드는 `weatherChip(s, 'compact next-wx')` = 아이콘만 한 줄(v1.20.0~), 카드 그리드 2·3칸을 같이 씀. 위치별 1시간 캐시(localStorage `offcourt-weather-v3`). 실패해도 앱은 정상 동작.
+- `js/weather.js`: Open-Meteo(무료·키 없음). 경기장별 위치(v1.14.0~): `settings.venues[].lat/lon/wxPlace`, 일정의 venue 이름으로 찾음(`placeOf`), 없으면 기본 `WEATHER_PLACE` 고양시 일산(37.66, 126.77). 위치는 `admin-venues.js`의 `findPlace`가 Nominatim(OpenStreetMap, 1초 1회)으로 주소 → 이름 순서로 검색. 일정 시간대 기온 범위 + 최대 강수확률 + 최대 풍속(v1.18.0~, m/s, 5 이상 `WINDY` 강조). 홈 카드는 `weatherChip(s, 'compact next-wx')` = 아이콘만 한 줄(v1.20.0~, 🌡️ ☔ 💨). 일정 상세엔 지역 이름 안 붙임(v1.20.1~), 카드 그리드 2·3칸을 같이 씀. 위치별 1시간 캐시(localStorage `offcourt-weather-v3`). 실패해도 앱은 정상 동작.
 
 ## 앱 설치 · 서비스 워커 (v1.5.0~)
 - `sw.js`는 `js/install.js`가 `sw.js?v=APP_VERSION`으로 등록 → 버전을 올리면 새 서비스 워커·캐시로 교체됨. 같은 사이트 파일은 항상 서버 먼저(no-cache), 오프라인일 때만 캐시. Firebase·날씨 등 외부 요청은 건드리지 않음
