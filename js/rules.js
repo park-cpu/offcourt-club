@@ -8,10 +8,10 @@ export const RULES = {
   // NTRP → 시작 레이팅. NTRP 3.0 = 1000, 0.5 차이마다 100점
   ratingBase: 1000,
   ratingPerNtrp: 200,
-  // K 계수: 처음 10경기는 빠르게 자리 잡도록 크게
+  // K 계수: 처음 provisionalGames경기는 빠르게 자리 잡도록 크게
   kProvisional: 40, // v1.11.1~ (예전 32)
   kNormal: 20,
-  provisionalGames: 10,
+  provisionalGames: 8, // v1.13.1~ (예전 10)
   // 레이팅 탭 등수: 최근 이 기간(일) 안에 경기한 회원만 (v1.11.3~)
   ratingActiveDays: 30,
   // 일정 종료 후 참가자가 점수를 입력 · 수정할 수 있는 여유 시간(분). 지나면 관리자만 (v1.13.0~)

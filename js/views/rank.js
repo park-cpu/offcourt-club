@@ -100,7 +100,7 @@ export function rankView(a, b) {
   );
 }
 
-// 레이팅 탭 (v1.11.3~): 적응 기간(10경기)을 마치고 최근 RULES.ratingActiveDays일 안에 경기한 사람만 등수.
+// 레이팅 탭 (v1.11.3~): 적응 기간(RULES.provisionalGames경기)을 마치고 최근 RULES.ratingActiveDays일 안에 경기한 사람만 등수.
 // 나머지는 '적응 중' · '쉬는 중'으로 등수 없이 표시 (레이팅 값 · 대진 사용은 그대로)
 function ratingTable() {
   const { ratings, allStats } = derived();
@@ -356,7 +356,7 @@ export function rulesView() {
       ),
       h('h3', {}, '점수는 어떻게 움직이나요?'),
       h('p', {}, '경기 전 두 팀의 평균 레이팅으로 "이길 확률"을 계산하고, 결과가 예상과 얼마나 다른지에 따라 오르내려요 (Elo 방식).'),
-      h('p', { class: 'muted' }, '예) 1000점 팀 vs 1200점 팀 → 1000점 팀이 이길 확률 약 24%. 1000점 팀이 이기면 약 +24점, 1200점 팀이 이기면 약 +8점 (처음 10경기, 점수차 ×1.0 기준).'),
+      h('p', { class: 'muted' }, `예) 1000점 팀 vs 1200점 팀 → 1000점 팀이 이길 확률 약 24%. 1000점 팀이 이기면 약 +${Math.round(RULES.kProvisional * 0.76)}점, 1200점 팀이 이기면 약 +${Math.round(RULES.kProvisional * 0.24)}점 (처음 ${RULES.provisionalGames}경기, 점수차 ×1.0 기준).`),
       h('ul', {}, h('li', {}, '강한 상대를 이기면 → 크게 상승'), h('li', {}, '이길 만한 상대를 이기면 → 조금 상승'), h('li', {}, '약한 상대에게 지면 → 크게 하락')),
       h('h3', {}, '추정 NTRP'),
       h('p', {}, '프로필의 "추정 NTRP"는 지금 레이팅을 NTRP로 바꿔 보여준 값이에요. "처음엔 3.0이었는데 지금 경기력은 3.5 수준"처럼 볼 수 있어요.'),
