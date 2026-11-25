@@ -11,6 +11,8 @@ import cv2
 import numpy as np
 
 HW, SW, HL, SV = 5.485, 4.115, 11.885, 6.40
+# 화면 크기 배율 (픽셀 기준값은 1920 폭에 맞춘 것 → 720p 영상이면 0.667)
+PX = {'s': 1.0, 'w': 1920, 'h': 1080}
 
 
 # ── 불러오기 ─────────────────────────────────────────
@@ -33,6 +35,7 @@ def load(name, calib_fallback=None):
     except FileNotFoundError:  # 검출이 아직 진행 중이면 처음 맞춘 코트로
         c = json.load(open(calib_fallback))
         meta = {'fps': 30.0, 'width': 1920, 'height': 1080, 'courts': [{'f': 0, 'H': c['court_to_img']}]}
+    PX.update(s=meta.get('width', 1920) / 1920, w=meta.get('width', 1920), h=meta.get('height', 1080))
     return frames, meta
 
 
@@ -105,7 +108,8 @@ def in_play_area(C, f, x, y):
     fx_l, fy = C.to_img(f, -HW - 4, HL)
     fx_r, _ = C.to_img(f, HW + 4, HL)
     if y < fy:  # 먼 베이스라인보다 위 = 공중
-        return fx_l - 250 < x < fx_r + 250 or y < fy - 150 and 0 < x < 1920
+        k = PX['s']
+        return fx_l - 250 * k < x < fx_r + 250 * k or y < fy - 150 * k and 0 < x < PX['w']
     cx, cy = C.to_court(f, x, y)
     return abs(cx) < HW + 4 and cy > -HL - 6
 
@@ -117,6 +121,7 @@ def ball_track(frames, fps, C=None):
     2) 앞뒤 프레임과 이어지는 후보만 골라 궤적으로 연결
     """
     n = len(frames)
+    sc = PX['s']
     cands = [[(b[0], b[1], b[4]) for b in fr['b'] if C is None or in_play_area(C, fr['f'], b[0], b[1])] for fr in frames]
     # 1) 정지한 공 지우기: 0.5초 동안 4px 안에 계속 있으면 정지
     W = int(fps * 0.5)
@@ -125,7 +130,7 @@ def ball_track(frames, fps, C=None):
         for j, (x, y, c) in enumerate(cands[i]):
             hits = 0
             for k in range(max(0, i - W), min(n, i + W)):
-                if any(abs(x - x2) < 4 and abs(y - y2) < 4 for x2, y2, _ in cands[k]):
+                if any(abs(x - x2) < 4 * sc and abs(y - y2) < 4 * sc for x2, y2, _ in cands[k]):
                     hits += 1
             if hits > W * 1.4:
                 static[i].add(j)
@@ -138,16 +143,16 @@ def ball_track(frames, fps, C=None):
         best = None
         if last is not None and miss <= 6:
             px, py = last[0] + vel[0] * (miss + 1), last[1] + vel[1] * (miss + 1)
-            gate = 70 + 35 * miss
+            gate = (70 + 35 * miss) * sc
             for x, y, c in cands[i]:
                 d = math.hypot(x - px, y - py)
-                if d < gate and (best is None or d - c * 30 < best[0]):
-                    best = (d - c * 30, x, y)
+                if d < gate and (best is None or d - c * 30 * sc < best[0]):
+                    best = (d - c * 30 * sc, x, y)
         if best is None:
             # 새로 시작: 신뢰도가 높거나, 다음 프레임에 이어지는 후보
             for x, y, c in sorted(cands[i], key=lambda t: -t[2]):
                 nxt = cands[i + 1] if i + 1 < n else []
-                if c >= 0.35 or any(math.hypot(x - x2, y - y2) < 90 for x2, y2, _ in nxt):
+                if c >= 0.35 or any(math.hypot(x - x2, y - y2) < 90 * sc for x2, y2, _ in nxt):
                     best = (0, x, y)
                     vel = (0.0, 0.0)
                     break
@@ -182,7 +187,7 @@ def ball_track(frames, fps, C=None):
             while j < n and pos[j] is not None:
                 j += 1
             sp = [math.hypot(pos[k + 1][0] - pos[k][0], pos[k + 1][1] - pos[k][1]) for k in range(i, j - 1)]
-            if j - i < fps * 0.3 or (sp and float(np.median(sp)) < 3.5):
+            if j - i < fps * 0.3 or (sp and float(np.median(sp)) < 3.5 * sc):
                 for k in range(i, j):
                     pos[k] = None
             i = j
@@ -297,7 +302,7 @@ def classify(events, pos, players, C, fps):
                 last_hit = e
                 continue
         if e['turn'] == 'bottom':
-            bx, by = C.to_court(e['f'], e['x'], e['y'] + 4)
+            bx, by = C.to_court(e['f'], e['x'], e['y'] + 4 * PX['s'])
             if abs(bx) < HW + 4 and abs(by) < HL + 5:
                 bounces.append({**e, 'bx': bx, 'by': by})
     return shots, bounces
@@ -429,7 +434,7 @@ def build(name, calib=None, video_id=None, start=None):
     return result, {'pos': pos, 'players': players, 'hits': hits, 'bounces': bounces, 'ids': ids, 'C': C, 'fps': fps, 'f0': f0, 'ball_seen': seen_ball}
 
 
-def build2(name, calib=None, video_id=None):
+def build2(name, calib=None, video_id=None, n_players=4):
     """0.2: 소리 + 자세 + 공을 합쳐 타구를 찾음 (pose.py · audio.py 결과가 있을 때)"""
     import swing
 
@@ -443,7 +448,7 @@ def build2(name, calib=None, video_id=None):
     ball_hits, bounces = classify(events, pos, players, C, fps)
     pose = swing.load_pose(name)
     aud = json.load(open(f'out/{name}.audio.json'))
-    hits, info = swing.fuse(frames, pose, aud, ball_hits, C, fps)
+    hits, info = swing.fuse(frames, pose, aud, ball_hits, C, fps, n_players=n_players)
     hits = [h for h in hits if h['slot']]
     for h in hits:
         h['i'] = h['f'] - f0
@@ -601,7 +606,7 @@ def build2(name, calib=None, video_id=None):
         'shots': out_shots,
     }
     seen_ball = sum(p is not None for p in pos) / max(1, len(pos))
-    return result, {'hits': hits, 'bounces': bounces, 'ball_seen': seen_ball, 'pos': pos, 'f0': f0, 'C': C, 'fps': fps, **info}
+    return result, {'hits': hits, 'bounces': bounces, 'ball_seen': seen_ball, 'pos': pos, 'f0': f0, 'C': C, 'fps': fps, 'W': PX['w'], 'H': PX['h'], **info}
 
 
 if __name__ == '__main__':
@@ -610,11 +615,12 @@ if __name__ == '__main__':
     ap.add_argument('--calib', default='out/calib.json')
     ap.add_argument('--youtube', default=None)
     ap.add_argument('--video', default=None, help='영상 파일 (선수별 옷 색을 재려면)')
+    ap.add_argument('--players', type=int, default=4, help='선수 수: 4 = 복식, 2 = 단식')
     a = ap.parse_args()
     import os
 
     if os.path.exists(f'out/{a.name}.pose.jsonl') and os.path.exists(f'out/{a.name}.audio.json'):
-        res, dbg = build2(a.name, a.calib, a.youtube)
+        res, dbg = build2(a.name, a.calib, a.youtube, a.players)
         import swing
 
         if a.video:

@@ -13,7 +13,22 @@ NOSE, LSH, RSH, LEL, REL, LWR, RWR, LHIP, RHIP, LKN, RKN, LAN, RAN = 0, 5, 6, 7,
 
 
 def load_pose(name):
-    return [json.loads(l) for l in open(f'out/{name}.pose.jsonl')]
+    rows = [json.loads(l) for l in open(f'out/{name}.pose.jsonl')]
+    # 먼 쪽 확대 결과(pose.py --far)가 있으면 합침: 전체 화면에서 찾은 사람과 겹치지 않는 사람만 더함
+    try:
+        far = {}
+        for l in open(f'out/{name}.posefar.jsonl'):
+            d = json.loads(l)
+            far[d['f']] = d['p']
+        for fr in rows:
+            for p in far.get(fr['f'], []):
+                if all(_iou(p[:4], q[:4]) < 0.3 for q in fr['p']):
+                    fr['p'].append(p)
+                else:  # 같은 사람이면 확대해서 찾은 관절이 더 정확
+                    fr['p'] = [p if _iou(p[:4], q[:4]) >= 0.3 else q for q in fr['p']]
+    except FileNotFoundError:
+        pass
+    return rows
 
 
 def _pt(k, j, c=0.3):
@@ -207,7 +222,7 @@ def describe(sw, trs, fps):
 
 
 # ── 소리 + 자세 + 공을 합쳐 타구 찾기 ───────────────────────
-def fuse(frames, pose, aud, ball_hits, C, fps, aud_min=8.0, swing_min=1.5):
+def fuse(frames, pose, aud, ball_hits, C, fps, aud_min=8.0, swing_min=1.5, n_players=4):
     """타구 = '퐁' 소리 + (그 순간 스윙한 선수 또는 선수 근처에서 꺾인 공)
 
     소리가 없거나 묻혀도, 공이 선수 근처에서 꺾이고 손목이 빠르게 움직였으면 타구로 인정.
@@ -218,7 +233,7 @@ def fuse(frames, pose, aud, ball_hits, C, fps, aud_min=8.0, swing_min=1.5):
     dets_by_f = {fr['f']: fr['p'] for fr in frames}
     P = people(pose, C, dets_by_f)
     trs = tracks(P, fps)
-    idmap = assign_ids(trs, fps)
+    idmap = assign_ids(trs, fps, n_players)
     by_f = defaultdict(list)
     for ti, t in enumerate(trs):
         for p, v, j in wrist_speed(t, fps):
@@ -300,16 +315,29 @@ def fuse(frames, pose, aud, ball_hits, C, fps, aud_min=8.0, swing_min=1.5):
     nears = sorted([k for k in first if first[k][1] < 0], key=lambda k: first[k][0])
     fars = sorted([k for k in first if first[k][1] >= 0], key=lambda k: first[k][0])
     slots = {}
-    for s, k in zip(['P1', 'P2'], nears[:2]):
+    # 단식(2명): 가까운 쪽 = P1, 먼 쪽 = P3 (앱에서 P1·P2 = 가까운 쪽 규칙 그대로)
+    near_s, far_s = (['P1'], ['P3']) if n_players == 2 else (['P1', 'P2'], ['P3', 'P4'])
+    for s, k in zip(near_s, nears):
         slots[k] = s
-    for s, k in zip(['P3', 'P4'], fars[:2]):
+    for s, k in zip(far_s, fars):
         slots[k] = s
-    rest = [s for s in ['P1', 'P2', 'P3', 'P4'] if s not in slots.values()]
+    rest = [s for s in near_s + far_s if s not in slots.values()]
     for k in first:
         if k not in slots and rest:
             slots[k] = rest.pop(0)
     for h in hits:
         h['slot'] = slots.get(h['pid'])
+    # 단식: 같은 선수가 0.9초 안에 두 번 = 스윙 마무리 동작 · 바운드 소리 → 소리 큰 쪽 하나만
+    # (복식은 P1~P4 구분이 가끔 섞여 진짜 타구를 지울 수 있어 아직 안 씀)
+    out = []
+    for h in hits:
+        prev = next((x for x in reversed(out[-3:]) if x['slot'] == h['slot']), None)
+        if n_players == 2 and prev is not None and h['slot'] and h['f'] - prev['f'] < fps * 0.9:
+            if (h['snd'], h['sw'][1]) > (prev['snd'], prev['sw'][1]):
+                out[out.index(prev)] = h
+            continue
+        out.append(h)
+    hits = out
     return hits, {'tracks': len(trs), 'ided': len(idmap), 'trs': trs, 'idmap': idmap, 'slots': slots}
 
 
@@ -322,6 +350,8 @@ def color_name(bgr):
     h = int(h) * 2  # 0~360
     if v < 55:
         return '검은색'
+    if v < 110 and s < 90:  # 어둡고 색이 옅음 (그늘 속 검정 · 회색 옷이 푸르게 찍힌 것)
+        return '진회색'
     if s < 45:
         return '흰색' if v > 185 else '밝은 회색' if v > 130 else '진회색'
     if h < 15 or h >= 340:
@@ -339,6 +369,30 @@ def color_name(bgr):
     if h < 300:
         return '보라색'
     return '분홍색'
+
+
+def torso(im, h):
+    """윗옷 부분: 관절(어깨 · 엉덩이)이 보이면 그 사이 가운데, 아니면 상자 위쪽 가운데
+    (스윙 중엔 팔 때문에 상자가 넓어져 상자 가운데에 코트 바닥이 섞임)"""
+    k = h['sw'][3]['k']
+    sh = [k[j, :2] for j in (LSH, RSH) if k[j, 2] > 0.4]
+    hp = [k[j, :2] for j in (LHIP, RHIP) if k[j, 2] > 0.4]
+    bx1, by1, bx2, by2 = h['box']
+    ok = False
+    if len(sh) == 2 and hp:
+        top, bot = (sh[0] + sh[1]) / 2, np.mean(hp, 0)
+        L = bot[1] - top[1]
+        mx = (top[0] + bot[0]) / 2
+        # 관절이 몸통 자리에 제대로 놓였는지 (작은 선수는 관절이 몸 밖으로 튀는 일이 있음)
+        ok = by2 - by1 >= 150 and 0.18 * (by2 - by1) < L < 0.5 * (by2 - by1) and bx1 + (bx2 - bx1) * 0.2 < mx < bx2 - (bx2 - bx1) * 0.2
+    if ok:
+        w = max(3.0, abs(sh[0][0] - sh[1][0]) * 0.35)
+        y1, y2 = top[1] + (bot[1] - top[1]) * 0.2, top[1] + (bot[1] - top[1]) * 0.7
+        cx = (top[0] + bot[0]) / 2
+        return im[int(y1): int(max(y1 + 2, y2)), int(cx - w): int(cx + w)]
+    x1, y1, x2, y2 = map(int, h['box'])
+    bh, bw = y2 - y1, x2 - x1
+    return im[y1 + int(bh * 0.24): y1 + int(bh * 0.42), x1 + int(bw * 0.38): x2 - int(bw * 0.38)]
 
 
 def looks(video, hits, per=15):
@@ -359,10 +413,8 @@ def looks(video, hits, per=15):
             ok, im = cap.read()
             if not ok:
                 continue
-            x1, y1, x2, y2 = map(int, h['box'])
-            bh, bw = y2 - y1, x2 - x1
-            crop = im[y1 + int(bh * 0.22): y1 + int(bh * 0.45), x1 + int(bw * 0.3): x2 - int(bw * 0.3)]
-            if crop.size:
+            crop = torso(im, h)
+            if crop is not None and crop.size:
                 cols.append(np.median(crop.reshape(-1, 3), axis=0))
         if cols:
             bgr = np.median(np.array(cols), axis=0).astype(int)
@@ -422,4 +474,4 @@ def export_tracks(res, dbg, fps_out=10, pad=0.7):
         x, y = C.to_img(bo['f'], bo['bx'], bo['by'])
         inside = abs(bo['bx']) <= HW + 0.1 and abs(bo['by']) <= HL + 0.1
         bn.append([round(bo['f'] / fps, 2), int(x), int(y), 1 if inside else 0])
-    return {'v': 1, 'w': 1920, 'h': 1080, 'fps': fps_out, 'segs': segs, 'bn': bn}
+    return {'v': 1, 'w': dbg.get('W', 1920), 'h': dbg.get('H', 1080), 'fps': fps_out, 'segs': segs, 'bn': bn}

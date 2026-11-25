@@ -25,6 +25,7 @@ YOLO 모델(`models/yolo11s.pt`)은 처음 실행할 때 Ultralytics 공식 저�
    .venv/bin/python detect.py match.mp4 --name match --rough '<2번에서 나온 네 점>'
    .venv/bin/python motion.py match.mp4 --name match
    .venv/bin/python pose.py match.mp4 --name match        # 관절(자세), 약 10분
+   .venv/bin/python pose.py match.mp4 --name match --far  # (720p 등 먼 쪽 선수가 작을 때) 먼 쪽만 3배 확대해서 관절, 약 4분
    ```
    소리(타구음): 유튜브면 `yt-dlp -f 140 -o audio.m4a <링크>` → `ffmpeg -i audio.m4a -ac 1 -ar 22050 audio.wav` →
    ```bash
@@ -34,6 +35,7 @@ YOLO 모델(`models/yolo11s.pt`)은 처음 실행할 때 Ultralytics 공식 저�
 4. **타구 · 바운드 · 샷 만들기** (몇 초):
    ```bash
    .venv/bin/python events.py --name match --youtube <유튜브 영상 id> --video match.mp4   # --video: 선수별 옷 색
+   #   단식(2명)이면 --players 2 추가 → 가까운 쪽 P1, 먼 쪽 P3
    ```
    → `out/match.result.json`을 앱에 넣기
 5. **그래픽 영상 만들기**(선택): `render.py match.mp4 --name match --t0 670 --t1 696 --out out/overlay.mp4` → 선수 상자 · 관절 · 공 꼬리 · 샷 이름 · 바운드 · 미니 코트를 그린 새 영상
