@@ -348,7 +348,7 @@ export function galleryView() {
   return h(
     'div',
     { class: 'page' },
-    backLink('#/rank', '순위'),
+    backLink('#/me', '내 정보'),
     pageHead('아바타 구경', 'Gallery', u && h('a', { class: 'btn small primary', href: '#/avatar' }, '내 아바타')),
     h(
       'div',

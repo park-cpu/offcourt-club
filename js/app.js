@@ -18,8 +18,8 @@ const TABS = [
   ['#/', '홈', 'home', ['', 'home', 'rally']],
   ['#/week', '일정', 'cal', ['week', 's']],
   ['#/play', '경기', 'ball', ['play', 'analysis']],
-  ['#/rank', '순위', 'rank', ['rank', 'p', 'rules', 'avatars']],
-  ['#/me', '내 정보', 'user', ['me', 'admin', 'avatar']],
+  ['#/rank', '순위', 'rank', ['rank', 'p', 'rules']],
+  ['#/me', '내 정보', 'user', ['me', 'admin', 'avatar', 'avatars']],
 ];
 
 const ICONS = {
@@ -66,9 +66,35 @@ function route() {
   }
 }
 
+// ── 뒤로 가기 · 아래 탭 (v1.23.0~) ─────────────────────
+// 여러 곳에서 들어오는 화면(FLOAT)은 '‹ 뒤로'가 들어온 곳으로 가고, 아래 탭도 들어온 쪽 탭에 불이 들어옴
+//   예) 내 정보 → 회원 아바타 구경: '‹ 내 정보' + 내 정보 탭 / 홈 카드 → 일정 상세: '‹ 홈' + 홈 탭
+// 바로 열었을 때(새로고침 · 공유 링크)는 각 화면의 기본값 그대로
+const FLOAT = ['s', 'p', 'rules', 'avatars', 'avatar'];
+const PLACE = { '': '홈', home: '홈', week: '주간 일정', s: '일정', play: '경기', rank: '순위', p: '회원', me: '내 정보', avatar: '아바타', avatars: '아바타 구경', admin: '관리자', rules: '점수 규칙', rally: '랠리 게임', analysis: '영상 분석' };
+const headOf = (hs) => (hs || '').replace(/^#\/?/, '').split('/')[0];
+// 회원 페이지로 돌아갈 땐 그 회원 이름 ('‹ 한도윤')
+const backLabel = (hs) => (headOf(hs) === 'p' ? state.players.find((x) => x.id === hs.split('/')[2])?.name : null) || PLACE[headOf(hs)] || '뒤로';
+let trail = []; // 지나온 화면 (탭 화면에서 다시 시작)
+function track() {
+  const H = location.hash || '#/';
+  if (trail[trail.length - 1] === H) return;
+  const head = headOf(H);
+  if (!FLOAT.includes(head)) trail = [H];
+  else if (trail.length >= 2 && trail[trail.length - 2] === H) trail.pop(); // 뒤로 감
+  else if (trail.length && headOf(trail[trail.length - 1]) === head && head !== 'p') trail[trail.length - 1] = H; // 같은 화면 안 탭 이동
+  else trail.push(H);
+  const prev = trail.length >= 2 ? trail[trail.length - 2] : null;
+  try {
+    if (prev) sessionStorage.setItem('oc-back', JSON.stringify({ for: H, hash: prev, label: backLabel(prev) }));
+    else sessionStorage.removeItem('oc-back');
+  } catch {}
+}
+
 let lastHash = null;
 function render() {
   const main = document.getElementById('main');
+  track();
   const [key, view] = route();
   const y = window.scrollY;
   main.replaceChildren(view);
@@ -76,11 +102,13 @@ function render() {
   // 같은 화면 갱신이면 스크롤 유지, 화면 이동이면 맨 위로
   window.scrollTo(0, location.hash === lastHash ? y : 0);
   lastHash = location.hash;
+  const tabKey = FLOAT.includes(key) && trail.length >= 2 ? headOf(trail[0]) : key;
   const nav = document.getElementById('tabbar');
   nav.replaceChildren(
-    ...TABS.map(([href, label, ic, keys]) =>
-      h('a', { href, class: keys.includes(key) ? 'on' : '', 'aria-current': keys.includes(key) ? 'page' : null }, icon(ic), h('span', {}, label))
-    )
+    ...TABS.map(([href, label, ic, keys]) => {
+      const on = keys.includes(tabKey);
+      return h('a', { href, class: on ? 'on' : '', 'aria-current': on ? 'page' : null }, icon(ic), h('span', {}, label));
+    })
   );
 }
 

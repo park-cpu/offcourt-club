@@ -177,7 +177,14 @@ export function matchCard(m, { onEdit, showDate = false } = {}) {
 export const pageHead = (title, sub, right) =>
   h('header', { class: 'page-head' }, h('div', {}, sub && h('p', { class: 'eyebrow' }, sub), h('h1', {}, title)), right);
 
-export const backLink = (hash, label = '뒤로') => h('a', { class: 'back', href: hash }, '‹ ', label);
+// 여러 곳에서 들어오는 화면은 app.js가 '들어온 곳'을 sessionStorage 'oc-back'에 적어 둠 → 그쪽으로 (v1.23.0~)
+export const backLink = (hash, label = '뒤로') => {
+  try {
+    const b = JSON.parse(sessionStorage.getItem('oc-back'));
+    if (b && b.for === (location.hash || '#/')) [hash, label] = [b.hash, b.label];
+  } catch {}
+  return h('a', { class: 'back', href: hash }, '‹ ', label);
+};
 
 export const linkRow = (label, hash, right) => h('a', { class: 'link-row', href: hash }, h('span', {}, label), h('span', { class: 'muted' }, right ?? '›'));
 

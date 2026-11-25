@@ -74,6 +74,7 @@
 - 카카오 로그인 연동 (보류 중). 간단 버전 = 카카오 계정을 기존 회원에 연결(GitHub Pages 그대로), 보안 강화 버전 = Firebase Blaze + Cloud Functions 커스텀 토큰
 
 ## 기타 화면 (v1.13.0~)
+- 뒤로 가기(v1.23.0~): 여러 곳에서 들어오는 화면(app.js `FLOAT` = s · p · rules · avatars · avatar)은 들어온 곳을 `trail`로 기억 → sessionStorage `oc-back`에 적고 `backLink`(common.js)가 그쪽으로, 아래 탭도 들어온 쪽. 바로 열었을 땐 각 화면의 기본값(backLink 인자 · TABS)
 - 상단 고정 줄(v1.21.0~): 긴 화면의 탭 · 이동 버튼은 `h('div', { class: 'sticky-bar' }, …)`로 감싸 스크롤해도 위에 붙게 함 (`.block` 안이면 카드 색). 새 화면에 탭을 만들면 같이 적용
 - 당겨서 새로고침: app.js 안 IIFE (`.ptr`), 랠리 · 캔버스 · 시트 위에서는 꺼짐. CSS `overscroll-behavior-y: contain`으로 브라우저 기본 새로고침은 막음
 - 회원 페이지 최근 경기 = `recentList` (rank.js) 한 줄 요약, 5개 + 더 보기 10개씩
