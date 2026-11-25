@@ -338,14 +338,17 @@ input[type='file'].input { padding: 12px; }
 .mcard { background: var(--card); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--grey-2); }
 .block .mcard { border: 1px solid var(--grey-2); }
 .mhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.mbody { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+.mbody { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
 .mside { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px; border-radius: 10px; text-align: center; }
 .mside.win { background: var(--blue-soft); }
 .mside.win .mscore { color: var(--blue); }
 .mside.lose { color: var(--ink-3); }
 .mnames { font-weight: 700; font-size: 15px; display: flex; flex-direction: column; gap: 2px; }
+/* 이름과 레이팅 변동(−38.8)이 한 줄에 붙어 있게 — 아이폰에서 숫자가 줄바꿈되던 문제 (v1.13.2) */
+.mnames > div { display: flex; align-items: baseline; justify-content: center; gap: 4px; white-space: nowrap; }
+.mnames .delta { margin-left: 0; }
 .mscore { font-family: var(--serif); font-size: 44px; line-height: 1; }
-.delta { font-size: 11px; font-weight: 700; margin-left: 4px; }
+.delta { font-size: 11px; font-weight: 700; margin-left: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .delta.up { color: var(--up); }
 .delta.down { color: var(--down); }
 .mfoot { font-size: 13px; color: var(--ink-2); text-align: center; }
