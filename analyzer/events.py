@@ -615,11 +615,13 @@ if __name__ == '__main__':
 
     if os.path.exists(f'out/{a.name}.pose.jsonl') and os.path.exists(f'out/{a.name}.audio.json'):
         res, dbg = build2(a.name, a.calib, a.youtube)
+        import swing
+
         if a.video:
-            import swing
 
             res['looks'] = swing.looks(a.video, dbg['hits'])
             print('옷 색', {k: v['n'] for k, v in res['looks'].items()})
+        res['tracks'] = swing.export_tracks(res, dbg)
     else:
         res, dbg = build(a.name, a.calib, a.youtube)
     json.dump(res, open(f'out/{a.name}.result.json', 'w'), ensure_ascii=False)

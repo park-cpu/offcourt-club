@@ -368,3 +368,58 @@ def looks(video, hits, per=15):
             bgr = np.median(np.array(cols), axis=0).astype(int)
             out[slot] = {'c': '#%02x%02x%02x' % (bgr[2], bgr[1], bgr[0]), 'n': color_name(bgr)}
     return out
+
+
+# ── 앱에서 영상 위에 그릴 위치 데이터 (v1.17.0~) ─────────────
+def export_tracks(res, dbg, fps_out=10, pad=0.7):
+    """랠리 구간만: 선수 상자(10fps, 픽셀 정수, 없으면 -1) + 공(보인 프레임만) + 바운드
+
+    {"v":1,"w":1920,"h":1080,"fps":10,
+     "segs":[{"t0":초,"n":칸수,"p":{"P1":[x1,y1,x2,y2,...]},"b":[프레임차,x,y,...]}],
+     "bn":[[초,x,y,인=1/아웃=0],...]}
+    """
+    fps, f0, C, pos = dbg['fps'], dbg['f0'], dbg['C'], dbg['pos']
+    who = {}
+    for ti, t in enumerate(dbg['trs']):
+        pid = dbg['idmap'].get(ti)
+        slot = dbg['slots'].get(pid) if pid is not None else None
+        if slot:
+            for p in t:
+                who.setdefault(p['f'], {})[slot] = p['box']
+    pf = sorted(who)
+    import bisect
+
+    def boxes_at(f):
+        i = bisect.bisect_right(pf, f) - 1
+        out = {}
+        for j in (i, i + 1):  # 자세는 2프레임마다 → 가까운 프레임
+            if 0 <= j < len(pf) and abs(pf[j] - f) <= 2:
+                for k, b in who[pf[j]].items():
+                    out.setdefault(k, b)
+        return out
+
+    segs = []
+    for r in res['rallies']:
+        t0 = max(0, r['t0'] - pad)
+        t1 = r['t1'] + pad
+        n = int((t1 - t0) * fps_out)
+        P = {k: [] for k in ['P1', 'P2', 'P3', 'P4']}
+        for i in range(n):
+            f = int(round((t0 + i / fps_out) * fps))
+            bx = boxes_at(f)
+            for k in P:
+                P[k] += [int(v) for v in bx[k]] if k in bx else [-1, -1, -1, -1]
+        P = {k: v for k, v in P.items() if any(x >= 0 for x in v)}
+        fa, fb = int(t0 * fps), int(t1 * fps)
+        b = []
+        for f in range(fa, fb):
+            i = f - f0
+            if 0 <= i < len(pos) and pos[i] is not None:
+                b += [f - fa, int(pos[i][0]), int(pos[i][1])]
+        segs.append({'t0': round(fa / fps, 3), 'n': n, 'p': P, 'b': b})
+    bn = []
+    for bo in dbg['bounces']:
+        x, y = C.to_img(bo['f'], bo['bx'], bo['by'])
+        inside = abs(bo['bx']) <= HW + 0.1 and abs(bo['by']) <= HL + 0.1
+        bn.append([round(bo['f'] / fps, 2), int(x), int(y), 1 if inside else 0])
+    return {'v': 1, 'w': 1920, 'h': 1080, 'fps': fps_out, 'segs': segs, 'bn': bn}

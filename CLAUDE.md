@@ -65,6 +65,7 @@
 - 피드백(v1.16.0~): `js/coach.js` (`missCauses` · `bounceSummary` · `feedback`) — 샷의 h · reach · run · 위치 · 바운드로 문장 생성. 분석 상세 첫 탭 '피드백'
 - 분석기 0.2 = detect(사람·공) + motion + pose(관절, `pose.py`) + audio(타구음, `audio.py`) → `events.py`의 `build2`(소리+스윙+공 → 타구, 서브 = 베이스라인 + 0.7~2.6초 뒤 반대쪽 리턴)
 - 슬롯 번호 = 옷 색 k-평균으로 4명 구분 → 처음 위치(가까운 왼·오 P1·P2, 먼 왼·오 P3·P4). 결과 `looks`(윗옷 색, `events.py --video`) → 앱이 칩 · 선수 지정에 색 동그라미 + '진회색 상의' 표시 (v1.16.1~)
+- 영상 위 그래픽(v1.17.0~): 분석기 결과의 `tracks`(랠리 구간 선수 상자 10fps · 공 · 바운드, `swing.export_tracks`) → 결과 넣기 때 떼어 `analysisTracks/{분석 id}`에 JSON 문자열로 저장(배열 안 배열 불가 · 1MB 제한), 분석 문서엔 `hasTracks`. `js/tracks.js`가 유튜브 iframe postMessage(infoDelivery)로 재생 시각을 받아 캔버스에 그림. 유튜브 전체 화면에선 안 보임
 - 정확도 기록장 `analyzer/ACCURACY.md` (Claude가 주도 · 갱신). 결과 파일은 `analyzer/out/`(git 제외)
 - 계획: 1) 화면(완료) 2) Mac 시험판 분석기 `analyzer/` 3) 서버(Blaze) 자동 분석
 

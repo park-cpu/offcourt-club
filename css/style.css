@@ -665,3 +665,5 @@ html, body { overscroll-behavior-y: contain; }
 .an-sw { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); flex: none; }
 h2 .an-sw { width: 14px; height: 14px; }
 .an-look { margin: -6px 0 4px; }
+.an-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.an-ov-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -4px 2px 0; }

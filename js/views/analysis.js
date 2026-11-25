@@ -11,9 +11,10 @@ import { put, remove, uid } from '../db.js';
 import { pageHead, backLink, requireLogin, teamNames } from './common.js';
 import { COURT, SHOT_KINDS, DIRS, DEPTHS, RESULTS, SLOTS, dirOf, fromNear, shotStats, rallyStats, fmtTime, youtubeId, demoAnalysis } from '../analysis.js';
 import { missCauses, bounceSummary, feedback } from '../coach.js';
+import { saveTracks, loadTracks, removeTracks, listenYouTube, nowTime, hintTime, drawOverlay } from '../tracks.js';
 
 const STATUS = { queued: '분석 대기', processing: '분석 중', done: '완료', error: '오류' };
-const view = { pick: 'all', kind: 'all', demo: null };
+const view = { pick: 'all', kind: 'all', demo: null, overlay: true };
 const slotName = (a, k) => (a.players?.[k] ? person(a.players[k]).name : k);
 // 옷 색 (분석기가 잰 윗옷 색, v1.16.1~): 동그라미 + '진회색 상의'
 const lookOf = (a, k) => a.looks?.[k] || null;
@@ -138,6 +139,9 @@ function importSheet(target) {
         return toast('JSON 파일이 아니에요');
       }
       if (r.v !== 1 || !Array.isArray(r.shots) || !Array.isArray(r.rallies)) return toast('형식이 맞지 않아요 (analyzer/FORMAT.md)');
+      // 영상 위 그래픽용 위치 데이터는 따로 저장 (v1.17.0~)
+      const tracks = r.tracks && Array.isArray(r.tracks.segs) ? r.tracks : null;
+      delete r.tracks;
       const base = state.analyses.find((a) => a.id === into.value);
       const doc = {
         ...r,
@@ -152,6 +156,16 @@ function importSheet(target) {
         createdAt: base?.createdAt || Date.now(),
       };
       if (JSON.stringify(doc).length > 900000) return toast('결과가 너무 커요 (900KB 초과)');
+      doc.hasTracks = false;
+      if (tracks) {
+        try {
+          await saveTracks(doc.id, tracks);
+          doc.hasTracks = true;
+        } catch (e) {
+          console.warn(e);
+          toast(e.message === 'too-big' ? '그래픽 데이터가 너무 커서 빼고 넣어요' : '그래픽 데이터를 저장하지 못했어요 (Firebase 규칙 확인)');
+        }
+      }
       await put('analyses', doc);
       close();
       toast(`넣었어요 · 랠리 ${doc.rallies.length} · 샷 ${doc.shots.length}`);
@@ -200,6 +214,7 @@ async function setStatus(a, status) {
 async function del(a) {
   if (!(await confirmSheet('분석 삭제', `${a.title}을(를) 삭제할까요?`, '삭제', true))) return;
   await remove('analyses', a.id);
+  if (a.hasTracks) await removeTracks(a.id);
   location.hash = '#/analysis';
 }
 
@@ -214,9 +229,54 @@ function videoBox(a) {
       v.kind === 'youtube'
         ? h('iframe', { src: `https://www.youtube-nocookie.com/embed/${v.id}?enablejsapi=1&playsinline=1&rel=0`, allow: 'autoplay; encrypted-media; picture-in-picture', allowfullscreen: true, title: '경기 영상' })
         : h('video', { src: v.url, controls: true, playsinline: true, preload: 'metadata' });
-    player = { key, el, kind: v.kind };
+    player = { key, el, kind: v.kind, cv: null, tracks: undefined };
+    if (v.kind === 'youtube') listenYouTube(el);
   }
-  return h('div', { class: 'an-video' }, player.el);
+  player.a = a;
+  // 영상 위 그래픽 (v1.17.0~): 위치 데이터는 화면을 열 때 받음
+  if (a.hasTracks && player.kind === 'youtube' && player.tracks === undefined) {
+    player.tracks = null;
+    loadTracks(a.id).then((t) => {
+      player.tracks = t || false;
+      window.dispatchEvent(new Event('rerender'));
+    });
+  }
+  const on = view.overlay && player.tracks;
+  if (on && !player.cv) player.cv = h('canvas', { class: 'an-overlay', 'aria-hidden': 'true' });
+  if (on) startOverlay();
+  return h('div', { class: 'an-video' }, player.el, on && player.cv);
+}
+
+function overlayToggle(a) {
+  if (!a.hasTracks || player.kind !== 'youtube') return null;
+  const rerender = () => window.dispatchEvent(new Event('rerender'));
+  const label = player.tracks === null ? '그래픽 불러오는 중…' : player.tracks === false ? '그래픽 데이터를 불러오지 못했어요' : view.overlay ? '그래픽 켜짐 · 선수 · 공 · 샷 표시' : '그래픽 꺼짐';
+  return h(
+    'div',
+    { class: 'an-ov-bar' },
+    h('span', { class: 'muted small' }, label),
+    player.tracks && h('button', { class: 'chip' + (view.overlay ? ' on' : ''), onclick: () => { view.overlay = !view.overlay; rerender(); } }, view.overlay ? '끄기' : '켜기')
+  );
+}
+
+let ovRunning = false;
+function startOverlay() {
+  if (ovRunning) return;
+  ovRunning = true;
+  const loop = () => {
+    const cv = player.cv;
+    if (!cv || !cv.isConnected || !view.overlay || !player.tracks) {
+      ovRunning = false;
+      if (cv) cv.getContext('2d').clearRect(0, 0, cv.width, cv.height);
+      return;
+    }
+    const a = player.a;
+    const names = Object.fromEntries(SLOTS.map((k) => [k, a.players?.[k] ? person(a.players[k]).name : k]));
+    const colors = Object.fromEntries(SLOTS.map((k) => [k, a.looks?.[k]?.c]));
+    drawOverlay(cv, player.tracks, nowTime(), { names, colors, shots: a.shots, rallies: a.rallies });
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
 }
 function seek(t) {
   const el = player.el;
@@ -226,6 +286,7 @@ function seek(t) {
     const send = (func, args = []) => el.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args }), '*');
     send('seekTo', [at, true]);
     send('playVideo');
+    hintTime(at);
   } else {
     el.currentTime = at;
     el.play?.().catch(() => {});
@@ -259,6 +320,7 @@ function detailView(a, tab) {
     pageHead(a.title || '영상 분석', a.date ? fmtDate(a.date) : 'Video'),
     a.demo && h('p', { class: 'warn' }, '예시 화면이에요. 숫자는 가짜 데이터예요.'),
     videoBox(a),
+    overlayToggle(a),
     chips,
     h('nav', { class: 'seg' }, tabs.map(([k, l]) => h('a', { class: k === tab ? 'on' : '', href: a.demo ? `#/analysis/demo/${k}` : `${base}/${k}` }, l))),
     body,
