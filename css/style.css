@@ -600,10 +600,15 @@ input, textarea, [contenteditable] { -webkit-user-select: text; user-select: tex
 
 /* 당겨서 새로고침 (v1.13.0) — 안드로이드 크롬 기본 새로고침과 겹치지 않게 막음 */
 html, body { overscroll-behavior-y: contain; }
-.ptr { position: fixed; top: calc(env(safe-area-inset-top) + 8px); left: 50%; z-index: 60; width: 40px; height: 40px; border-radius: 50%; background: var(--card); color: var(--ink-3); box-shadow: 0 2px 10px rgba(0,0,0,.15); display: grid; place-items: center; font-size: 22px; font-weight: 700; opacity: 0; transform: translate(-50%, -48px); pointer-events: none; }
+.ptr { position: fixed; top: calc(env(safe-area-inset-top) + 8px); left: 50%; z-index: 60; padding: 4px 10px; border-radius: 30px; background: var(--card); box-shadow: 0 2px 12px rgba(0,0,0,.16); opacity: 0; transform: translate(-50%, -64px); pointer-events: none; line-height: 0; }
+.ptr svg { display: block; overflow: visible; }
 .ptr.back { transition: transform .2s, opacity .2s; }
-.ptr.ready { color: var(--blue); }
-.ptr.spin span { animation: ptr-spin .6s linear infinite; }
+.ptr-court { stroke: var(--grey-2, #d9d6cc); stroke-width: 2; stroke-linecap: round; }
+.ptr-net { stroke: var(--ink-3); stroke-width: 2; stroke-linecap: round; }
+.ptr-path { fill: none; stroke: var(--ink-3); stroke-width: 1.6; stroke-linecap: round; opacity: .45; }
+.ptr.ready .ptr-path, .ptr.spin .ptr-path { stroke: var(--blue); opacity: .7; }
+.ptr-ball circle { fill: #d9e84a; stroke: #a8b52a; stroke-width: 1; }
+.ptr-ball path { fill: none; stroke: #fff; stroke-width: 1.4; stroke-linecap: round; }
 @keyframes ptr-spin { to { transform: rotate(360deg); } }
 
 /* ── 영상 분석 (v1.15.0) ───────────────────────────── */

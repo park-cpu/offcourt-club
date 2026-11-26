@@ -160,15 +160,45 @@ async function boot() {
     ]);
     location.reload();
   };
-  const ind = h('div', { class: 'ptr', 'aria-hidden': 'true' }, h('span', {}, '↻'));
+  // 화살표 대신 테니스공 궤적 (v1.25.1~): 당기는 만큼 궤적이 그려지고 공이 따라감, 새로고침 중엔 공이 계속 오감
+  const ind = h('div', { class: 'ptr', 'aria-hidden': 'true' });
+  ind.innerHTML =
+    '<svg viewBox="0 0 120 52" width="120" height="52">' +
+    '<path class="ptr-court" d="M6 47H114"/><path class="ptr-net" d="M60 47V38"/>' +
+    '<path class="ptr-path" d="M10 45Q36 -2 62 45Q86 12 110 45"/>' +
+    '<g class="ptr-ball"><circle r="7"/><path d="M-4.5 -5Q0.5 0 -4.5 5M4.5 -5Q-0.5 0 4.5 5"/></g></svg>';
   document.body.append(ind);
+  const trail = ind.querySelector('.ptr-path');
+  const ball = ind.querySelector('.ptr-ball');
+  const LEN = trail.getTotalLength();
+  const place = (p) => {
+    const pt = trail.getPointAtLength(LEN * p);
+    ball.setAttribute('transform', `translate(${pt.x.toFixed(1)} ${pt.y.toFixed(1)}) rotate(${Math.round(p * 540)})`);
+  };
+  const drawTrail = (p) => (trail.style.strokeDasharray = `${(LEN * p).toFixed(1)} ${LEN}`);
+  place(0);
+  drawTrail(0);
+  // 새로고침 중: 공이 궤적을 따라 왕복 (랠리)
+  const rally = () => {
+    drawTrail(1);
+    const t0 = performance.now();
+    const step = (now) => {
+      const k = ((now - t0) / 900) % 2;
+      place(k < 1 ? k : 2 - k);
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  };
   let y0 = null;
   let pull = 0;
   const skip = (t) => location.hash.startsWith('#/rally') || document.querySelector('.sheet-wrap') || t?.closest?.('canvas, input, textarea, select, .stage-wrap');
   const show = (v) => {
     pull = v;
-    ind.style.transform = `translate(-50%, ${Math.round(v - 48)}px) rotate(${Math.round(v * 4)}deg)`;
+    ind.style.transform = `translate(-50%, ${Math.round(v - 64)}px)`;
     ind.style.opacity = v > 4 ? Math.min(1, v / READY) : 0;
+    const p = Math.min(1, v / READY);
+    drawTrail(p);
+    place(p);
     ind.classList.toggle('ready', v >= READY);
   };
   const reset = () => {
@@ -192,6 +222,7 @@ async function boot() {
     if (pull >= READY) {
       y0 = null;
       ind.classList.add('spin');
+      rally();
       hardReload();
     } else reset();
   });
