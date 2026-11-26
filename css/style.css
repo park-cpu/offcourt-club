@@ -553,7 +553,7 @@ ul.plain { margin: 0; padding-left: 18px; }
 .rally-new { font: 800 15px ui-monospace, Menlo, monospace; color: #ffd23a; animation: rallyBlink 0.6s steps(2) infinite; }
 @keyframes rallyBlink { 50% { opacity: 0.2; } }
 .rally-help ul { margin: 8px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.6; }
-.game-banner { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: #1b3aa0; color: #fff; text-decoration: none; }
+.game-banner { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: #ee7b2c; color: #fff; text-decoration: none; }
 .game-banner strong { display: block; }
 .game-banner small { display: block; opacity: 0.8; font-size: 12px; }
 .game-banner > span:nth-child(2) { flex: 1; }
@@ -720,3 +720,6 @@ h2 .an-sw { width: 14px; height: 14px; }
 /* 홈 '이번 주 매치' 아래 줄: 점 왼쪽 · 다음주 보기 오른쪽 (v1.24.5~) */
 .sessions-foot { display: flex; align-items: center; justify-content: space-between; min-height: 24px; }
 .sessions-foot .dots span { cursor: pointer; }
+/* 홈 전체 바탕 블루 (v1.24.7~): 로고 바는 바탕에 녹이고, 랠리 배너는 오렌지 */
+body:has(.home-page) { background: var(--blue); }
+.home-page .home-bar { background: transparent; padding: 4px 2px 0; }
