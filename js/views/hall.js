@@ -1,11 +1,11 @@
 // ─────────────────────────────────────────────────────────────
 // 홈 아래 '명예의 전당' (v1.24.0~)
 //   주간 · 월간을 골라 ‹ › 로 지난 기간도 보고, 항목(연승왕 · 출석왕 …)은 좌우로 넘김
-//   모두 경기 · 출석 기록에서 매번 계산 (저장 안 함). 게스트 낀 경기 · 친선전은 '최다 경기'에만 셈
+//   모두 경기 · 출석 기록에서 매번 계산 (저장 안 함). 항목 = 연승왕 · 출석왕 · 다승왕 · 레이팅 급상승 (v1.24.1~)
 // ─────────────────────────────────────────────────────────────
 import { h, onMount } from '../ui.js';
 import { state, derived, playersMap, activePlayers, me, weekStart, addDays, ymd, parseYmd } from '../store.js';
-import { computeStats, coinStake, winnerSide } from '../rules.js';
+import { computeStats } from '../rules.js';
 import { withPlaces } from './rank.js';
 
 // 화면이 다시 그려져도 보던 기간 · 항목 유지
@@ -34,30 +34,17 @@ function categories(range) {
   const { deltas } = derived();
   // 실제 레이팅 변동(deltas)을 넘기면 적응 기간 경기도 모두 셈
   const st = computeStats(players, state.matches, deltas, range);
-  const coin = computeStats(players, state.matches, deltas, range, 'coin');
   const from = (fn) => [...st.entries()].map(([id, s]) => [id, fn(s, id)]);
 
   const attend = new Map();
   for (const a of state.attendance) if (a.arrived && !a.isGuest && inR(a.date || '')) attend.set(a.playerId, (attend.get(a.playerId) || 0) + 1);
-  // 친선전 · 게스트 경기까지 모든 끝난 경기
-  const played = new Map();
-  const bagel = new Map();
-  for (const m of state.matches) {
-    if (m.status !== 'done' || !inR(m.date || '')) continue;
-    [...m.teamA, ...m.teamB].forEach((id) => played.set(id, (played.get(id) || 0) + 1));
-    const w = winnerSide(m);
-    if (w && m.type !== 'friendly' && coinStake(m) === 2) (w === 'A' ? m.teamA : m.teamB).forEach((id) => bagel.set(id, (bagel.get(id) || 0) + 1));
-  }
   const ofMap = (mp) => [...mp.entries()];
 
   return [
     { key: 'streak', icon: '🔥', name: '연승왕', rows: from((s) => s.best), fmt: (v) => `${v}연승`, min: 2 },
     { key: 'attend', icon: '📅', name: '출석왕', rows: ofMap(attend), fmt: (v) => `${v}회` },
-    { key: 'played', icon: '🎾', name: '최다 경기', rows: ofMap(played), fmt: (v) => `${v}경기` },
     { key: 'wins', icon: '🏆', name: '다승왕', rows: from((s) => s.wins), fmt: (v) => `${v}승` },
     { key: 'rise', icon: '📈', name: '레이팅 급상승', rows: from((s) => Math.round(s.sp - s.games)), fmt: (v) => `+${v}` },
-    { key: 'bagel', icon: '🥯', name: '베이글 메이커', rows: ofMap(bagel), fmt: (v) => `${v}회` },
-    { key: 'coin', icon: '🪙', name: '코인 사냥꾼', rows: [...coin.entries()].map(([id, s]) => [id, s.coins]), fmt: (v) => `+${v}` },
   ].map((c) => {
     const rows = c.rows
       .filter(([id, v]) => active.has(id) && v >= (c.min || 1))
@@ -68,8 +55,6 @@ function categories(range) {
     return { ...c, top: inTop.slice(0, 3), more: inTop.length - 3 };
   });
 }
-
-const MEDAL = ['🥇', '🥈', '🥉'];
 
 export function hallBlock(t) {
   const range = rangeOf(t);
@@ -99,7 +84,7 @@ export function hallBlock(t) {
               h(
                 'li',
                 { class: 'hall-row p' + r.place + (u && r.id === u.id ? ' me' : '') },
-                h('span', { class: 'hall-medal' }, MEDAL[r.place - 1]),
+                h('span', { class: 'hall-place' }, r.place),
                 h('a', { href: `#/p/${r.id}` }, r.name),
                 h('span', { class: 'hall-v' }, c.fmt(r.v))
               )
@@ -111,7 +96,7 @@ export function hallBlock(t) {
 
   const index = Math.min(view.index, cats.length - 1);
   const dots = h('div', { class: 'dots hall-dots' }, cats.map((_, i) => h('span', { class: i === index ? 'on' : '' })));
-  const track = h('div', { class: 'carousel hall-track' }, cats.map(card));
+  const track = h('div', { class: 'carousel multi hall-track' }, cats.map(card));
   track.addEventListener(
     'scroll',
     () => {
@@ -140,7 +125,7 @@ export function hallBlock(t) {
     h(
       'div',
       { class: 'row between' },
-      h('p', { class: 'hall-head' }, '👑 명예의 전당'),
+      h('p', { class: 'eyebrow' }, '명예의 전당'),
       h(
         'div',
         { class: 'hall-unit' },
@@ -157,7 +142,7 @@ export function hallBlock(t) {
     ),
     track,
     dots,
-    h('a', { class: 'hall-more', href: '#/rank' }, '전체 순위 자세히 보기 ›')
+    h('a', { class: 'link small hall-more', href: '#/rank' }, '전체 순위 보기 ›')
   );
 }
 
