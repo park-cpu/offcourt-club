@@ -125,7 +125,7 @@ export function hallBlock(t) {
     h(
       'div',
       { class: 'row between' },
-      h('p', { class: 'eyebrow' }, '명예의 전당'),
+      h('h2', { class: 'hall-head' }, '명예의 전당'),
       h(
         'div',
         { class: 'hall-unit' },
