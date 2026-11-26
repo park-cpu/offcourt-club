@@ -71,8 +71,14 @@ function sessionsBlock(t, u) {
   const head = h(
     'div',
     { class: 'row between' },
-    h('p', { class: 'eyebrow' }, `${label} · ${fmtShortRange(start, end)}`),
-    view.offset > 0 && h('button', { class: 'link small', onclick: () => setOffset(0) }, '‹ 이번 주')
+    // 제목 '이번 주 매치' + 날짜는 오른쪽 (v1.24.4~)
+    h('h2', { class: 'hall-head' }, `${label} 매치`),
+    h(
+      'div',
+      { class: 'week-side' },
+      view.offset > 0 && h('button', { class: 'link small', onclick: () => setOffset(0) }, '‹ 이번 주'),
+      h('span', {}, fmtShortRange(start, end))
+    )
   );
 
   if (!list.length) {

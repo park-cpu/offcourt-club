@@ -716,3 +716,4 @@ h2 .an-sw { width: 14px; height: 14px; }
 .hall-dots span { cursor: pointer; }
 .hall-more { align-self: center; }
 .home-bar-meta a.home-me { text-decoration: none; }
+.week-side { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--ink-3); font-variant-numeric: tabular-nums; }
