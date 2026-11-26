@@ -288,16 +288,16 @@ function partnerCanvas(it) {
   let g;
   if (P.rows) {
     // 새로 그린 선수 (v1.26.1~): 글자 격자 → 색, 라켓은 회원 아바타와 같은 손 위치에
-    g = new Grid(AVATAR_W + P.ox, AVATAR_H);
+    g = new Grid(P.w || AVATAR_W + P.ox, AVATAR_H);
     P.rows.forEach((row, y) => {
       for (let x = 0; x < row.length; x++) if (row[x] !== '.') g.set(x, y + P.dy, P.pal[row[x]] || '#ff00ff');
     });
     const r = P.items.get(P.racket);
     if (r?.paint) {
-      const o = new Grid(AVATAR_W, AVATAR_H);
-      r.paint(o, ANCHOR.M);
+      const o = new Grid(g.w, AVATAR_H);
+      r.paint(o, P.hand ? { ...ANCHOR.M, hand: P.hand + P.dy } : ANCHOR.M);
       o.outline();
-      g.paint(o, P.ox, 0);
+      g.paint(o, P.rx ?? P.ox, 0);
     }
   } else {
     const look = { ...DEFAULT_LOOK, ...P.look };
@@ -367,11 +367,12 @@ export function drawStage(ctx, look, items, opts = {}) {
   if (k === 2) {
     // 왼손잡이(뒤집힌 그림)는 몸이 오른쪽 31칸 → 몸 왼쪽 끝을 x 49에
     const pc = partnerCanvas(pro);
-    const ox = pro.partner.ox || 0;
-    // 몸(31칸)의 왼쪽 끝 위치 → 몸 오른쪽 끝이 x 79에 오게
-    const bodyL = pro.partner.lefty ? pc.width - ox - 31 : ox;
-    const px = 49 - bodyL;
-    shadow(px + bodyL);
+    const P = pro.partner;
+    // 몸의 왼쪽 · 오른쪽 끝 (body가 없으면 회원 템플릿 31칸) → 몸 오른쪽 끝이 x 79에 오게
+    const [b0, b1] = P.body || [P.ox || 0, (P.ox || 0) + 30];
+    const [L, R] = P.lefty ? [pc.width - 1 - b1, pc.width - 1 - b0] : [b0, b1];
+    const px = 79 - R;
+    shadow(px + Math.round((L + R) / 2) - 15);
     ctx.drawImage(pc, px, ay);
   }
   shadow(ax);
