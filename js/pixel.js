@@ -26,7 +26,7 @@ export const SLOTS = [
   ['hat', '모자'],
   ['racket', '라켓'],
   ['hand', '손'],
-  ['partner', '선수'], // 선수 캐릭터 (v1.26.0~, js/avatar-pros.js) — 옷처럼 입는 게 아니라 옆에 세움
+  ['partner', '선수 스킨'], // 선수 캐릭터 (v1.26.0~, js/avatar-pros.js) — v1.27.3~ 착용하면 내 아바타 대신 선수가 나옴
 ];
 export const SLOT_LABEL = Object.fromEntries(SLOTS);
 export const BG_SLOTS = [
@@ -338,16 +338,12 @@ function emptyBackground() {
 
 /** 배경 + 소품 + 아바타를 한 장으로 그림 */
 export function drawStage(ctx, look, items, opts = {}) {
-  // 선수를 세우면 무대를 2배 해상도로 → 배경은 2배로 키우고 캐릭터는 원래 크기 = 절반 크기로 두 명 (v1.26.0~)
-  // 소품 위치 · 끌기 좌표는 계속 80×80 기준
-  const pro = items.get(look.wear?.partner);
-  const k = pro?.partner ? 2 : 1;
-  if (ctx.canvas.width !== STAGE_W * k) {
-    ctx.canvas.width = STAGE_W * k;
-    ctx.canvas.height = STAGE_H * k;
+  if (ctx.canvas.width !== STAGE_W) {
+    ctx.canvas.width = STAGE_W;
+    ctx.canvas.height = STAGE_H;
   }
   ctx.imageSmoothingEnabled = false;
-  ctx.setTransform(k, 0, 0, k, 0, 0);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, STAGE_W, STAGE_H);
   const base = sourceOf(items.get(look.base));
   ctx.drawImage(base || emptyBackground(), 0, 0, STAGE_W, STAGE_H);
@@ -355,46 +351,41 @@ export function drawStage(ctx, look, items, opts = {}) {
     const src = sourceOf(items.get(d.id));
     if (src) ctx.drawImage(src, Math.round(d.x), Math.round(d.y));
   }
-  // 아바타 위치: 혼자면 (25, 12), 선수와 같이면 2배 무대에서 선수 왼쪽 · 나 오른쪽
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  const foot = (AVATAR_Y + 63) * k; // 발 밑 줄 (혼자일 때와 같은 바닥)
-  const ay = foot - 63;
-  const ax = k === 1 ? AVATAR_X : 82;
   const shadow = (x) => {
     ctx.fillStyle = 'rgba(0,0,0,0.13)';
-    ctx.fillRect(x + 4, foot, 23, 2);
+    ctx.fillRect(x + 4, AVATAR_Y + 63, 23, 2);
   };
-  if (k === 2) {
-    // 왼손잡이(뒤집힌 그림)는 몸이 오른쪽 31칸 → 몸 왼쪽 끝을 x 49에
+  // 선수 스킨 (v1.27.3~): 선수를 착용하면 내 아바타 대신 선수가 나옴 (같은 자리 · 같은 크기)
+  const pro = items.get(look.wear?.partner);
+  if (pro?.partner) {
     const pc = partnerCanvas(pro);
     const P = pro.partner;
-    // 몸의 왼쪽 · 오른쪽 끝 (body가 없으면 회원 템플릿 31칸) → 몸 오른쪽 끝이 x 79에 오게
-    const [b0, b1] = P.body || [P.ox || 0, (P.ox || 0) + 30];
+    // 몸 가운데를 내 아바타 몸 가운데(x 40)에 맞춤 — 라켓은 몸 밖으로 뻗음
+    const [b0, b1] = P.person || P.body || [P.ox || 0, (P.ox || 0) + 30];
     const [L, R] = P.lefty ? [pc.width - 1 - b1, pc.width - 1 - b0] : [b0, b1];
-    const px = 79 - R;
-    shadow(px + Math.round((L + R) / 2) - 15);
-    ctx.drawImage(pc, px, ay);
+    const px = AVATAR_X + 15 - Math.round((L + R) / 2);
+    shadow(AVATAR_X);
+    ctx.drawImage(pc, px, AVATAR_Y);
+  } else {
+    shadow(AVATAR_X);
+    ctx.drawImage(avatarBase(look, items), AVATAR_X, AVATAR_Y);
+    // 관리자가 올린 착용 아이템 (이미지)
+    for (const [slot] of SLOTS) {
+      const it = items.get(look.wear?.[slot]);
+      if (!it || it.paint || it.partner) continue;
+      const src = sourceOf(it);
+      if (src) ctx.drawImage(src, AVATAR_X + (it.x || 0), AVATAR_Y + (it.y || 0));
+    }
   }
-  shadow(ax);
-  ctx.drawImage(avatarBase(look, items), ax, ay);
-  // 관리자가 올린 착용 아이템 (이미지)
-  for (const [slot] of SLOTS) {
-    const it = items.get(look.wear?.[slot]);
-    if (!it || it.paint || it.partner) continue;
-    const src = sourceOf(it);
-    if (src) ctx.drawImage(src, ax + (it.x || 0), ay + (it.y || 0));
-  }
-  ctx.setTransform(k, 0, 0, k, 0, 0);
   if (opts.selected != null) {
     const d = look.deco?.[opts.selected];
     const src = d && sourceOf(items.get(d.id));
     if (src) {
       ctx.strokeStyle = '#e94c2b';
-      ctx.lineWidth = 1 / k;
-      ctx.strokeRect(Math.round(d.x) - 0.5 / k, Math.round(d.y) - 0.5 / k, src.width + 1 / k, src.height + 1 / k);
+      ctx.lineWidth = 1;
+      ctx.strokeRect(Math.round(d.x) - 0.5, Math.round(d.y) - 0.5, src.width + 1, src.height + 1);
     }
   }
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
 /** 화면에 넣을 배경 캔버스 요소 */
