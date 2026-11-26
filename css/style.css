@@ -709,7 +709,7 @@ h2 .an-sw { width: 14px; height: 14px; }
 .hall-row.p2 { font-size: 16px; }
 .hall-row.p3 { font-size: 15px; color: var(--ink-2); }
 .hall-row.me a { color: var(--blue); }
-.hall-v { font-family: var(--serif); font-variant-numeric: tabular-nums; }
+.hall-v { font-variant-numeric: tabular-nums; }
 .hall-empty { color: var(--ink-3); padding: 28px 0; text-align: center; }
 .hall-extra { font-size: 12px; color: var(--ink-3); padding-left: 30px; }
 .hall-dots { align-self: center; }

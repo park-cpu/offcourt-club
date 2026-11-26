@@ -49,7 +49,7 @@ export function homeView() {
     );
 
   const game = h('a', { class: 'game-banner', href: '#/rally' }, h('span', { class: 'game-px' }, 'RALLY'), h('span', {}, h('strong', {}, '랠리 게임'), h('small', {}, '타이밍 · 힘 · 방향으로 혼자 랠리 연습')), h('span', { class: 'muted' }, '›'));
-  return h('div', { class: 'page' }, hero, sessions, podium, game, hallBlock(t));
+  return h('div', { class: 'page' }, hero, sessions, podium, hallBlock(t), game);
 }
 
 // ── 주간 일정 카드 (좌우로 넘기기) ─────────────────────
