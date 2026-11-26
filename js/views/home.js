@@ -84,7 +84,7 @@ function sessionsBlock(t, u) {
   if (!list.length) {
     return h(
       'section',
-      { class: 'block' },
+      { class: 'block sessions' },
       head,
       h('p', { class: 'big-muted' }, view.offset === 0 ? '이번주 일정은 없습니다' : `${label} 일정은 없습니다`),
       h(
@@ -105,7 +105,6 @@ function sessionsBlock(t, u) {
   }
 
   const dots = h('div', { class: 'dots' }, list.map((_, i) => h('span', { class: i === view.index ? 'on' : '' })));
-  const counter = h('span', { class: 'muted small' }, `${view.index + 1} / ${list.length}`);
   const track = h('div', { class: 'carousel' + (list.length > 1 ? ' multi' : '') }, list.map((s) => slide(s, t, u)));
   const update = () => {
     const w = track.firstElementChild?.offsetWidth || 1;
@@ -113,7 +112,6 @@ function sessionsBlock(t, u) {
     if (i === view.index) return;
     view.index = i;
     [...dots.children].forEach((d, k) => d.classList.toggle('on', k === i));
-    counter.textContent = `${i + 1} / ${list.length}`;
   };
   track.addEventListener('scroll', update, { passive: true });
   // 그려진 뒤 보던 카드로 이동
@@ -121,25 +119,26 @@ function sessionsBlock(t, u) {
     const el = track.children[view.index];
     if (el) track.scrollLeft = el.offsetLeft - track.firstElementChild.offsetLeft;
   });
-  const go = (d) => {
-    const el = track.children[Math.max(0, Math.min(list.length - 1, view.index + d))];
-    if (el) track.scrollTo({ left: el.offsetLeft - track.firstElementChild.offsetLeft, behavior: 'smooth' });
-  };
+  // 점을 누르면 그 카드로
+  [...dots.children].forEach((d, i) =>
+    d.addEventListener('click', () => {
+      const el = track.children[i];
+      if (el) track.scrollTo({ left: el.offsetLeft - track.firstElementChild.offsetLeft, behavior: 'smooth' });
+    })
+  );
 
   return h(
     'section',
     { class: 'block sessions' },
     head,
     track,
-    list.length > 1 &&
-      h(
-        'div',
-        { class: 'carousel-nav' },
-        h('button', { class: 'icon-btn', onclick: () => go(-1), 'aria-label': '이전 일정' }, '‹'),
-        h('div', { class: 'carousel-pos' }, dots, counter),
-        h('button', { class: 'icon-btn', onclick: () => go(1), 'aria-label': '다음 일정' }, '›')
-      ),
-    view.offset === 0 && h('button', { class: 'link small center-self', onclick: () => setOffset(1) }, '다음주 일정 보기 ›')
+    // 점은 왼쪽, '다음주 일정 보기'는 오른쪽 한 줄 (v1.24.5~ 화살표 · '3 / 5' 뺌)
+    h(
+      'div',
+      { class: 'sessions-foot' },
+      list.length > 1 ? dots : h('span'),
+      view.offset === 0 && h('button', { class: 'link small', onclick: () => setOffset(1) }, '다음주 일정 보기 ›')
+    )
   );
 }
 

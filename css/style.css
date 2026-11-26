@@ -717,3 +717,15 @@ h2 .an-sw { width: 14px; height: 14px; }
 .hall-more { align-self: center; }
 .home-bar-meta a.home-me { text-decoration: none; }
 .week-side { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+/* 홈 '이번 주 매치' (v1.24.5~ 블루 바탕) */
+.sessions-foot { display: flex; align-items: center; justify-content: space-between; min-height: 24px; }
+.sessions-foot .dots span { cursor: pointer; }
+.block.sessions { background: var(--blue); color: var(--cream); gap: 12px; }
+.sessions .week-side { color: var(--cream); opacity: 0.8; }
+.sessions .link { color: var(--cream); }
+.sessions .big-muted { color: var(--cream); opacity: 0.75; }
+.sessions .dots span { background: rgba(247, 241, 214, 0.35); }
+.sessions .dots span.on { background: var(--cream); }
+.sessions .slide { background: var(--cream); color: var(--ink); }
+.sessions .slide.past { opacity: 1; }
+.sessions .slide.past > * { opacity: 0.55; }
