@@ -183,17 +183,31 @@ async function boot() {
     show(0);
     setTimeout(() => ind.classList.remove('back'), 200);
   };
-  document.addEventListener('touchstart', (e) => {
-    y0 = e.touches.length === 1 && window.scrollY <= 0 && !skip(e.target) ? e.touches[0].clientY : null;
-    pull = 0;
-  }, { passive: true });
-  document.addEventListener('touchmove', (e) => {
+  // 손을 떼는 신호(touchend)는 처음 누른 요소로만 감 → 그 요소가 다시 그려져 문서에서 빠지면
+  // document까지 안 올라와 공이 남았음 (v1.25.3 수정): 누른 요소에 직접 달고, 잠깐 멈춰 있으면 자동 정리
+  let held = null;
+  let idle = 0;
+  const watch = () => {
+    clearTimeout(idle);
+    idle = setTimeout(() => y0 != null && !ind.classList.contains('spin') && reset(), 4000);
+  };
+  const detach = () => {
+    clearTimeout(idle);
+    if (!held) return;
+    held.removeEventListener('touchmove', onMove);
+    held.removeEventListener('touchend', onEnd);
+    held.removeEventListener('touchcancel', onCancel);
+    held = null;
+  };
+  function onMove(e) {
     if (y0 == null) return;
     if (e.touches.length > 1 || window.scrollY > 0) return reset();
     const dy = e.touches[0].clientY - y0;
     show(dy > 0 ? Math.min(dy * 0.5, 100) : 0);
-  }, { passive: true });
-  document.addEventListener('touchend', () => {
+    watch();
+  }
+  function onEnd() {
+    detach();
     if (y0 == null) return;
     if (pull >= READY) {
       y0 = null;
@@ -201,8 +215,26 @@ async function boot() {
       ind.classList.add('spin');
       hardReload();
     } else reset();
-  });
-  document.addEventListener('touchcancel', () => y0 != null && reset());
+  }
+  function onCancel() {
+    detach();
+    if (y0 != null) reset();
+  }
+  document.addEventListener('touchstart', (e) => {
+    detach();
+    if (pull > 0 && !ind.classList.contains('spin')) reset();
+    y0 = e.touches.length === 1 && window.scrollY <= 0 && !skip(e.target) ? e.touches[0].clientY : null;
+    pull = 0;
+    if (y0 == null) return;
+    held = e.target;
+    held.addEventListener('touchmove', onMove, { passive: true });
+    held.addEventListener('touchend', onEnd);
+    held.addEventListener('touchcancel', onCancel);
+  }, { passive: true });
+  // 다른 화면으로 가거나 앱을 내렸다 오면 정리
+  const tidy = () => !ind.classList.contains('spin') && (detach(), reset());
+  window.addEventListener('hashchange', tidy);
+  document.addEventListener('visibilitychange', tidy);
 })();
 
 // 놓친 저장 오류도 화면에 알림
