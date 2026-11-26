@@ -15,15 +15,15 @@ function rangeOf(t) {
   if (view.unit === 'week') {
     const start = addDays(weekStart(t), view.offset * 7);
     const end = addDays(start, 6);
-    const [a, b] = [parseYmd(start), parseYmd(end)];
-    const lab = view.offset === 0 ? '이번 주' : view.offset === -1 ? '지난주' : `${a.getMonth() + 1}.${a.getDate()} – ${b.getMonth() + 1}.${b.getDate()}`;
-    return { start, end, label: lab };
+    // '11월 첫째주' — 주(월~일)의 목요일이 든 달 기준 (v1.25.4~ 실제 날짜로 표기)
+    const thu = parseYmd(addDays(start, 3));
+    const nth = ['첫째', '둘째', '셋째', '넷째', '다섯째'][Math.ceil(thu.getDate() / 7) - 1];
+    return { start, end, label: `${thu.getMonth() + 1}월 ${nth}주` };
   }
   const d = parseYmd(t);
   const first = new Date(d.getFullYear(), d.getMonth() + view.offset, 1);
   const last = new Date(first.getFullYear(), first.getMonth() + 1, 0);
-  const lab = view.offset === 0 ? '이번 달' : `${first.getFullYear()}년 ${first.getMonth() + 1}월`;
-  return { start: ymd(first), end: ymd(last), label: lab };
+  return { start: ymd(first), end: ymd(last), label: `${first.getFullYear()}년 ${first.getMonth() + 1}월` };
 }
 
 // 항목별 [회원 id, 값] 목록. 값이 클수록 위
@@ -137,7 +137,7 @@ export function hallBlock(t) {
       'div',
       { class: 'hall-nav' },
       h('button', { class: 'icon-btn', onclick: () => move(-1), 'aria-label': '이전 기간' }, '‹'),
-      h('span', {}, range.label, view.offset === 0 && h('small', {}, ' · 진행 중')),
+      h('span', {}, range.label),
       h('button', { class: 'icon-btn', onclick: () => move(1), disabled: view.offset === 0, 'aria-label': '다음 기간' }, '›')
     ),
     track,
