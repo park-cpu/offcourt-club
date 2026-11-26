@@ -600,15 +600,26 @@ input, textarea, [contenteditable] { -webkit-user-select: text; user-select: tex
 
 /* 당겨서 새로고침 (v1.13.0) — 안드로이드 크롬 기본 새로고침과 겹치지 않게 막음 */
 html, body { overscroll-behavior-y: contain; }
-.ptr { position: fixed; top: calc(env(safe-area-inset-top) + 8px); left: 50%; z-index: 60; padding: 4px 10px; border-radius: 30px; background: var(--card); box-shadow: 0 2px 12px rgba(0,0,0,.16); opacity: 0; transform: translate(-50%, -64px); pointer-events: none; line-height: 0; }
-.ptr svg { display: block; overflow: visible; }
+.ptr { position: fixed; top: calc(env(safe-area-inset-top) + 8px); left: 50%; z-index: 60; width: 44px; height: 56px; opacity: 0; transform: translate(-50%, -56px); pointer-events: none; }
 .ptr.back { transition: transform .2s, opacity .2s; }
-.ptr-court { stroke: var(--grey-2, #d9d6cc); stroke-width: 2; stroke-linecap: round; }
-.ptr-net { stroke: var(--ink-3); stroke-width: 2; stroke-linecap: round; }
-.ptr-path { fill: none; stroke: var(--ink-3); stroke-width: 1.6; stroke-linecap: round; opacity: .45; }
-.ptr.ready .ptr-path, .ptr.spin .ptr-path { stroke: var(--blue); opacity: .7; }
-.ptr-ball circle { fill: #d9e84a; stroke: #a8b52a; stroke-width: 1; }
-.ptr-ball path { fill: none; stroke: #fff; stroke-width: 1.4; stroke-linecap: round; }
+.ptr-ball { position: absolute; left: 7px; bottom: 6px; width: 30px; height: 30px; transform-origin: 50% 100%; filter: drop-shadow(0 2px 3px rgba(0,0,0,.2)); }
+.ptr-ball svg { display: block; transform-origin: 50% 50%; }
+.ptr-ball circle { fill: #d9e84a; stroke: #b3c032; stroke-width: 1.2; }
+.ptr-ball path { fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; }
+.ptr-shadow { position: absolute; left: 12px; bottom: 2px; width: 20px; height: 5px; border-radius: 50%; background: rgba(0,0,0,.22); opacity: 0; }
+/* 새로고침 중: 띵띵띵 바운드 (바닥에서 살짝 찌그러짐 + 그림자) */
+.ptr.spin .ptr-ball { animation: ptr-bounce .55s infinite; }
+.ptr.spin .ptr-shadow { opacity: 1; animation: ptr-shadow .55s infinite; }
+@keyframes ptr-bounce {
+  0%, 100% { transform: translateY(0) scale(1.15, .82); animation-timing-function: ease-out; }
+  12% { transform: translateY(-4px) scale(.94, 1.06); }
+  50% { transform: translateY(-24px) scale(1, 1); animation-timing-function: ease-in; }
+  92% { transform: translateY(0) scale(1, 1); }
+}
+@keyframes ptr-shadow {
+  0%, 100% { transform: scale(1.1); opacity: .9; animation-timing-function: ease-out; }
+  50% { transform: scale(.55); opacity: .35; animation-timing-function: ease-in; }
+}
 @keyframes ptr-spin { to { transform: rotate(360deg); } }
 
 /* ── 영상 분석 (v1.15.0) ───────────────────────────── */
