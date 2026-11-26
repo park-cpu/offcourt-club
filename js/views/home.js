@@ -1,40 +1,35 @@
 import { h, fmtShortRange, onMount } from '../ui.js';
-import { state, me, today, scheduleEnded, attendanceOf, rosterOf, capacityOf, countText, derived, currentSeason, seasonStats, courtsOf, dowOf, parseYmd, weekStart, addDays } from '../store.js';
+import { state, me, today, scheduleEnded, attendanceOf, rosterOf, capacityOf, countText, derived, currentSeason, courtsOf, dowOf, parseYmd, weekStart, addDays, playersMap } from '../store.js';
+import { computeStats } from '../rules.js';
 import { toggleRsvp } from './schedule.js';
 import { weatherChip } from '../weather.js';
 import { rankList } from './rank.js';
+import { hallBlock } from './hall.js';
 
 export function homeView() {
   const t = today();
   const u = me();
   const season = currentSeason();
 
-  // 상단: 얇은 브랜드 바 (로고 비중 축소)
+  // 상단: 얇은 브랜드 바 + 내 기록 한 줄 '박준범님 (796 | 1승 3패 | 3위)' (v1.24.0~)
+  const ranks = season ? rankList(season) : null;
+  let mine = null;
+  if (u) {
+    const { ratings, deltas } = derived();
+    // 승패는 이번 시즌 코인전 · 공식전 전체 (적응 기간 경기 포함)
+    const st = season ? computeStats(playersMap(), state.matches, deltas, season).get(u.id) : null;
+    const r = ranks ? ranks.ranked.find((x) => x.id === u.id) : null;
+    const parts = [Math.round(ratings.get(u.id) || 0), `${st?.wins || 0}승 ${st?.losses || 0}패`, r && `${r.place}위`].filter(Boolean);
+    mine = h('a', { class: 'home-me', href: `#/p/${u.id}` }, `${u.name}님 `, h('span', {}, `(${parts.join(' | ')})`));
+  }
   const hero = h(
     'header',
     { class: 'home-bar' },
     h('img', { class: 'wordmark-img', src: 'assets/wordmark.png', alt: 'Offcourt' }),
-    h('div', { class: 'home-bar-meta' }, h('strong', {}, season ? season.name : 'Season —'), h('span', {}, u ? `${u.name}님` : h('a', { href: '#/me' }, '로그인 ›')))
+    h('div', { class: 'home-bar-meta' }, h('strong', {}, season ? season.name : 'Season —'), mine || h('a', { href: '#/me' }, '로그인 ›'))
   );
 
   const sessions = sessionsBlock(t, u);
-
-  // 내 현황: 코인 · 공식전 순위 · 공식전 전적 · 레이팅 한 줄
-  let mineCard = null;
-  const ranks = season ? rankList(season) : null;
-  if (u) {
-    const { coins, ratings } = derived();
-    const st = season ? seasonStats(season, 'official').get(u.id) : null;
-    const mine = ranks ? ranks.ranked.find((r) => r.id === u.id) : null;
-    mineCard = h(
-      'a',
-      { class: 'block stats4', href: `#/p/${u.id}` },
-      stat('코인', coins.bal.get(u.id) ?? 0, (coins.bal.get(u.id) ?? 0) <= 0 ? 'warn' : ''),
-      stat('공식전 순위', mine ? `${mine.place}위` : '-'),
-      stat('공식전 전적', st && st.games ? `${st.wins}-${st.losses}` : '-'),
-      stat('레이팅', Math.round(ratings.get(u.id) || 0))
-    );
-  }
 
   // 시즌 Top 3: 가로 3칸
   const top = ranks && u ? ranks.ranked.slice(0, 3) : [];
@@ -54,10 +49,8 @@ export function homeView() {
     );
 
   const game = h('a', { class: 'game-banner', href: '#/rally' }, h('span', { class: 'game-px' }, 'RALLY'), h('span', {}, h('strong', {}, '랠리 게임'), h('small', {}, '타이밍 · 힘 · 방향으로 혼자 랠리 연습')), h('span', { class: 'muted' }, '›'));
-  return h('div', { class: 'page' }, hero, sessions, mineCard, podium, game);
+  return h('div', { class: 'page' }, hero, sessions, podium, game, hallBlock(t));
 }
-
-const stat = (label, value, cls = '') => h('div', { class: 'stat ' + cls }, h('span', { class: 'stat-v' }, value), h('span', { class: 'stat-l' }, label));
 
 // ── 주간 일정 카드 (좌우로 넘기기) ─────────────────────
 // 화면이 다시 그려져도 보던 주·카드 위치를 유지
@@ -175,7 +168,8 @@ function slide(s, t, u) {
         h('span', {}, `${s.start}–${s.end}`),
         h('span', {}, `코트 ${courtsOf(s).join(', ') || '-'} · 예약 ${s.booker || '-'}`)
       ),
-      h('div', { class: 'next-count' }, h('span', { class: 'num' }, countText(s)), h('span', {}, capacityOf(s) ? '정원' : '명')),
+      // 정원 있으면 '2/2'만, 없으면 '5명' (v1.24.0~ '정원' 글자 뺌)
+      h('div', { class: 'next-count' }, h('span', { class: 'num' }, countText(s)), !capacityOf(s) && h('span', {}, '명')),
       // 날씨는 가운데 + 오른쪽 칸 폭을 같이 써서 한 줄로 (v1.20.0~)
       weatherChip(s, 'compact next-wx')
     ),

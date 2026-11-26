@@ -79,6 +79,11 @@
 - 당겨서 새로고침: app.js 안 IIFE (`.ptr`), 랠리 · 캔버스 · 시트 위에서는 꺼짐. CSS `overscroll-behavior-y: contain`으로 브라우저 기본 새로고침은 막음
 - 회원 페이지 최근 경기 = `recentList` (rank.js) 한 줄 요약, 5개 + 더 보기 10개씩
 
+## 홈 (v1.24.0~)
+- 상단 바 = 시즌 + '이름님 (레이팅 | 승패 | N위)' (`home-me`). 승패는 이번 시즌 코인전·공식전 전체(적응 기간 포함, 실제 deltas로 computeStats), 순위는 공식전(없으면 생략). 예전 내 기록 카드(stats4) 없앰
+- 일정 카드 인원: 정원 있으면 '2/2'만, 없으면 'N명'
+- 명예의 전당 `js/views/hall.js` (`hallBlock`): 주간·월간, offset ≤0. 항목 = 연승왕(best ≥2) · 출석왕(arrived) · 최다 경기(친선·게스트 포함) · 다승왕 · 레이팅 급상승(deltas 합) · 베이글 메이커(coinStake 2) · 코인 사냥꾼. 활동 회원만, `withPlaces`로 동점 같은 등수, 3명 + '외 N명'. 색은 진초록 #1f3d2f + 금색 #e8c25a
+
 ## 디자인
 - Offcourt 브랜드: 블루 #1D5294, 크림 #F7F1D6, 클레이 #B8835A, 포인트(레드) #E94C2B (`--point`), 홈 일정 카드 배경 #E7E3D9 (`--slide-bg`, 테두리 없음), 그레이. 홈 로고 = `assets/wordmark.png`, 앱 아이콘 = OC 심볼(`assets/icon-*.png`). 숫자·워드마크는 세리프(Newsreader), 본문 Pretendard
 - 확대 · 글자 선택 금지(v1.9.6~): index.html viewport `user-scalable=no`, style.css 전체 `user-select:none`(입력칸 제외), app.js에서 iOS gesture · 두 손가락 touchmove 막음
