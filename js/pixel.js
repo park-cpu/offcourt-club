@@ -285,11 +285,27 @@ const partnerCache = new Map();
 function partnerCanvas(it) {
   if (partnerCache.has(it.id)) return partnerCache.get(it.id);
   const P = it.partner;
-  const look = { ...DEFAULT_LOOK, ...P.look };
-  const g = colorize(roleGrid(look, P.items), look, P.items);
-  for (const slot of ['face', 'hat', 'racket', 'hand']) {
-    const p = P.items.get(look.wear?.[slot]);
-    if (p?.paint) overlay(g, look, p);
+  let g;
+  if (P.rows) {
+    // 새로 그린 선수 (v1.26.1~): 글자 격자 → 색, 라켓은 회원 아바타와 같은 손 위치에
+    g = new Grid(AVATAR_W + P.ox, AVATAR_H);
+    P.rows.forEach((row, y) => {
+      for (let x = 0; x < row.length; x++) if (row[x] !== '.') g.set(x, y + P.dy, P.pal[row[x]] || '#ff00ff');
+    });
+    const r = P.items.get(P.racket);
+    if (r?.paint) {
+      const o = new Grid(AVATAR_W, AVATAR_H);
+      r.paint(o, ANCHOR.M);
+      o.outline();
+      g.paint(o, P.ox, 0);
+    }
+  } else {
+    const look = { ...DEFAULT_LOOK, ...P.look };
+    g = colorize(roleGrid(look, P.items), look, P.items);
+    for (const slot of ['face', 'hat', 'racket', 'hand']) {
+      const p = P.items.get(look.wear?.[slot]);
+      if (p?.paint) overlay(g, look, p);
+    }
   }
   let cv = g.toCanvas();
   if (P.lefty) {
@@ -351,8 +367,11 @@ export function drawStage(ctx, look, items, opts = {}) {
   if (k === 2) {
     // 왼손잡이(뒤집힌 그림)는 몸이 오른쪽 31칸 → 몸 왼쪽 끝을 x 49에
     const pc = partnerCanvas(pro);
-    const px = pro.partner.lefty ? 30 : 48 - 30;
-    shadow(pro.partner.lefty ? px + AVATAR_W - 31 : px);
+    const ox = pro.partner.ox || 0;
+    // 몸(31칸)의 왼쪽 끝 위치 → 몸 오른쪽 끝이 x 79에 오게
+    const bodyL = pro.partner.lefty ? pc.width - ox - 31 : ox;
+    const px = 49 - bodyL;
+    shadow(px + bodyL);
     ctx.drawImage(pc, px, ay);
   }
   shadow(ax);
