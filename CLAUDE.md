@@ -80,10 +80,14 @@
 - 회원 페이지 최근 경기 = `recentList` (rank.js) 한 줄 요약, 5개 + 더 보기 10개씩
 
 ## 홈 (v1.24.0~)
-- 상단 바 = 시즌 + '이름님 (레이팅 | 승패 | N위)' (`home-me`). 승패는 이번 시즌 코인전·공식전 전체(적응 기간 포함, 실제 deltas로 computeStats), 순위는 공식전(없으면 생략). 예전 내 기록 카드(stats4) 없앰
+- 상단 바 = 시즌 + '이름님 (레이팅 | 승패 | N위)' (`home-me`). 승패는 이번 시즌 코인전·공식전 전체(적응 기간 포함, 실제 deltas로 computeStats), 순위는 공식전(조건 전이면 '순위 대기', v1.25.0~). 예전 내 기록 카드(stats4) 없앰
 - 홈만 바탕 블루(v1.24.7~): `.home-page` + `body:has(.home-page)`, 로고 바 투명, 랠리 배너 오렌지 #ee7b2c. '이번 주 매치' 칸 자체는 흰 바탕(블루 칸 시험은 되돌림)
 - 일정 카드 인원: 정원 있으면 '2/2'만, 없으면 'N명'
 - 명예의 전당 `js/views/hall.js` (`hallBlock`): 주간·월간, offset ≤0. 항목 = 연승왕(best ≥2) · 출석왕(arrived) · 다승왕 · 레이팅 급상승(deltas 합) (v1.24.1~ 사용자가 4개로 정함). 활동 회원만, `withPlaces`로 동점 같은 등수, 3명 + '외 N명'. 디자인은 홈 톤(흰 .block + 블루 + --slide-bg 카드, 등수 숫자) — 외부 예시 이미지 디자인은 따르지 않기로 함
+
+## 대진 (v1.25.0~)
+- 직접 대진(`manualSheet` in play.js): 다른 칸에서 고른 선수는 목록에서 뺌(`refill`)
+- 대진 탭 '처음이세요? 만드는 순서' → `guideSheet` (`GUIDE` 6단계)
 
 ## 디자인
 - Offcourt 브랜드: 블루 #1D5294, 크림 #F7F1D6, 클레이 #B8835A, 포인트(레드) #E94C2B (`--point`), 홈 일정 카드 배경 #E7E3D9 (`--slide-bg`, 테두리 없음), 그레이. 홈 로고 = `assets/wordmark.png`, 앱 아이콘 = OC 심볼(`assets/icon-*.png`). 숫자·워드마크는 세리프(Newsreader), 본문 Pretendard

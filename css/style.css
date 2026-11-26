@@ -721,3 +721,10 @@ h2 .an-sw { width: 14px; height: 14px; }
 /* 홈 전체 바탕 블루 (v1.24.7~): 로고 바는 바탕에 녹이고, 랠리 배너는 오렌지 */
 body:has(.home-page) { background: var(--blue); }
 .home-page .home-bar { background: transparent; padding: 4px 2px 0; }
+
+/* 매치 만드는 순서 안내 (v1.25.0~) */
+.guide-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.guide-list li { display: flex; gap: 12px; align-items: flex-start; }
+.guide-list strong { display: block; font-size: 16px; margin-bottom: 2px; }
+.guide-list p { margin: 0; line-height: 1.5; }
+.guide-no { flex: 0 0 28px; height: 28px; border-radius: 50%; background: var(--blue); color: #fff; display: grid; place-items: center; font-family: var(--serif, serif); font-weight: 700; }

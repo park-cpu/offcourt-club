@@ -215,6 +215,7 @@ function drawTab(s) {
     !drawLocked(s) && h(
       'section',
       { class: 'block' },
+      h('div', { class: 'row between' }, h('h2', {}, '대진 만들기'), h('button', { class: 'link small', onclick: guideSheet }, '처음이세요? 만드는 순서 ›')),
       h('div', { class: 'summary3' }, sum('대진 가능', pool.length + '명'), sum('빈 코트', `${freeCourts.length}/${courts.length}`), sum('진행 중', playing.length + '경기')),
       h('div', { class: 'seg small' }, segBtn('format', 'doubles', '복식'), segBtn('format', 'mixed', '혼복'), segBtn('format', 'singles', '단식')),
       p.format === 'mixed' && h('p', { class: 'muted small' }, `대기 남 ${poolM} · 여 ${poolF}${noGender ? ` · 성별 미입력 ${noGender}명 제외` : ''}`),
@@ -232,6 +233,27 @@ function drawTab(s) {
       pool.length
         ? h('div', { class: 'wait' }, pool.sort((a, b) => (gamesToday.get(a) || 0) - (gamesToday.get(b) || 0)).map((id) => h('span', { class: 'chip' }, person(id).name, h('small', {}, ` ${gamesToday.get(id) || 0}경기`))))
         : h('p', { class: 'muted' }, att.some((a) => a.arrived) ? '모두 경기 중이에요' : '출석 탭에서 도착 체크를 먼저 해주세요', !att.some((a) => a.arrived) && h('a', { class: 'link', href: `#/play/${s.id}/att` }, ' 출석하러 가기 ›'))
+    )
+  );
+}
+
+// 처음 쓰는 회원을 위한 '매치 만드는 순서' 안내 (v1.25.0~)
+const GUIDE = [
+  ['출석 체크', '위 \'출석\' 탭에서 코트에 온 사람을 \'도착\'으로 표시해요. 도착한 사람만 대진에 들어가요. 게스트도 여기서 추가해요.'],
+  ['방식 고르기', '복식 · 혼복(팀마다 남 1 · 여 1) · 단식 중에서 골라요.'],
+  ['경기 유형 고르기', '코인전(승패 · 레이팅 · 코인) · 공식전(승패 · 레이팅) · 친선전(기록 없음). 코인이 1개 미만이거나 게스트가 있으면 코인전은 공식전으로 바뀌어요.'],
+  ['대진 만들기', '\'자동 대진\'을 누르면 빈 코트마다 비슷한 실력끼리, 오늘 덜 뛴 사람부터 짝을 지어요. 원하는 짝이 있으면 \'직접 대진 만들기\'에서 코트 · 선수를 골라요.'],
+  ['점수 입력', '경기가 끝나면 코트 카드의 \'점수 입력\'을 눌러 게임 수(예: 6:4)를 넣어요. 선수들은 다시 대기 명단으로 돌아가요.'],
+  ['다음 경기', '빈 코트가 생기면 3~5번을 반복해요. 오늘 기록은 \'결과\' 탭에서 볼 수 있어요.'],
+];
+function guideSheet() {
+  sheet('매치 만드는 순서', (close) =>
+    h(
+      'div',
+      { class: 'stack' },
+      h('ol', { class: 'guide-list' }, GUIDE.map(([t, d], i) => h('li', {}, h('span', { class: 'guide-no' }, i + 1), h('div', {}, h('strong', {}, t), h('p', { class: 'muted small' }, d))))),
+      h('p', { class: 'muted small' }, `점수는 경기한 사람이 직접 입력하고, 일정이 끝난 뒤 ${RULES.recordGraceMin}분까지 고칠 수 있어요.`),
+      h('button', { class: 'btn primary block', onclick: close }, '알겠어요')
     )
   );
 }
@@ -281,15 +303,29 @@ function manualSheet(s, pool, courts, p) {
   const all = attendanceOf(s.id).filter((a) => a.arrived).map((a) => a.playerId);
   if (all.length < 2) return toast('도착한 사람이 2명 이상이어야 해요');
   sheet('직접 대진', (close) => {
-    const opts = [['', '선택'], ...all.map((id) => [id, `${person(id).name}${person(id).gender ? ` (${person(id).gender === 'M' ? '남' : '여'})` : ''}${pool.includes(id) ? '' : ' · 경기중/귀가'}`])];
+    const label = (id) => `${person(id).name}${person(id).gender ? ` (${person(id).gender === 'M' ? '남' : '여'})` : ''}${pool.includes(id) ? '' : ' · 경기중/귀가'}`;
+    const opts = [['', '선택'], ...all.map((id) => [id, label(id)])];
     const court = select({ class: 'input' }, courts.map((c) => [c, `코트 ${c}`]), courts[0]);
     const format = select({ class: 'input' }, Object.entries(FORMAT_LABEL), p.format);
     const type = select({ class: 'input' }, Object.entries(MATCH_TYPES).map(([k, v]) => [k, v.label]), p.type);
     const slots = [0, 1, 2, 3].map(() => select({ class: 'input' }, opts, ''));
     const b2 = h('div', { class: 'grid2' }, h('div', { class: 'team-col' }, h('p', { class: 'eyebrow' }, 'Team A'), slots[0], slots[1]), h('div', { class: 'team-col' }, h('p', { class: 'eyebrow' }, 'Team B'), slots[2], slots[3]));
+    // 다른 칸에서 이미 고른 선수는 목록에서 뺌 (v1.25.0~)
+    const refill = () => {
+      const single = format.value === 'singles';
+      const used = (k) => new Set(slots.filter((x, j) => j !== k && x.value && !(single && (j === 1 || j === 3))).map((x) => x.value));
+      slots.forEach((el, k) => {
+        const cur = el.value;
+        const taken = used(k);
+        el.replaceChildren(...opts.filter(([v]) => !v || !taken.has(v)).map(([v, l]) => h('option', { value: v, selected: v === cur }, l)));
+        el.value = taken.has(cur) ? '' : cur;
+      });
+    };
+    slots.forEach((el) => el.addEventListener('change', refill));
     const sync = () => {
       const single = format.value === 'singles';
       slots[1].style.display = slots[3].style.display = single ? 'none' : '';
+      refill();
     };
     format.addEventListener('change', sync);
     sync();

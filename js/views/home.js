@@ -19,7 +19,7 @@ export function homeView() {
     // 승패는 이번 시즌 코인전 · 공식전 전체 (적응 기간 경기 포함)
     const st = season ? computeStats(playersMap(), state.matches, deltas, season).get(u.id) : null;
     const r = ranks ? ranks.ranked.find((x) => x.id === u.id) : null;
-    const parts = [Math.round(ratings.get(u.id) || 0), `${st?.wins || 0}승 ${st?.losses || 0}패`, r && `${r.place}위`].filter(Boolean);
+    const parts = [Math.round(ratings.get(u.id) || 0), `${st?.wins || 0}승 ${st?.losses || 0}패`, season && (r ? `${r.place}위` : '순위 대기')].filter(Boolean);
     mine = h('a', { class: 'home-me', href: `#/p/${u.id}` }, `${u.name}님 `, h('span', {}, `(${parts.join(' | ')})`));
   }
   const hero = h(
