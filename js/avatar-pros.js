@@ -15,37 +15,37 @@ const RACKET_MAP = new Map(RACKETS.map((it) => [it.id, it]));
 const mirror = (half) => half + [...half.slice(0, -1)].reverse().join('');
 const put = (rows, y, x, s) => (rows[y] = rows[y].slice(0, x) + s + rows[y].slice(x + s.length));
 
-// ── 라파엘 나달 (2008년 무렵: 긴 웨이브 머리 · 청록 헤어밴드 · 청록 민소매 · 흰 7부 바지) ──
+// ── 라파엘 나달 (갸름하고 긴 얼굴 · 좁은 미간 · 낮고 굵은 눈썹 · 긴 코 · 파란 헤어밴드 · 청록 민소매 · 흰 7부 바지) ──
 function nadalRows() {
   // 머리 · 얼굴 (35칸 폭, 가운데 = 17번째 칸)
   const head = [
-    '...........HHHHHHH',
-    '........HHHdhhhhhh',
-    '......HHdhhhhlhhhh',
-    '.....Hdhhhlhhhhhhh',
-    '....Hdhhhlhhhhlhhh',
-    '...BBBBBBBBBBBBBBB',
-    '...Bbbbbbbbbbbbbbb',
-    '...Beeeeeeeeeeeeee',
-    '..HBBBBBBBBBBBBBBB',
-    '.HhdLSSSSSSSSSSSSS',
-    'HhhdLSSSSSSSSSSSSS',
-    'HhldLSSSSSSSSSSSSS',
-    'HhhdLSEEEEESSSSSSS',
-    'HlhdLSSEEEESSSSSSS',
-    'HhhdLSSSKKKSSSSSsS',
-    'HhldLSSSKWKSSSSSsS',
-    'HhhdLSSSSSSSSSSSsS',
-    'HhhdmSSSSSSSSSSSsS',
-    'HlhdmSSSSSSSSSSsLL',
-    'HhhdmSSSSSSSSSSSSS',
-    'HhhdmSSSSSSSSSSrrr',
-    'HhldLsSSSSSSSSSSSS',
-    'HhhdLsSSSSSSSSSsss',
-    'HhhhdLsSSSSSSSssss',
-    'HhlhdHLLsssSSSssss',
-    'HhhhhdH.LLssssssss',
-    '.HhhhhdH..LLLsssss',
+    '...........H..HH.H',
+    '.......H..HhHHhhHh',
+    '.....HHhHHhdhhhlhh',
+    '....Hhhlhhhhhlhhhh',
+    '...Hdhhhhlhhhhhhhh',
+    '...HdBBBBBBBBBBBBB',
+    '...HdBbbbbbbbbbbbb',
+    '...HhBbbbbbbbbbbbb',
+    '...HdBeeeeeeeeeeee',
+    '...HdhBBBBBBBBBBBB',
+    '...HdhdLSSSSSSSSSS',
+    '...HhhdLSSEEEEEsSS',
+    '...HdhdLSSsEEEEsSS',
+    '...HdldLSSSsKKKSsS',
+    '...HdhdLSSSSKWKSsS',
+    '...HdhdmSSSSssSSsS',
+    '...HhdHmSSSSSSSSsS',
+    '....HdHmSSSSSSSSsS',
+    '....HHdmSSSSSSSsLL',
+    '.....HHmSsSSSSSSSS',
+    '......LSsSSSSSSrrr',
+    '......LSssSSSSSsss',
+    '......LmsSSSSSSSSS',
+    '......LmssSSSSSSSs',
+    '.......LmssssSSsss',
+    '........LLmsssssss',
+    '..........LLLsssss',
   ].map(mirror);
   // 어깨 ~ 손목 (31칸 폭, 가운데 = 15번째 칸) — 민소매라 팔이 다 보임
   const arms = [
@@ -91,13 +91,8 @@ function nadalRows() {
   ];
   const pad = (r) => '..' + r + '..';
   const rows = [...head, ...[...arms, ...legs].map(pad)];
-  // 어깨 위로 흘러내린 머리카락 (끝이 바깥으로 뻗친 웨이브)
-  [['HhhhdH', 0], ['HhhdH', 0], ['HdH', 1], ['H', 2]].forEach(([s, x], i) => {
-    put(rows, 27 + i, x, s);
-    put(rows, 27 + i, 35 - x - s.length, [...s].reverse().join(''));
-  });
   // 얼굴 오른쪽 그늘 (회원 아바타처럼 빛이 왼쪽 위에서)
-  for (let y = 9; y <= 23; y++) rows[y] = rows[y].slice(0, 25) + rows[y].slice(25, 30).replace(/S/g, 's') + rows[y].slice(30);
+  for (let y = 10; y <= 24; y++) rows[y] = rows[y].slice(0, 22) + rows[y].slice(22, 27).replace(/S/g, 's') + rows[y].slice(27);
   // 헤어밴드 · 셔츠의 작은 흰 체크 표시
   put(rows, 6, 25, 'ww');
   put(rows, 7, 24, 'w');
@@ -109,8 +104,8 @@ function nadalRows() {
 const NADAL_PAL = {
   // 머리카락 (짙은 갈색 웨이브)
   H: '#1c110b', d: '#352015', h: '#4f3221', l: '#6e4b33',
-  // 헤어밴드 (청록)
-  B: '#0f5a5d', b: '#22a3a6', e: '#4fc6c4', w: '#f4f2ea',
+  // 헤어밴드 (파랑)
+  B: '#1b3a86', b: '#2f6fd1', e: '#5c95e8', w: '#f4f2ea',
   // 피부 (그을린 톤)
   S: '#e6ac7f', s: '#c98c5e', m: '#a9693f', L: '#764126',
   // 얼굴: 굵은 눈썹 · 눈 · 볼 · 입(“바모스!”)
