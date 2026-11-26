@@ -95,7 +95,7 @@ export function hallBlock(t) {
     );
 
   const index = Math.min(view.index, cats.length - 1);
-  const dots = h('div', { class: 'dots hall-dots' }, cats.map((_, i) => h('span', { class: i === index ? 'on' : '' })));
+  const dots = h('div', { class: 'dots' }, cats.map((_, i) => h('span', { class: i === index ? 'on' : '' })));
   const track = h('div', { class: 'carousel multi hall-track' }, cats.map(card));
   track.addEventListener(
     'scroll',
@@ -141,8 +141,8 @@ export function hallBlock(t) {
       h('button', { class: 'icon-btn', onclick: () => move(1), disabled: view.offset === 0, 'aria-label': '다음 기간' }, '›')
     ),
     track,
-    dots,
-    h('a', { class: 'link small hall-more', href: '#/rank' }, '전체 순위 보기 ›')
+    // 점 왼쪽 · '전체 순위 보기' 오른쪽 한 줄 (v1.24.8~ 이번 주 매치와 같게)
+    h('div', { class: 'sessions-foot' }, dots, h('a', { class: 'link small', href: '#/rank' }, '전체 순위 보기 ›'))
   );
 }
 

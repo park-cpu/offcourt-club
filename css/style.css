@@ -688,33 +688,30 @@ h2 .an-sw { width: 14px; height: 14px; }
 /* ── 홈 상단 내 기록 · 명예의 전당 (v1.24.0~) ── */
 .home-me { white-space: nowrap; color: inherit; text-decoration: none; }
 .home-me span { font-variant-numeric: tabular-nums; opacity: 0.85; }
-.hall { gap: 10px; }
+.hall { gap: 8px; }
 .hall-head { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; }
 .hall-unit { display: flex; background: var(--paper); border-radius: 999px; padding: 2px; }
 .hall-unit button { padding: 4px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; color: var(--ink-3); }
 .hall-unit button.on { background: var(--blue); color: #fff; }
 .hall-nav { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 15px; }
 .hall-nav small { font-weight: 500; color: var(--ink-3); font-size: 13px; }
-.hall-nav .icon-btn { width: 36px; height: 36px; color: var(--blue); }
+.hall-nav .icon-btn { width: 32px; height: 32px; color: var(--blue); }
 .hall-nav .icon-btn:disabled { opacity: 0.25; }
-.hall-card { flex: 0 0 100%; scroll-snap-align: start; background: var(--slide-bg); border-radius: 12px; padding: 12px 14px; min-height: 120px; }
+.hall-card { flex: 0 0 100%; scroll-snap-align: start; background: var(--slide-bg); border-radius: 12px; padding: 10px 14px; display: flex; flex-direction: column; }
 .carousel.hall-track .hall-card { flex-basis: calc(100% - 28px); }
-.hall-title { display: flex; gap: 6px; font-weight: 800; color: var(--blue); margin-bottom: 6px; }
-.hall-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.hall-title { display: flex; gap: 6px; font-weight: 800; color: var(--blue); margin-bottom: 4px; }
+.hall-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .hall-row { display: grid; grid-template-columns: 22px 1fr auto; align-items: baseline; gap: 8px; font-weight: 700; }
 .hall-row a { color: inherit; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hall-place { font-family: var(--serif); color: var(--blue); text-align: center; }
-.hall-row.p1 { font-size: 20px; }
+.hall-row.p1 { font-size: 18px; }
 .hall-row.p1 .hall-v { color: var(--point); }
-.hall-row.p2 { font-size: 16px; }
-.hall-row.p3 { font-size: 15px; color: var(--ink-2); }
+.hall-row.p2 { font-size: 15px; }
+.hall-row.p3 { font-size: 14px; color: var(--ink-2); }
 .hall-row.me a { color: var(--blue); }
 .hall-v { font-variant-numeric: tabular-nums; }
-.hall-empty { color: var(--ink-3); padding: 28px 0; text-align: center; }
+.hall-empty { flex: 1; display: grid; place-items: center; color: var(--ink-3); padding: 8px 0; }
 .hall-extra { font-size: 12px; color: var(--ink-3); padding-left: 30px; }
-.hall-dots { align-self: center; }
-.hall-dots span { cursor: pointer; }
-.hall-more { align-self: center; }
 .home-bar-meta a.home-me { text-decoration: none; }
 .week-side { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 /* 홈 '이번 주 매치' 아래 줄: 점 왼쪽 · 다음주 보기 오른쪽 (v1.24.5~) */
