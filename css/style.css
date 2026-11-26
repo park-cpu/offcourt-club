@@ -25,7 +25,7 @@
   --r: 14px;
   --serif: 'Newsreader', 'Times New Roman', serif;
   --sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
-  --tabbar: 68px;
+  --tabbar: 54px; /* v1.24.9~ 68 → 54 */
   color-scheme: light;
 }
 
@@ -52,7 +52,7 @@ img { max-width: 100%; display: block; }
 #main {
   max-width: 520px;
   margin: 0 auto;
-  padding: 16px 16px calc(var(--tabbar) + 32px + env(safe-area-inset-bottom));
+  padding: 16px 16px calc(var(--tabbar) + 20px + env(safe-area-inset-bottom));
 }
 .boot { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: var(--blue); }
 .boot img { width: min(56vw, 240px); height: auto; animation: boot-in 0.5s ease-out both; }
@@ -363,7 +363,7 @@ input[type='file'].input { padding: 12px; }
 .mnames { font-weight: 700; font-size: 15px; display: flex; flex-direction: column; gap: 2px; }
 /* 이름과 레이팅 변동(−38.8)이 한 줄에 붙어 있게 — 아이폰에서 숫자가 줄바꿈되던 문제 (v1.13.2) */
 .mnames > div { display: flex; align-items: baseline; justify-content: center; gap: 4px; white-space: nowrap; }
-.mnames .delta { margin-left: 0; }
+.mnames .delta { margin-left: 0; flex-shrink: 0; }
 .mscore { font-family: var(--serif); font-size: 44px; line-height: 1; }
 .delta { font-size: 11px; font-weight: 700; margin-left: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .delta.up { color: var(--up); }
@@ -424,10 +424,11 @@ details[open] summary::after { content: '접기'; }
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   border-top: 1px solid var(--grey-2);
-  padding-bottom: env(safe-area-inset-bottom);
+  /* 아이폰 홈 막대 여백도 조금 겹쳐 씀 (v1.24.9~) */
+  padding-bottom: max(6px, calc(env(safe-area-inset-bottom) - 14px));
 }
-#tabbar a { flex: 1; max-width: 104px; height: var(--tabbar); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 12px; font-weight: 700; color: var(--ink-3); }
-#tabbar svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+#tabbar a { flex: 1; max-width: 104px; height: var(--tabbar); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; font-weight: 700; color: var(--ink-3); }
+#tabbar svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
 #tabbar a.on { color: var(--blue); }
 #tabbar a.on svg { stroke-width: 2.3; }
 
