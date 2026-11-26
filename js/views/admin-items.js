@@ -9,7 +9,7 @@ import { stageCanvas, itemThumb, scaleTo, SLOTS, SLOT_LABEL, BG_LABEL, DEFAULT_L
 import { pixelate, fileToImage, textToCanvas } from '../pixelate.js';
 import { pageHead, backLink } from './common.js';
 
-const KINDS = [...SLOTS.map(([s, l]) => [`wear:${s}`, `착용 · ${l}`]), ['bg:base', '배경 · 바탕 (화면 전체)'], ['bg:deco', '배경 · 소품 (포스터 · 글자 등)']];
+const KINDS = [...SLOTS.filter(([s]) => s !== 'partner').map(([s, l]) => [`wear:${s}`, `착용 · ${l}`]), ['bg:base', '배경 · 바탕 (화면 전체)'], ['bg:deco', '배경 · 소품 (포스터 · 글자 등)']];
 // 종류별 기본값: 크기(긴 변 픽셀), 아바타 기준 위치
 const PRESET = {
   hat: { size: 30, x: 1, y: 0 },
