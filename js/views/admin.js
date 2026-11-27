@@ -110,6 +110,70 @@ function playersAdmin() {
           h('span', { class: 'sp' }, coins.bal.get(p.id) ?? 0, h('small', {}, '코인'))
         )
       )
+    ),
+    guestMoveBlock()
+  );
+}
+
+// ── 게스트 기록 → 회원 (v1.27.7~) ───────────────────────
+// 게스트로 경기한 뒤 회원이 된 사람: 그 게스트의 경기 · 출석을 회원 것으로 바꿈
+//   경기의 teamA · teamB 안 게스트 id → 회원 id, 출석 문서도 회원 id로 다시 만들고 게스트 문서는 지움
+//   레이팅 · 순위 · 코인은 경기 기록에서 다시 계산되므로 따로 고칠 것 없음
+function guestMoveBlock() {
+  const used = (gid) => state.matches.filter((m) => [...m.teamA, ...m.teamB].includes(gid));
+  const guests = state.guests
+    .map((g) => ({ g, ms: used(g.id) }))
+    .filter((x) => x.ms.length)
+    .sort((a, b) => (b.g.createdAt || 0) - (a.g.createdAt || 0));
+  if (!guests.length) return null;
+  const members = state.players.filter((p) => p.active !== false).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+  const open = ({ g, ms }) =>
+    sheet(`게스트 ${g.name} 기록 옮기기`, (close) => {
+      const same = members.find((p) => p.name.trim() === g.name.trim());
+      const to = select({ class: 'input' }, [['', '회원 선택'], ...members.map((p) => [p.id, p.name])], same?.id || '');
+      const friendly = ms.filter((m) => m.type === 'friendly').length;
+      const ok = async () => {
+        const pid = to.value;
+        if (!pid) return toast('회원을 선택해 주세요');
+        const p = members.find((x) => x.id === pid);
+        const clash = ms.find((m) => [...m.teamA, ...m.teamB].includes(pid));
+        if (clash) return toast(`${p.name}님이 이미 같은 경기에 있어요`);
+        const yes = await confirmSheet('기록 옮기기', `게스트 ${g.name}의 경기 ${ms.length}개를 ${p.name}님 기록으로 옮길까요?\n옮긴 뒤엔 레이팅 · 순위에 반영돼요.`, '옮기기');
+        if (!yes) return;
+        const sw = (ids) => ids.map((id) => (id === g.id ? pid : id));
+        const ops = ms.map((m) => ({ type: 'put', col: 'matches', doc: { ...m, teamA: sw(m.teamA), teamB: sw(m.teamB), history: [...(m.history || []), { by: me().id, at: Date.now(), guestTo: pid, from: g.id }] } }));
+        for (const a of state.attendance.filter((x) => x.playerId === g.id)) {
+          const nid = `${a.scheduleId}_${pid}`;
+          const mine = state.attendance.find((x) => x.id === nid);
+          if (!mine) ops.push({ type: 'put', col: 'attendance', doc: { ...a, id: nid, playerId: pid, isGuest: false } });
+          else if (a.arrived && !mine.arrived) ops.push({ type: 'put', col: 'attendance', doc: { ...mine, arrived: true } });
+          ops.push({ type: 'del', col: 'attendance', id: a.id });
+        }
+        ops.push({ type: 'del', col: 'guests', id: g.id });
+        await batch(ops);
+        close();
+        toast(`${p.name}님 기록으로 옮겼어요`);
+      };
+      return h(
+        'div',
+        { class: 'stack' },
+        h('p', { class: 'muted small' }, `게스트로 한 경기 ${ms.length}개 (${[...new Set(ms.map((m) => m.date))].map(fmtShort).join(', ')})`),
+        friendly > 0 && h('p', { class: 'muted small' }, `그중 친선전 ${friendly}개는 원래 레이팅에 안 들어가요.`),
+        field('옮길 회원', to),
+        h('button', { class: 'btn primary block', onclick: ok }, '옮기기')
+      );
+    });
+  return h(
+    'section',
+    { class: 'block stack' },
+    h('h2', {}, '게스트 기록 → 회원'),
+    h('p', { class: 'muted small' }, '게스트로 경기한 뒤 회원이 된 사람은 여기서 그날 경기를 회원 기록으로 옮기면 레이팅 · 순위에 들어가요.'),
+    h(
+      'div',
+      { class: 'rank-list' },
+      guests.map((x) =>
+        h('button', { class: 'rank-row', onclick: () => open(x) }, h('span', { class: 'rank-main' }, h('strong', {}, x.g.name, ' · 게스트'), h('small', {}, `경기 ${x.ms.length}개 · ${fmtShort(x.ms[0].date)}`)), h('span', { class: 'muted' }, '›'))
+      )
     )
   );
 }
