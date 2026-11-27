@@ -1,5 +1,5 @@
 import { h, empty, pct, fmtNum, ntrpText, toast, confirmSheet } from '../ui.js';
-import { state, settings, currentSeason, seasonStats, derived, activePlayers, careerText, me, isAdmin, fmtShort, today, addDays, playersMap, ballRulesAt, weekRules, weekStart } from '../store.js';
+import { state, settings, currentSeason, seasonList, seasonStats, derived, activePlayers, careerText, me, isAdmin, fmtShort, today, addDays, playersMap, ballRulesAt, weekRules, weekStart } from '../store.js';
 import { put, uid } from '../db.js';
 import { ratingToNtrp, RULES, MATCH_TYPES, winnerSide, matchOrder, isRated, canBorrow, computeRelations, missionLabel } from '../rules.js';
 import { pageHead, backLink, nameTag, canRecord } from './common.js';
@@ -42,7 +42,7 @@ const RANK_TABS = [
 
 // #/rank → 공식전(현재 시즌) · #/rank/coin[/시즌] · #/rank/official/시즌 · #/rank/rating
 export function rankView(a, b) {
-  const seasons = [...settings().seasons].sort((x, y) => y.start.localeCompare(x.start));
+  const seasons = seasonList();
   const mode = ['rating', 'coin', 'official', 'singles'].includes(a) ? a : 'official';
   const sid = mode !== 'rating' && a === mode ? b : a;
   const season = mode !== 'rating' ? seasons.find((s) => s.id === sid) || currentSeason() : null;

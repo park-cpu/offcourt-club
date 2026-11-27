@@ -753,7 +753,7 @@ function renderRank() {
   if (!box) return;
   const diff = rankView.diff || game.diff;
   const key = rankView.sort;
-  const names = new Map(state.players.map((p) => [p.id, p.name]));
+  const names = new Map(state.players.filter((p) => !p.deleted).map((p) => [p.id, p.name]));
   const rows = clubRows().filter((x) => x.diff === diff && names.has(x.playerId) && (x[key] || 0) > 0).sort((a, b) => (b[key] || 0) - (a[key] || 0) || (b.score || 0) - (a.score || 0)).slice(0, 20);
   // 같은 값이면 같은 등수
   const place = (i) => { let j = i; while (j > 0 && (rows[j - 1][key] || 0) === (rows[i][key] || 0)) j--; return j + 1; };

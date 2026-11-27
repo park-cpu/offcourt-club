@@ -72,11 +72,31 @@ export function derived() {
 export const ratingOf = (id) => derived().ratings.get(id) ?? ntrpToRating(person(id).ntrp);
 export const ratingMap = (ids) => new Map(ids.map((id) => [id, ratingOf(id)]));
 
-export const seasonOf = (date) => settings().seasons.find((s) => date >= s.start && date <= s.end);
-export const currentSeason = () => {
-  const s = settings().seasons;
-  return seasonOf(today()) || [...s].sort((a, b) => b.start.localeCompare(a.start))[0] || null;
-};
+// 시즌 = 반기 고정 (v1.27.8~): 1~6월 상반기 · 7~12월 하반기, 첫 경기 · 일정이 있는 반기부터 지금 반기까지 자동
+//   관리자가 예전에 만든 시즌(settings.seasons)과 기간이 똑같으면 그 id · 이름을 그대로 씀 (주소 · 표시 유지)
+export function seasonList() {
+  const t = today();
+  const saved = settings().seasons || [];
+  let first = t;
+  for (const m of state.matches) if (m.date && m.date < first) first = m.date;
+  for (const x of state.schedules) if (x.date && x.date < first) first = x.date;
+  const out = [];
+  let y = Number(first.slice(0, 4));
+  let half = Number(first.slice(5, 7)) <= 6 ? 1 : 2;
+  const endY = Number(t.slice(0, 4));
+  const endHalf = Number(t.slice(5, 7)) <= 6 ? 1 : 2;
+  while (y < endY || (y === endY && half <= endHalf)) {
+    const start = half === 1 ? `${y}-01-01` : `${y}-07-01`;
+    const end = half === 1 ? `${y}-06-30` : `${y}-12-31`;
+    const old = saved.find((x) => x.start === start && x.end === end);
+    out.push({ id: old?.id || `h${y}_${half}`, name: old?.name || `${y} ${half === 1 ? '상반기' : '하반기'}`, start, end });
+    if (half === 2) y++;
+    half = half === 1 ? 2 : 1;
+  }
+  return out.sort((a, b) => b.start.localeCompare(a.start));
+}
+export const seasonOf = (date) => seasonList().find((s) => date >= s.start && date <= s.end);
+export const currentSeason = () => seasonOf(today()) || seasonList()[0] || null;
 // type: 'official'(공식전 시즌 순위) | 'coin'(코인전 랭킹) | 생략(전체)
 export const seasonStats = (season, type) => {
   const { spDeltas } = derived();

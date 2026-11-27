@@ -1,5 +1,5 @@
 import { h, sheet, toast, field, select, go, confirmSheet, empty, ntrpText } from '../ui.js';
-import { state, me, isAdmin, settings, derived, today, fmtShort, careerText, hashPin, session, customItems } from '../store.js';
+import { state, me, isAdmin, settings, derived, today, fmtShort, careerText, hashPin, session, customItems, seasonList, currentSeason } from '../store.js';
 import { ratingToNtrp, RULES } from '../rules.js';
 import { put, remove, batch, uid, db, COLLECTIONS } from '../db.js';
 import { pageHead, backLink, linkRow, playerForm, genderPicker, GENDER_LABEL } from './common.js';
@@ -57,7 +57,7 @@ export function adminView(sub) {
       linkRow('회원 관리', '#/admin/players', `${state.players.filter((p) => p.active !== false).length}명 ›`),
       linkRow('코인 지급 · 회수', '#/admin/coins', zero ? `코인 0개 ${zero}명 ›` : '›'),
       linkRow('경기장 관리', '#/admin/venues', `${venueList().length}곳 ›`),
-      linkRow('시즌 관리', '#/admin/seasons', `${settings().seasons.length}개 ›`),
+      linkRow('시즌', '#/admin/seasons', `${currentSeason()?.name || ''} ›`),
       linkRow('아바타 아이템', '#/admin/items', `${customItems().length}개 ›`),
       linkRow('볼 지급 · 미션 설정', '#/admin/balls'),
       linkRow('클럽 설정', '#/admin/settings'),
@@ -82,16 +82,22 @@ export function ntrpChecks() {
 function playersAdmin() {
   const { coins } = derived();
   const flag = new Map(ntrpChecks().map((x) => [x.p.id, x.est]));
-  const list = [...state.players].sort((a, b) => (a.active === false) - (b.active === false) || a.name.localeCompare(b.name, 'ko'));
+  // 삭제한 회원(deleted)은 목록에서 숨김 — 지난 경기 이름 · 상대 레이팅을 지키려고 문서는 남김 (v1.27.8~)
+  const list = state.players.filter((p) => !p.deleted).sort((a, b) => (a.active === false) - (b.active === false) || a.name.localeCompare(b.name, 'ko'));
   const open = (p) =>
     sheet(p ? `${p.name} 수정` : '회원 추가', (close) =>
-      playerForm(p, {
-        admin: true,
-        onSaved: () => {
-          close();
-          toast('저장했어요');
-        },
-      }).node
+      h(
+        'div',
+        { class: 'stack' },
+        playerForm(p, {
+          admin: true,
+          onSaved: () => {
+            close();
+            toast('저장했어요');
+          },
+        }).node,
+        p && p.id !== settings().adminId && h('button', { class: 'btn ghost danger block', onclick: () => deletePlayer(p, close) }, '회원 삭제')
+      )
     );
   return h(
     'div',
@@ -113,6 +119,36 @@ function playersAdmin() {
     ),
     guestMoveBlock()
   );
+}
+
+// ── 회원 삭제 (v1.27.8~) ─────────────────────────────
+//   경기 기록이 없으면 회원과 출석 · 코인 · 볼 · 아바타 · 랠리 기록까지 완전히 지움
+//   경기 기록이 있으면 문서를 지우면 같이 뛴 회원의 경기가 '게스트 경기'로 바뀌어 레이팅이 달라지므로
+//   deleted 표시만 하고 모든 목록에서 숨김 (지난 경기에는 이름이 그대로 남음)
+async function deletePlayer(p, closeSheet) {
+  const played = state.matches.some((m) => [...m.teamA, ...m.teamB].includes(p.id));
+  const msg = played
+    ? `${p.name}님을 삭제할까요?\n\n모든 목록 · 순위 · 대진에서 사라지고 로그인할 수 없어요.\n같이 뛴 회원의 레이팅이 바뀌지 않도록 지난 경기 기록에는 이름이 남아요.\n되돌릴 수 없어요.`
+    : `${p.name}님을 삭제할까요?\n\n경기 기록이 없어 출석 · 코인 · 볼 · 아바타 기록까지 모두 지워요.\n되돌릴 수 없어요.`;
+  const ok = await confirmSheet('회원 삭제', msg, '삭제', true);
+  if (!ok) return;
+  if (played) {
+    // 앞으로 있을 일정의 참가 신청(도착 전)은 지움
+    const t = today();
+    await batch([
+      { type: 'put', col: 'players', doc: { ...p, active: false, deleted: true, deletedAt: Date.now() } },
+      ...state.attendance.filter((a) => a.playerId === p.id && !a.arrived && (a.date || '') >= t).map((a) => ({ type: 'del', col: 'attendance', id: a.id })),
+    ]);
+  } else {
+    const mine = (col) => (state[col] || []).filter((x) => x.playerId === p.id).map((x) => ({ type: 'del', col, id: x.id }));
+    await batch([
+      ...['attendance', 'coinLogs', 'purchases', 'ballLogs', 'rallyScores'].flatMap(mine),
+      ...(state.avatars.some((a) => a.id === p.id) ? [{ type: 'del', col: 'avatars', id: p.id }] : []),
+      { type: 'del', col: 'players', id: p.id },
+    ]);
+  }
+  closeSheet();
+  toast(`${p.name}님을 삭제했어요`);
 }
 
 // ── 게스트 기록 → 회원 (v1.27.7~) ───────────────────────
@@ -231,47 +267,41 @@ function coinsAdmin() {
 }
 
 // ── 시즌 ──────────────────────────────────────────────
+// 반기 고정 (v1.27.8~): 날짜를 넣지 않고 자동으로 생기고 넘어감. 이름만 바꿀 수 있음
 function seasonsAdmin() {
   const st = settings();
-  const seasons = [...st.seasons].sort((a, b) => b.start.localeCompare(a.start));
-  const save = (next) => put('settings', { ...st, seasons: next });
-  const open = (s) =>
-    sheet(s ? '시즌 수정' : '시즌 추가', (close) => {
-      const y = new Date().getFullYear();
-      const name = h('input', { class: 'input', value: s?.name || `${y} S${new Date().getMonth() < 6 ? 1 : 2}` });
-      const start = h('input', { class: 'input', type: 'date', value: s?.start || today() });
-      const end = h('input', { class: 'input', type: 'date', value: s?.end || `${y}-12-31` });
+  const t = today();
+  const list = seasonList();
+  const rename = (s) =>
+    sheet(`${s.name} 이름 바꾸기`, (close) => {
+      const name = h('input', { class: 'input', value: s.name, maxLength: 20 });
       const ok = async () => {
-        if (!name.value.trim() || !start.value || !end.value) return toast('모두 입력해 주세요');
-        if (end.value < start.value) return toast('종료일이 시작일보다 빨라요');
-        const doc = { id: s?.id || uid('season_'), name: name.value.trim(), start: start.value, end: end.value };
-        const overlap = st.seasons.find((x) => x.id !== doc.id && !(doc.end < x.start || doc.start > x.end));
-        if (overlap) return toast(`${overlap.name} 기간과 겹쳐요`);
-        await save([...st.seasons.filter((x) => x.id !== doc.id), doc]);
+        if (!name.value.trim()) return toast('이름을 입력해 주세요');
+        const doc = { id: s.id, name: name.value.trim(), start: s.start, end: s.end };
+        await put('settings', { ...st, seasons: [...(st.seasons || []).filter((x) => !(x.start === s.start && x.end === s.end)), doc] });
         close();
       };
-      return h('div', { class: 'stack' }, field('이름', name), h('div', { class: 'grid2' }, field('시작', start), field('종료', end)), h('button', { class: 'btn primary block', onclick: ok }, '저장'));
+      return h('div', { class: 'stack' }, field('이름', name), h('button', { class: 'btn primary block', onclick: ok }, '저장'));
     });
+  const left = (s) => Math.ceil((new Date(s.end + 'T23:59:59') - new Date(t + 'T00:00:00')) / 864e5);
   return h(
     'div',
     { class: 'page' },
     backLink('#/admin', '관리자'),
-    pageHead('시즌 관리', 'Seasons', h('button', { class: 'btn primary small', onclick: () => open(null) }, '+ 추가')),
-    h('p', { class: 'muted small' }, '시즌 기간 안의 공식전은 공식전 순위, 코인전은 코인전 순위에 따로 반영돼요. 레이팅과 코인은 시즌과 상관없이 누적됩니다.'),
-    seasons.length
-      ? h(
-          'nav',
-          { class: 'menu' },
-          seasons.map((s) =>
-            h(
-              'div',
-              { class: 'link-row' },
-              h('span', {}, h('strong', {}, s.name), h('br'), h('small', { class: 'muted' }, `${s.start} ~ ${s.end}`)),
-              h('span', { class: 'row gap' }, h('button', { class: 'btn small ghost', onclick: () => open(s) }, '수정'), h('button', { class: 'btn small ghost danger', onclick: async () => (await confirmSheet('시즌 삭제', `${s.name}을(를) 삭제할까요? 경기 기록은 지워지지 않아요.`, '삭제', true)) && save(st.seasons.filter((x) => x.id !== s.id)) }, '삭제'))
-            )
-          )
+    pageHead('시즌', 'Seasons'),
+    h('p', { class: 'muted small' }, '시즌은 반기로 고정돼요. 1~6월은 상반기, 7~12월은 하반기 시즌이에요. 날짜가 되면 새 시즌이 자동으로 시작되고, 지난 시즌 순위는 순위 화면에서 계속 볼 수 있어요. 레이팅과 코인은 시즌과 상관없이 쌓여요.'),
+    h(
+      'nav',
+      { class: 'menu' },
+      list.map((s) =>
+        h(
+          'div',
+          { class: 'link-row' },
+          h('span', {}, h('strong', {}, s.name, t >= s.start && t <= s.end ? ` · 진행 중 (${left(s)}일 남음)` : ''), h('br'), h('small', { class: 'muted' }, `${s.start} ~ ${s.end}`)),
+          h('span', { class: 'row gap' }, h('a', { class: 'btn small ghost', href: `#/rank/official/${s.id}` }, '순위'), h('button', { class: 'btn small ghost', onclick: () => rename(s) }, '이름'))
         )
-      : empty('시즌이 없어요')
+      )
+    )
   );
 }
 

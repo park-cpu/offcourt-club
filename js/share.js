@@ -68,6 +68,10 @@ export function drawText(s) {
   return [
     `[Offcourt 대진] ${dateLabel(s)} ${s.venue}`,
     ...playing.map((m) => `🎾 코트 ${m.court} (${FORMAT[m.format] || '복식'}·${MATCH_TYPES[m.type].label})\n   ${names(m.teamA)}  vs  ${names(m.teamB)}`),
+    ...matchesOf(s.id)
+      .filter((m) => m.status === 'queued')
+      .sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0) || (a.createdAt || 0) - (b.createdAt || 0))
+      .map((m, i) => `${i === 0 ? '📋 다음 경기\n' : ''}${i + 1}. ${names(m.teamA)}  vs  ${names(m.teamB)}`),
     waiting.length ? `⏳ 대기: ${waiting.map((a) => person(a.playerId).name).join(', ')}` : null,
     `👉 ${appUrl('#/play/' + s.id)}`,
   ]

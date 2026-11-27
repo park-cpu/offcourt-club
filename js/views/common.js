@@ -62,7 +62,7 @@ export function playerForm(existing, { admin = false, onSaved } = {}) {
   const save = async () => {
     const n = name.value.trim();
     if (!n) return toast('이름을 입력해 주세요');
-    if (state.players.some((x) => x.name === n && x.id !== p.id)) return toast('같은 이름이 이미 있어요');
+    if (state.players.some((x) => x.name === n && x.id !== p.id && !x.deleted)) return toast('같은 이름이 이미 있어요');
     if (!gender.value()) return toast('성별을 선택해 주세요');
     if (!existing && !/^\d{4}$/.test(pin.value)) return toast('PIN은 숫자 4자리예요');
     if (pin.value && !/^\d{4}$/.test(pin.value)) return toast('PIN은 숫자 4자리예요');
