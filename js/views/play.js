@@ -3,7 +3,7 @@ import {
   state, me, isAdmin, today, fmtDate, attendanceOf, matchesOf, scheduleById, courtsOf, person, derived, activePlayers, isGuestId, ratingOf, ratingMap, rosterOf, scheduleEnded, scheduleTime, addDays,
 } from '../store.js';
 import { put, remove, batch, uid, db } from '../db.js';
-import { generate, capacity } from '../matchmaker.js';
+import { generate, capacity, groupOk, splitsOf } from '../matchmaker.js';
 import { MATCH_TYPES, coinStake, RULES } from '../rules.js';
 import { requireLogin, pageHead, nameTag, matchCard, canRecord, recordDeniedMsg, teamNames, FORMAT_LABEL } from './common.js';
 import { addGuest } from './schedule.js';
@@ -227,8 +227,10 @@ function drawTab(s) {
   const autoLabel = canAuto
     ? `${FORMAT_LABEL[p.format]} 대진표 ${PLAN_GAMES}경기 자동 만들기${queued.length ? ' (뒤에 추가)' : ''}`
     : p.format === 'mixed'
-        ? '남 2명 · 여 2명 이상 필요해요'
-        : `${per}명 이상 도착해야 해요`;
+        ? '남 · 여가 섞여 4명 이상(남 1명 · 여 1명 이상) 필요해요'
+        : p.format === 'doubles'
+          ? '같은 성별 4명(남 4명 또는 여 4명) 이상 필요해요'
+          : `${per}명 이상 도착해야 해요`;
   const ended = scheduleEnded(s);
   return h(
     'div',
@@ -240,7 +242,14 @@ function drawTab(s) {
       h('div', { class: 'row between' }, h('h2', {}, '대진 만들기'), h('button', { class: 'link small', onclick: guideSheet }, '처음이세요? 만드는 순서 ›')),
       h('div', { class: 'summary3' }, sum('대진 가능', pool.length + '명'), sum('빈 코트', `${freeCourts.length}/${courts.length}`), sum('진행 중', playing.length + '경기')),
       h('div', { class: 'seg small' }, segBtn('format', 'doubles', '복식'), segBtn('format', 'mixed', '혼복'), segBtn('format', 'singles', '단식')),
-      p.format === 'mixed' && h('p', { class: 'muted small' }, `대기 남 ${poolM} · 여 ${poolF}${noGender ? ` · 성별 미입력 ${noGender}명 제외` : ''}`),
+      p.format !== 'singles' && h('p', { class: 'muted small' }, `${p.format === 'mixed' ? '혼복: 남3·여1 / 남2·여2 / 남1·여3' : '복식: 남 2:2 · 여 2:2 (성별 안 섞음)'} · 대기 남 ${poolM} · 여 ${poolF}${noGender ? ` · 성별 미입력 ${noGender}명 제외` : ''}`),
+      // 복식인데 한 성별이 1~3명뿐이면 그 사람들은 자동 대진에 못 들어감 → 미리 알림
+      p.format === 'doubles' &&
+        (() => {
+          const cnt = (g) => here.filter((id) => genders.get(id) === g).length;
+          const few = [['남', cnt('M')], ['여', cnt('F')]].filter(([, c]) => c > 0 && c < 4);
+          return few.length ? h('p', { class: 'warn small' }, `${few.map(([g, c]) => `${g} ${c}명`).join(' · ')}은 같은 성별 4명이 안 돼 복식 자동 대진에 못 들어가요. 혼복으로 바꾸거나 직접 대진으로 넣어 주세요`) : null;
+        })(),
       h('div', { class: 'seg small' }, Object.entries(MATCH_TYPES).map(([k, v]) => segBtn('type', k, v.label))),
       h('p', { class: 'muted small' }, MATCH_TYPES[p.type].desc),
       h('button', { class: 'btn primary block', disabled: !canAuto, onclick: () => autoDraw(s, p) }, autoLabel),
@@ -263,7 +272,7 @@ function drawTab(s) {
 // 처음 쓰는 회원을 위한 '매치 만드는 순서' 안내 (v1.25.0~)
 const GUIDE = [
   ['출석 체크', '위 \'출석\' 탭에서 코트에 온 사람을 \'도착\'으로 표시해요. 도착한 사람만 대진에 들어가요. 게스트도 여기서 추가해요.'],
-  ['방식 고르기', '복식 · 혼복(팀마다 남 1 · 여 1) · 단식 중에서 골라요.'],
+  ['방식 고르기', '복식(남 2:2 · 여 2:2, 성별 안 섞음) · 혼복(남3·여1 / 남2·여2 / 남1·여3) · 단식 중에서 골라요.'],
   ['경기 유형 고르기', '코인전(승패 · 레이팅 · 코인) · 공식전(승패 · 레이팅) · 친선전(기록 없음). 코인이 1개 미만이거나 게스트가 있으면 코인전은 공식전으로 바뀌어요.'],
   ['대진 만들기', '\'대진표 8경기 자동 만들기\'를 누르면 비슷한 실력끼리, 오늘 덜 뛴 사람부터 8경기를 미리 짜요. 빈 코트엔 바로 시작하고 나머지는 \'다음 경기\'로 줄 서요. 마음에 안 들면 \'수정\'으로 선수를 바꾸고, 원하는 짝은 \'직접 대진 만들기\'로 골라요.'],
   ['점수 입력', '경기가 끝나면 코트 카드의 \'점수 입력\'을 눌러 게임 수(예: 6:4)를 넣어요. 선수들은 다시 대기 명단으로 돌아가요.'],
@@ -556,10 +565,17 @@ function manualSheet(s, pool, courts, p, edit) {
       const ids = [...A, ...B];
       if (ids.some((x) => !x)) return toast('선수를 모두 선택해 주세요');
       if (new Set(ids).size !== ids.length) return toast('같은 선수가 중복됐어요');
-      if (format.value === 'mixed') {
-        const g = (id) => person(id).gender;
-        const ok = (t) => t.map(g).sort().join('') === 'FM';
-        if (!ok(A) || !ok(B)) return toast('혼복은 각 팀이 남 1명 · 여 1명이어야 해요');
+      // 성별 규칙 (v1.28.0~): 복식 = 남 2:2 · 여 2:2, 혼복 = 남3·여1(남남 vs 남녀) / 남2·여2(남녀 vs 남녀) / 남1·여3(남녀 vs 여여)
+      //   성별 모르는 사람(미입력 게스트)이 있으면 검사하지 않음
+      const gm = new Map(ids.map((id) => [id, person(id).gender]));
+      if (!single && ids.every((id) => gm.get(id) === 'M' || gm.get(id) === 'F')) {
+        if (format.value === 'doubles' && !groupOk(ids, 'doubles', gm)) return toast('복식은 같은 성별끼리만 (남 2:2 · 여 2:2). 섞이면 혼복으로 골라 주세요');
+        if (format.value === 'mixed') {
+          if (!groupOk(ids, 'mixed', gm)) return toast('혼복은 남 · 여가 섞여야 해요. 같은 성별이면 복식으로 골라 주세요');
+          const same = (x, y) => x.length === y.length && x.every((v) => y.includes(v));
+          const ok = splitsOf(ids, 'mixed', gm).some(([x, y]) => (same(x, A) && same(y, B)) || (same(x, B) && same(y, A)));
+          if (!ok) return toast(ids.filter((id) => gm.get(id) === 'M').length === 2 ? '남2 · 여2 혼복은 팀마다 남 1명 · 여 1명이에요' : '혼복은 한 팀에 남 · 여가 1명씩, 다른 팀이 같은 성별 2명이에요');
+        }
       }
       let t = type.value;
       if (t === 'coin' && !queuedEdit) {

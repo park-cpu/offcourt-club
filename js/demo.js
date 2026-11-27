@@ -67,7 +67,7 @@ export async function seedDemo() {
     const courts = s.courts.split(',').map((x) => x.trim());
     const today = [];
     for (let r = 0; r < rounds; r++) {
-      const plan = generate({ pool: ids, courts, format: 'doubles', ratings, todayMatches: today });
+      const plan = generate({ pool: ids, courts, format: 'doubles', ratings, todayMatches: today, genders: new Map(players.map((p) => [p.id, p.gender])) });
       for (const x of plan) {
         const ea = expected(avg(x.teamA), avg(x.teamB));
         const aWins = Math.random() < ea;
