@@ -9,6 +9,9 @@
 
 const PARTNER_PENALTY = 80;
 const OPPONENT_PENALTY = 25;
+// 연속 출전 벌점 (v1.27.9~): 방금 경기를 마친 사람은 '경기 1개 더 한 사람'만큼 뒤로 → 쉬던 사람이 먼저 들어감
+//   사람이 모자라면 그래도 들어감 (금지가 아니라 '되도록 피하기')
+export const REST_PENALTY = 1;
 const ITERATIONS = 1500;
 
 const shuffle = (arr) => {
@@ -30,6 +33,7 @@ const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
  * @param {Map<string,'M'|'F'>} [o.genders]
  * @param {Map<string,number>} o.ratings
  * @param {object[]} o.todayMatches 오늘(이 일정) 경기들
+ * @param {Set<string>} [o.justPlayed] 방금 경기를 마친 사람 (연속 출전 벌점)
  * @returns {{court:string, teamA:string[], teamB:string[]}[]}
  */
 /** 이 조건으로 몇 코트를 채울 수 있는지 */
@@ -42,7 +46,7 @@ export function capacity({ pool, courts, format, genders }) {
   return Math.min(courts.length, Math.floor(pool.length / (format === 'singles' ? 2 : 4)));
 }
 
-export function generate({ pool, courts, format, ratings, todayMatches, genders = new Map() }) {
+export function generate({ pool, courts, format, ratings, todayMatches, genders = new Map(), justPlayed = new Set() }) {
   const mixed = format === 'mixed';
   const per = format === 'singles' ? 2 : 4;
   const n = capacity({ pool, courts, format, genders });
@@ -63,9 +67,10 @@ export function generate({ pool, courts, format, ratings, todayMatches, genders 
     for (const a of m.teamA) for (const b of m.teamB) bump(opponents, key(a, b));
   }
 
-  // 1) 선발: 경기 수 적은 순 → 오래 쉰 순 (동률은 랜덤)
+  // 1) 선발: 경기 수(+ 연속 출전 벌점) 적은 순 → 오래 쉰 순 (동률은 랜덤)
+  const load = (id) => (played.get(id) || 0) + (justPlayed.has(id) ? REST_PENALTY : 0);
   const priority = (list) =>
-    shuffle(list).sort((a, b) => (played.get(a) || 0) - (played.get(b) || 0) || (lastAt.get(a) || 0) - (lastAt.get(b) || 0));
+    shuffle(list).sort((a, b) => load(a) - load(b) || (lastAt.get(a) || 0) - (lastAt.get(b) || 0));
   const men = mixed ? priority(pool.filter((id) => genders.get(id) === 'M')).slice(0, n * 2) : [];
   const women = mixed ? priority(pool.filter((id) => genders.get(id) === 'F')).slice(0, n * 2) : [];
   const picked = mixed ? [...men, ...women] : priority(pool).slice(0, n * per);

@@ -49,6 +49,13 @@ class LocalDB {
     this.write(d);
     for (const c of touched) this.onChange(c, Object.values(d[c] || {}));
   }
+  // 최신 문서를 보고 바꿀지 정함 (v1.27.9~). fn(old) → 새 문서 | null(안 바꿈). 바꿨으면 true
+  async claim(col, id, fn) {
+    const doc = fn(this.read()[col]?.[id]);
+    if (!doc) return false;
+    await this.batch([{ type: 'put', col, doc }]);
+    return true;
+  }
   async replaceAll(snapshot) {
     const d = {};
     for (const c of COLLECTIONS) d[c] = Object.fromEntries((snapshot[c] || []).map((x) => [x.id, x]));
@@ -105,6 +112,25 @@ class FirestoreDB {
       else b.delete(this.ref(op.col, op.id));
     }
     await b.commit();
+  }
+  // 여러 기기가 동시에 같은 경기를 시작하지 않게 트랜잭션으로 (v1.27.9~). 오프라인이면 그냥 저장
+  //   offline = 트랜잭션이 안 될 때(오프라인 등) 대신 저장할 문서
+  async claim(col, id, fn, offline) {
+    const ref = this.ref(col, id);
+    try {
+      return await this.fs.runTransaction(this.db, async (tx) => {
+        const snap = await tx.get(ref);
+        const doc = fn(snap.exists() ? snap.data() : undefined);
+        if (!doc) return false;
+        tx.set(ref, clean(doc));
+        return true;
+      });
+    } catch (e) {
+      console.warn('claim', e);
+      if (!offline) return false;
+      await this.batch([{ type: 'put', col, doc: offline }]);
+      return true;
+    }
   }
   async replaceAll(snapshot) {
     // 기존 문서 삭제 후 백업 내용으로 교체 (500개 단위)

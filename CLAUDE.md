@@ -88,7 +88,7 @@
 
 ## 대진 (v1.25.0~)
 - 직접 대진(`manualSheet` in play.js): 다른 칸에서 고른 선수는 회색 '선택됨' disabled(`refill`, v1.27.8~ 예전엔 목록에서 뺌). `manualSheet(…, edit)` = 진행 중 · 다음 경기 수정
-- 대진표(v1.27.8~): '대진표 8경기 자동 만들기'(`PLAN_GAMES`, `autoDraw`) — 코트 흐름을 흉내 내며 한 경기씩(다른 코트에서 뛰는 중일 사람 빼고) 짬. 빈 코트는 바로 'playing', 나머지는 match `status: 'queued'` + `seq`. 점수 입력 · 취소 때 `startNext`가 빈 코트를 모두 채움(선수 전원 도착 · 쉬는 중인 첫 다음 경기). 못 채우면 빈 코트에 '쉬는 사람으로 바로 한 경기'(`fillNow`). queued는 레이팅 · 결과 · 오늘 경기 수에서 제외(status 'done'만 셈)
+- 대진표(v1.27.8~): '대진표 8경기 자동 만들기'(`PLAN_GAMES`, `autoDraw`) — 코트 흐름을 흉내 내며 한 경기씩(다른 코트에서 뛰는 중일 사람 빼고) 짬. 빈 코트는 바로 'playing', 나머지는 match `status: 'queued'` + `seq`. 점수 입력 · 취소 때 `startNext`가 빈 코트를 모두 채움(선수 전원 도착 · 쉬는 중인 첫 다음 경기). 못 채우면 빈 코트에 '쉬는 사람으로 바로 한 경기'(`fillNow`). queued는 레이팅 · 결과 · 오늘 경기 수에서 제외(status 'done'만 셈). v1.27.9~: '남은 대진표 다시 짜기'(`autoDraw(s, p, true)`), 연속 출전 벌점(`REST_PENALTY` in matchmaker.js, `justPlayed`), 동시 조작은 `db.claim`(Firestore 트랜잭션, LocalDB는 바로) — 경기 시작 `claimStart`, 대진표 잠금 = 일정 문서 `planAt · planBy` 15초. 끝난 일정(기록 마감 후)의 queued는 `cleanQueue`가 지움. queued에만 있는 사람은 도착 해제 가능
 - 대진 탭 '처음이세요? 만드는 순서' → `guideSheet` (`GUIDE` 6단계)
 
 ## 디자인

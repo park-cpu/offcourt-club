@@ -2,7 +2,7 @@ import { h, sheet, toast, field, select, go, confirmSheet, empty } from '../ui.j
 import {
   state, me, isAdmin, today, fmtDate, attendanceOf, matchesOf, scheduleById, courtsOf, person, derived, activePlayers, isGuestId, ratingOf, ratingMap, rosterOf, scheduleEnded, scheduleTime, addDays,
 } from '../store.js';
-import { put, remove, batch, uid } from '../db.js';
+import { put, remove, batch, uid, db } from '../db.js';
 import { generate, capacity } from '../matchmaker.js';
 import { MATCH_TYPES, coinStake, RULES } from '../rules.js';
 import { requireLogin, pageHead, nameTag, matchCard, canRecord, recordDeniedMsg, teamNames, FORMAT_LABEL } from './common.js';
@@ -46,6 +46,7 @@ export function playView(sid, tab) {
 
   const s = scheduleById(sid);
   if (!s) return h('div', { class: 'page' }, empty('없는 일정이에요'));
+  cleanQueue(s);
   // 경기 시간이 끝난 일정은 결과 탭부터 (v1.13.0~)
   if (!tab) tab = scheduleEnded(s) ? 'done' : 'draw';
   const tabs = [
@@ -111,12 +112,17 @@ function attendanceTab(s) {
 
 async function setArrived(a, v) {
   if (!requireLogin()) return;
-  if (!v && matchesOf(a.scheduleId).some((m) => [...m.teamA, ...m.teamB].includes(a.playerId))) return toast('경기 기록이 있어 해제할 수 없어요');
+  const mine = matchesOf(a.scheduleId).filter((m) => [...m.teamA, ...m.teamB].includes(a.playerId));
+  // 실제로 뛴(진행 중 · 끝난) 경기가 있을 때만 막음. 다음 경기(대진표)에만 있으면 풀 수 있음 (v1.27.9~)
+  if (!v && mine.some((m) => m.status !== 'queued')) return toast('경기 기록이 있어 해제할 수 없어요');
   await put('attendance', { ...a, arrived: v, left: v ? a.left : false, arrivedBy: me().id });
+  if (!v && mine.length) toast(`다음 경기 ${mine.length}개에 들어 있어요. 대진 탭에서 수정하거나 '남은 대진표 다시 짜기'를 눌러 주세요`);
 }
 async function setLeft(a, v) {
   if (!requireLogin()) return;
   await put('attendance', { ...a, left: v });
+  const n = queueOf(matchesOf(a.scheduleId)).filter((m) => ids(m).includes(a.playerId)).length;
+  if (v && n) toast(`다음 경기 ${n}개에 들어 있어요. 대진 탭에서 '남은 대진표 다시 짜기'를 눌러 주세요`);
 }
 
 function addWalkIn(s, notIn) {
@@ -180,6 +186,9 @@ function drawTab(s) {
   const noGender = pool.filter((id) => !genders.get(id)).length;
   const gamesToday = new Map();
   ms.filter((m) => m.status !== 'queued').forEach((m) => [...m.teamA, ...m.teamB].forEach((id) => gamesToday.set(id, (gamesToday.get(id) || 0) + 1)));
+  // 대진표에 잡힌(예정) 경기 수 (v1.27.9~)
+  const planned = new Map();
+  queued.forEach((m) => ids(m).forEach((id) => planned.set(id, (planned.get(id) || 0) + 1)));
 
   const segBtn = (key, val, label) =>
     h('button', { class: p[key] === val ? 'on' : '', onclick: () => { prefs.set({ [key]: val }); window.dispatchEvent(new Event('rerender')); } }, label);
@@ -239,13 +248,13 @@ function drawTab(s) {
     ),
     playing.length > 0 && h('div', { class: 'row end' }, shareButton('대진 카톡 공유', () => drawText(s))),
     h('div', { class: 'courts' }, drawLocked(s) && !playing.length ? h('p', { class: 'muted center' }, '진행 중인 경기가 없어요. 결과 탭에서 기록을 확인하세요.') : courtCards),
-    queued.length > 0 && queueBlock(s, queued, { playing, busy, here, courts, pool, p }),
+    queued.length > 0 && queueBlock(s, queued, { playing, busy, here, courts, pool, p, gamesToday, planned }),
     !drawLocked(s) && h(
       'section',
       { class: 'block' },
       h('h2', {}, `대기 ${pool.length}명`),
       pool.length
-        ? h('div', { class: 'wait' }, pool.sort((a, b) => (gamesToday.get(a) || 0) - (gamesToday.get(b) || 0)).map((id) => h('span', { class: 'chip' }, person(id).name, h('small', {}, ` ${gamesToday.get(id) || 0}경기`))))
+        ? h('div', { class: 'wait' }, pool.sort((a, b) => (gamesToday.get(a) || 0) - (gamesToday.get(b) || 0)).map((id) => h('span', { class: 'chip' }, person(id).name, h('small', {}, ` ${gamesToday.get(id) || 0}경기${planned.get(id) ? ` +${planned.get(id)}예정` : ''}`))))
         : h('p', { class: 'muted' }, att.some((a) => a.arrived) ? '모두 경기 중이에요' : '출석 탭에서 도착 체크를 먼저 해주세요', !att.some((a) => a.arrived) && h('a', { class: 'link', href: `#/play/${s.id}/att` }, ' 출석하러 가기 ›'))
     )
   );
@@ -289,6 +298,8 @@ function coinBlockReason(ids) {
 //   빈 코트 · 쉬는 사람으로 바로 시작할 경기 → 'playing', 나머지는 순서대로 'queued'(다음 경기)
 //   코트가 비면(점수 입력 · 취소) 다음 경기 중 선수가 모두 쉬고 있는 첫 경기를 그 코트에서 자동 시작
 export const PLAN_GAMES = 8;
+// 업데이트 직후 예전 db.js가 섞여 있으면(claim 없음) 그냥 저장
+const claim = (col, id, fn, offline) => (db.claim ? db.claim(col, id, fn, offline) : put(col, offline).then(() => true));
 const ids = (m) => [...m.teamA, ...m.teamB];
 const queueOf = (ms) => ms.filter((m) => m.status === 'queued').sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0) || (a.createdAt || 0) - (b.createdAt || 0));
 
@@ -301,16 +312,27 @@ function fixType(type, teamIds, notes, where) {
   return 'official';
 }
 
-async function autoDraw(s, p) {
+// replace = '남은 대진표 다시 짜기': 진행 중 경기는 두고 다음 경기만 지금 인원으로 새로 (v1.27.9~)
+async function autoDraw(s, p, replace = false) {
   if (!requireLogin()) return;
   if (drawLocked(s)) return toast('경기 시간이 끝나 새 대진을 만들 수 없어요');
+  const old = queueOf(matchesOf(s.id));
+  if (replace) {
+    if (!(await confirmSheet('남은 대진표 다시 짜기', `다음 경기 ${old.length}개를 지금 도착한 사람으로 새로 짤까요?\n진행 중인 경기는 그대로예요.`, '다시 짜기'))) return;
+  } else if (old.length && !(await confirmSheet('대진표 더 만들기', `아직 다음 경기가 ${old.length}개 남아 있어요.\n그 뒤에 ${PLAN_GAMES}경기를 더 만들까요?`, '더 만들기'))) return;
+  // 여러 사람이 동시에 누르면 한 번만 (일정 문서에 15초 잠금, 내가 건 잠금은 통과)
+  const at = Date.now();
+  const by = me().id;
+  const got = await claim('schedules', s.id, (cur) => (cur && !(cur.planAt > at - 15000 && cur.planBy !== by) ? { ...cur, planAt: at, planBy: by } : null), { ...s, planAt: at, planBy: by });
+  if (!got) return toast('방금 다른 사람이 대진표를 만들었어요. 잠시 뒤 다시 확인해 주세요');
   const courts = courtsOf(s).length ? courtsOf(s) : ['1'];
-  const ms = matchesOf(s.id);
+  const ms = matchesOf(s.id).filter((m) => !(replace && m.status === 'queued'));
   const playing = ms.filter((m) => m.status === 'playing');
   const here = attendanceOf(s.id).filter((a) => a.arrived && !a.left).map((a) => a.playerId);
   const genders = genderMap();
   const ratings = ratingMap(here);
   const queued = queueOf(ms);
+  const total = replace ? Math.max(old.length, 1) : PLAN_GAMES;
   let seq = queued.length ? (queued[queued.length - 1].seq ?? 0) + 1 : 0;
   const sim = [...ms];
   const out = [];
@@ -318,18 +340,23 @@ async function autoDraw(s, p) {
   let t = Date.now();
   // 코트 흐름을 흉내 내며 한 경기씩 짬: 코트가 하나 비면(가장 먼저 시작한 경기가 끝나면) 그때 다른 코트에서
   //   뛰고 있을 사람을 빼고 다음 경기를 고름 → 한 코트가 먼저 끝나도 다음 경기 선수가 대부분 쉬고 있음
+  //   방금 끝난 경기의 선수는 연속 출전 벌점(justPlayed)으로 되도록 쉬게 함
   const active = [...[...playing].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)), ...queued].slice(-courts.length);
   const freeNow = queued.length ? [] : courts.filter((c) => !playing.some((m) => m.court === c));
-  for (let guard = 0; out.length < PLAN_GAMES && guard < PLAN_GAMES * 4; guard++) {
+  for (let guard = 0; out.length < total && guard < total * 4; guard++) {
     let court;
     let now = false;
+    let justPlayed = new Set();
     if (freeNow.length) {
       court = freeNow.shift();
       now = true;
-    } else if (active.length) court = active.shift().court || courts[0];
-    else court = courts[0];
+    } else if (active.length) {
+      const fin = active.shift();
+      court = fin.court || courts[0];
+      justPlayed = new Set(ids(fin));
+    } else court = courts[0];
     const busyNow = new Set(active.flatMap(ids));
-    const plan = generate({ pool: here.filter((id) => !busyNow.has(id)), courts: [court], format: p.format, ratings, todayMatches: sim, genders });
+    const plan = generate({ pool: here.filter((id) => !busyNow.has(id)), courts: [court], format: p.format, ratings, todayMatches: sim, genders, justPlayed });
     if (!plan.length) {
       if (!active.length && !freeNow.length) break;
       continue;
@@ -343,9 +370,9 @@ async function autoDraw(s, p) {
     active.push(m);
   }
   if (!out.length) return toast('대진을 만들 수 없어요');
-  await batch(out.map((doc) => ({ type: 'put', col: 'matches', doc })));
+  await batch([...(replace ? old.map((m) => ({ type: 'del', col: 'matches', id: m.id })) : []), ...out.map((doc) => ({ type: 'put', col: 'matches', doc }))]);
   const now = out.filter((m) => m.status === 'playing').length;
-  toast(notes.length ? notes.join(' / ') : `${out.length}경기 대진표 완료${now ? ` · ${now}경기 바로 시작` : ''}`);
+  toast(notes.length ? notes.join(' / ') : `${out.length}경기 대진표 ${replace ? '다시 짰어요' : '완료'}${now ? ` · ${now}경기 바로 시작` : ''}`);
 }
 
 // 코트가 비었을 때 다음 경기 시작. freed = 방금 끝난(취소된) 경기 id — 저장 반영 전이라 직접 뺌
@@ -360,23 +387,31 @@ export async function startNext(s, court, freed) {
   const all = courtsOf(s).length ? courtsOf(s) : ['1'];
   const free = [court, ...all.filter((c) => c !== court)].filter((c) => c && !playing.some((m) => m.court === c));
   const queue = queueOf(ms);
-  const ops = [];
+  const used = new Set();
   const notes = [];
   const said = [];
   for (const c of free) {
-    const next = queue.find((m) => !ops.some((o) => o.doc.id === m.id) && ids(m).every((id) => here.has(id) && !busy.has(id)));
-    if (!next) continue;
-    ids(next).forEach((id) => busy.add(id));
-    const type = fixType(next.type, ids(next), notes, `코트 ${c}`);
-    ops.push({ type: 'put', col: 'matches', doc: { ...next, status: 'playing', court: c, type, createdAt: Date.now() + ops.length } });
-    said.push(`코트 ${c} ${teamText(next.teamA)} vs ${teamText(next.teamB)}`);
+    for (const next of queue) {
+      if (used.has(next.id) || !ids(next).every((id) => here.has(id) && !busy.has(id))) continue;
+      used.add(next.id);
+      if (!(await claimStart(next, c, notes))) continue; // 다른 기기가 먼저 시작함 → 그다음 경기
+      ids(next).forEach((id) => busy.add(id));
+      said.push(`코트 ${c} ${teamText(next.teamA)} vs ${teamText(next.teamB)}`);
+      break;
+    }
   }
-  if (!ops.length) {
+  if (!said.length) {
     if (queue.length) toast('다음 경기 선수가 아직 경기 중이에요. 끝나면 같이 시작돼요');
     return;
   }
-  await batch(ops);
   toast(`다음 경기 시작 · ${said.join(' / ')}${notes.length ? ' (' + notes.join(', ') + ')' : ''}`);
+}
+
+// 다음 경기 하나를 코트에서 시작. 서버의 최신 문서가 아직 'queued'일 때만 (여러 기기 동시 시작 방지, v1.27.9~)
+async function claimStart(m, court, notes) {
+  const type = fixType(m.type, ids(m), notes, `코트 ${court}`);
+  const doc = { ...m, status: 'playing', court, type, createdAt: Date.now() };
+  return claim('matches', m.id, (cur) => (cur && cur.status === 'queued' ? { ...cur, status: 'playing', court, type, createdAt: doc.createdAt } : null), doc);
 }
 const teamText = (t) => t.map((id) => person(id).name).join('·');
 
@@ -393,8 +428,18 @@ async function fillNow(s, court, pool, p) {
   toast(notes[0] || `코트 ${court} 시작 · ${teamText(x.teamA)} vs ${teamText(x.teamB)}`);
 }
 
+// 끝난 일정(종료 + 기록 마감 시간 지남)에 남은 다음 경기는 지움 (v1.27.9~, 화면을 연 사람 기기에서 한 번)
+const cleaned = new Set();
+function cleanQueue(s) {
+  if (cleaned.has(s.id) || !me()) return;
+  if (Date.now() < scheduleTime(s, 'end') + RULES.recordGraceMin * 60000) return;
+  cleaned.add(s.id);
+  const left = matchesOf(s.id).filter((m) => m.status === 'queued');
+  if (left.length) batch(left.map((m) => ({ type: 'del', col: 'matches', id: m.id }))).catch((e) => console.warn('cleanQueue', e));
+}
+
 // 다음 경기 목록
-function queueBlock(s, queued, { playing, busy, here, courts, pool, p }) {
+function queueBlock(s, queued, { playing, busy, here, courts, pool, p, gamesToday, planned }) {
   const free = courts.filter((c) => !playing.some((m) => m.court === c));
   const hereSet = new Set(here);
   const locked = drawLocked(s);
@@ -402,6 +447,7 @@ function queueBlock(s, queued, { playing, busy, here, courts, pool, p }) {
     'section',
     { class: 'block' },
     h('div', { class: 'row between' }, h('h2', {}, `다음 경기 ${queued.length}`), h('span', { class: 'muted small' }, '코트가 비면 순서대로 자동 시작')),
+    !locked && h('button', { class: 'btn ghost block small', onclick: () => autoDraw(s, p, true) }, '↻ 남은 대진표 다시 짜기 (늦게 온 · 귀가한 사람 반영)'),
     h(
       'ol',
       { class: 'queue-list' },
@@ -417,7 +463,7 @@ function queueBlock(s, queued, { playing, busy, here, courts, pool, p }) {
             { class: 'grow' },
             h('div', { class: 'court-teams' }, h('div', {}, teamNames(m.teamA)), h('span', { class: 'vs' }, 'vs'), h('div', {}, teamNames(m.teamB))),
             h('div', { class: 'muted small' }, `${MATCH_TYPES[m.type].label} · ${FORMAT_LABEL[m.format] || '복식'} · 평균 ${avgR(m.teamA)} : ${avgR(m.teamB)}`),
-            gone.length > 0 && h('p', { class: 'warn small' }, `${gone.map((id) => person(id).name).join(', ')} 귀가 · 미도착 → 수정해 주세요`)
+            gone.length > 0 && h('p', { class: 'warn small' }, `${gone.map((id) => person(id).name).join(', ')} 귀가 · 미도착 → 수정하거나 다시 짜 주세요`)
           ),
           !locked &&
             h(
@@ -429,6 +475,16 @@ function queueBlock(s, queued, { playing, busy, here, courts, pool, p }) {
             )
         );
       })
+    ),
+    // 사람별 오늘 경기 수 = 한 경기(진행 중 포함) + 예정 → 공평하게 짜였는지 한눈에 (v1.27.9~)
+    h('h3', { class: 'eyebrow' }, '사람별 오늘 경기 수 (한 경기 + 예정)'),
+    h(
+      'div',
+      { class: 'wait' },
+      [...here]
+        .map((id) => ({ id, done: gamesToday.get(id) || 0, plan: planned.get(id) || 0 }))
+        .sort((a, b) => b.done + b.plan - (a.done + a.plan) || person(a.id).name.localeCompare(person(b.id).name, 'ko'))
+        .map((x) => h('span', { class: 'chip' }, person(x.id).name, h('small', {}, ` ${x.done + x.plan} (${x.done}+${x.plan})`)))
     )
   );
 }
@@ -436,8 +492,7 @@ function queueBlock(s, queued, { playing, busy, here, courts, pool, p }) {
 async function startQueued(s, m, court) {
   if (!requireLogin()) return;
   const notes = [];
-  const type = fixType(m.type, ids(m), notes, `코트 ${court}`);
-  await put('matches', { ...m, status: 'playing', court, type, createdAt: Date.now() });
+  if (!(await claimStart(m, court, notes))) return toast('이미 다른 기기에서 시작했어요');
   if (notes.length) toast(notes[0]);
 }
 
