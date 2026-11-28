@@ -121,6 +121,23 @@ export const matchesOf = (scheduleId) =>
   state.matches.filter((m) => m.scheduleId === scheduleId).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 // 정원: 신청 순서대로 앞 capacity명은 확정, 나머지는 대기 (취소 시 대기자가 자동으로 올라감)
 export const capacityOf = (s) => Math.max(0, Number(s?.capacity) || 0);
+// 일정 종류 (v1.29.0~): 매치 · 연습. 예전 일정(kind 없음)은 매치
+export const SESSION_KINDS = { match: '매치', practice: '연습' };
+export const kindOf = (s) => (s?.kind === 'practice' ? 'practice' : 'match');
+// 회원별 매치 · 연습 참여 횟수 = 도착 체크한 일정 수 (range {start,end} 있으면 그 기간만)
+export const sessionCounts = (range) => {
+  const kinds = new Map(state.schedules.map((s) => [s.id, kindOf(s)]));
+  const out = new Map();
+  for (const a of state.attendance) {
+    if (!a.arrived || a.isGuest || !kinds.has(a.scheduleId)) continue;
+    if (range && !(a.date >= range.start && a.date <= range.end)) continue;
+    const c = out.get(a.playerId) || { match: 0, practice: 0, last: '' };
+    c[kinds.get(a.scheduleId)]++;
+    if ((a.date || '') > c.last) c.last = a.date || '';
+    out.set(a.playerId, c);
+  }
+  return out;
+};
 export const rosterOf = (s) => {
   const cap = capacityOf(s);
   return attendanceOf(s.id).map((a, i) => ({ ...a, waiting: cap > 0 && i >= cap, order: i + 1, waitNo: cap > 0 && i >= cap ? i - cap + 1 : 0 }));

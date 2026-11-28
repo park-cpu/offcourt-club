@@ -1,6 +1,6 @@
 import { h, sheet, toast, field, go, confirmSheet, empty, ntrpText, select } from '../ui.js';
 import {
-  state, me, isAdmin, today, weekStart, addDays, parseYmd, DOW, fmtDate, attendanceOf, scheduleById, courtsOf, person, matchesOf, rosterOf, capacityOf, countText,
+  state, me, isAdmin, today, weekStart, addDays, parseYmd, DOW, fmtDate, attendanceOf, scheduleById, courtsOf, person, matchesOf, rosterOf, capacityOf, countText, kindOf, SESSION_KINDS,
 } from '../store.js';
 import { put, remove, batch, uid } from '../db.js';
 import { settings, scheduleEnded } from '../store.js';
@@ -21,6 +21,9 @@ export const venueList = () => {
 };
 export const mapLink = (s, cls = '') => s.venue && h('a', { class: 'map-link ' + cls, href: mapUrlOf(s), target: '_blank', rel: 'noopener' }, '지도 ›');
 // 일정 수정 · 삭제: 등록한 사람 (+ 관리자)
+// 일정 종류 표시 (v1.29.0~)
+export const kindBadge = (s, cls = '') => h('span', { class: `kind kind-${kindOf(s)} ${cls}` }, SESSION_KINDS[kindOf(s)]);
+
 export const canEditSchedule = (s) => { const u = me(); return !!u && (s.createdBy === u.id || isAdmin()); };
 
 import { requireLogin, pageHead, backLink, nameTag, genderPicker, GENDER_LABEL } from './common.js';
@@ -61,7 +64,7 @@ export function weekView(param) {
                 return h(
                   'a',
                   { class: 'sch' + (mine ? ' mine' : ''), href: `#/s/${s.id}` },
-                  h('div', {}, h('strong', {}, `${s.start}–${s.end}`), h('span', {}, `${s.venue} · 코트 ${courtsOf(s).join(',') || '-'}`), weatherChip(s)),
+                  h('div', {}, h('strong', {}, `${s.start}–${s.end}`, kindBadge(s)), h('span', {}, `${s.venue} · 코트 ${courtsOf(s).join(',') || '-'}`), weatherChip(s)),
                   h('span', { class: 'cnt' + (capacityOf(s) && attendanceOf(s.id).length >= capacityOf(s) ? ' full' : '') }, countText(s), h('small', {}, '명'))
                 );
               })
@@ -109,6 +112,7 @@ export function scheduleView(id) {
       h(
         'dl',
         { class: 'sch-dl' },
+        h('dt', {}, '종류'), h('dd', {}, SESSION_KINDS[kindOf(s)]),
         h('dt', {}, '경기장'), h('dd', {}, s.venue, ' ', mapLink(s, 'on-blue'), s.address && h('small', { class: 'venue-addr' }, s.address)),
         h('dt', {}, '코트'), h('dd', {}, courtsOf(s).join(', ') || '-'),
         h('dt', {}, '예약자'), h('dd', {}, s.booker || '-'),
@@ -224,12 +228,13 @@ export function editSchedule(s, date) {
   if (!requireLogin(() => editSchedule(s, date))) return;
   if (s && !canEditSchedule(s)) return toast('일정을 등록한 사람만 수정할 수 있어요');
   const last = [...state.schedules].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
-  const base = s || { date: date || today(), start: last?.start || '07:00', end: last?.end || '09:00', venue: last?.venue || '', address: last?.address || '', mapUrl: last?.mapUrl || '', courts: last?.courts || '', capacity: last?.capacity || '', booker: me().name };
+  const base = s || { date: date || today(), start: last?.start || '07:00', end: last?.end || '09:00', venue: last?.venue || '', address: last?.address || '', mapUrl: last?.mapUrl || '', courts: last?.courts || '', capacity: last?.capacity || '', booker: me().name, kind: last ? kindOf(last) : 'match' };
   sheet(s ? '일정 수정' : '일정 등록', (close) => {
     const list = venueList();
     const NEW = '__new__';
     const cur = list.find((v) => v.name === base.venue);
     const f = {
+      kind: kindPicker(kindOf(base)),
       date: h('input', { class: 'input', type: 'date', value: base.date }),
       start: h('input', { class: 'input', type: 'time', value: base.start, step: 1800 }),
       end: h('input', { class: 'input', type: 'time', value: base.end, step: 1800 }),
@@ -274,6 +279,7 @@ export function editSchedule(s, date) {
       const doc = {
         ...(s || {}),
         id: s?.id || uid('s_'),
+        kind: f.kind.value(),
         date: f.date.value,
         start: f.start.value,
         end: f.end.value,
@@ -310,6 +316,7 @@ export function editSchedule(s, date) {
     return h(
       'div',
       { class: 'stack' },
+      field('종류', f.kind.node, '매치 = 경기 위주 모임 · 연습 = 레슨 · 랠리 · 기술 연습 모임'),
       field('날짜', f.date),
       h('div', { class: 'row gap' }, field('시작', f.start), field('종료', f.end)),
       field('경기장', f.pick),
@@ -322,6 +329,15 @@ export function editSchedule(s, date) {
       h('button', { class: 'btn primary block', onclick: save }, s ? '저장' : '등록')
     );
   });
+}
+
+function kindPicker(initial) {
+  let v = initial;
+  const node = h('div', { class: 'seg small' });
+  const draw = () =>
+    node.replaceChildren(...Object.entries(SESSION_KINDS).map(([k, l]) => h('button', { type: 'button', class: v === k ? 'on' : '', onclick: () => { v = k; draw(); } }, l)));
+  draw();
+  return { node, value: () => v };
 }
 
 async function deleteSchedule(s) {

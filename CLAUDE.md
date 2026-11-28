@@ -49,6 +49,10 @@
 - 경기장 목록 `settings.venues` = [{id, name, address, mapUrl}] (v1.8.1~, `venueList()` in schedule.js — 비어 있으면 지난 일정 경기장명으로 임시 목록). 관리자 `#/admin/venues`, 일정 등록 때 '새 경기장 직접 입력' → 목록 저장 선택. 일정 문서에 venue · address · mapUrl 복사 저장
 - 지도 = `mapUrl`(선택) → 없으면 `https://map.naver.com/p/search/주소(없으면 경기장명)`
 
+## 일정 종류 (v1.29.0~)
+- 일정 `kind`: 'match'(매치) | 'practice'(연습), 없으면 매치 (`kindOf` · `SESSION_KINDS` in store.js, 표시 `kindBadge` in schedule.js). 새 일정 기본값 = 마지막 등록 일정의 종류. 경기 · 대진 동작은 종류와 관계없이 같음
+- 참여 횟수 = 도착 체크(arrived)한 일정 수, 게스트 제외 (`sessionCounts(range)`). 회원 페이지 `activityBlock`, 순위 '참여' 탭 `#/rank/activity[/시즌 id]` (`activityView` in rank.js)
+
 ## 정원 · 대기 · 공유
 - 일정 `capacity`(0=무제한). 신청 순서(createdAt)로 정원까지 확정, 나머지 대기 (`rosterOf` in store.js). 신청 마감 없음
 - 공유 텍스트는 `js/share.js` (navigator.share → 클립보드 → 복사용 창)

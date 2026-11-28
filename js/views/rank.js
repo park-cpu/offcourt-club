@@ -1,5 +1,5 @@
 import { h, empty, pct, fmtNum, ntrpText, toast, confirmSheet } from '../ui.js';
-import { state, settings, currentSeason, seasonList, seasonStats, derived, activePlayers, careerText, me, isAdmin, fmtShort, today, addDays, playersMap, ballRulesAt, weekRules, weekStart } from '../store.js';
+import { state, settings, currentSeason, seasonList, seasonStats, derived, activePlayers, careerText, me, isAdmin, fmtShort, today, addDays, playersMap, ballRulesAt, weekRules, weekStart, sessionCounts } from '../store.js';
 import { put, uid } from '../db.js';
 import { ratingToNtrp, RULES, MATCH_TYPES, winnerSide, matchOrder, isRated, canBorrow, computeRelations, missionLabel } from '../rules.js';
 import { pageHead, backLink, nameTag, canRecord } from './common.js';
@@ -38,12 +38,13 @@ const RANK_TABS = [
   ['coin', '코인전'],
   ['singles', '단식'],
   ['rating', '레이팅'],
+  ['activity', '참여'],
 ];
 
 // #/rank → 공식전(현재 시즌) · #/rank/coin[/시즌] · #/rank/official/시즌 · #/rank/rating
 export function rankView(a, b) {
   const seasons = seasonList();
-  const mode = ['rating', 'coin', 'official', 'singles'].includes(a) ? a : 'official';
+  const mode = ['rating', 'coin', 'official', 'singles', 'activity'].includes(a) ? a : 'official';
   const sid = mode !== 'rating' && a === mode ? b : a;
   const season = mode !== 'rating' ? seasons.find((s) => s.id === sid) || currentSeason() : null;
 
@@ -54,6 +55,8 @@ export function rankView(a, b) {
   );
 
   if (mode === 'rating') return h('div', { class: 'page' }, pageHead('순위', 'Ranking'), h('div', { class: 'sticky-bar' }, tabs), ratingTable());
+
+  if (mode === 'activity' && season) return activityView(season, seasons, tabs);
 
   if (!season)
     return h('div', { class: 'page' }, pageHead('순위', 'Ranking'), tabs, empty('등록된 시즌이 없어요. 관리자 메뉴에서 시즌을 만들어 주세요.'));
@@ -187,6 +190,7 @@ export function profileView(id) {
       big('코인전 포인트', cs && cs.games ? Math.round(cs.sp) : '-', '', cs && cs.games ? `${cs.wins}승 ${cs.losses}패 · 코인 ${fmtNum(cs.coins)}${rankOf('coin')}` : '이번 시즌 기록 없음'),
       gs && gs.games ? big('단식 포인트', Math.round(gs.sp), '', `${gs.wins}승 ${gs.losses}패${rankOf('singles')}`) : ''
     ),
+    activityBlock(id, season),
     loanBlock(p, coins),
     relationBlocks(id),
     featureOn('analysis') && analysisBlock(id),
@@ -202,6 +206,58 @@ export function profileView(id) {
       h('summary', {}, h('h2', { class: 'inline' }, `코인 내역 · 잔액 ${bal}`)),
       h('ul', { class: 'ledger' }, ledger.map((l) => h('li', {}, h('span', { class: 'muted small' }, l.date ? fmtShort(l.date) : ''), h('span', { class: 'grow' }, l.reason), h('strong', { class: l.amount > 0 ? 'up' : 'down' }, fmtNum(l.amount)))))
     )
+  );
+}
+
+// ── 매치 · 연습 참여 (v1.29.0~) ─────────────────────────
+// 도착 체크한 일정 수. 이번 시즌 + 전체
+function activityBlock(id, season) {
+  const all = sessionCounts().get(id) || { match: 0, practice: 0 };
+  const now = season ? sessionCounts(season).get(id) || { match: 0, practice: 0 } : null;
+  const cell = (label, c) =>
+    h('div', { class: 'act-cell' }, h('span', { class: 'muted small' }, label), h('span', { class: 'act-nums' }, h('b', { class: 'kind-match-t' }, `매치 ${c.match}`), h('b', { class: 'kind-practice-t' }, `연습 ${c.practice}`)));
+  return h(
+    'section',
+    { class: 'block' },
+    h('div', { class: 'row between' }, h('h2', {}, '매치 · 연습 참여'), h('a', { class: 'link small', href: `#/rank/activity${season ? '/' + season.id : ''}` }, '전체 보기 ›')),
+    h('div', { class: 'act-grid' }, now && cell(season.name, now), cell('전체', all)),
+    h('p', { class: 'muted small' }, '도착 체크한 일정 수예요')
+  );
+}
+
+// 순위 → '참여' 탭: 시즌별 회원마다 매치 · 연습 횟수
+function activityView(season, seasons, tabs) {
+  const counts = sessionCounts(season);
+  const myId = me()?.id;
+  const rows = activePlayers()
+    .map((p) => ({ ...p, c: counts.get(p.id) || { match: 0, practice: 0, last: '' } }))
+    .map((r) => ({ ...r, total: r.c.match + r.c.practice }))
+    .sort((a, b) => b.total - a.total || b.c.match - a.c.match || a.name.localeCompare(b.name, 'ko'));
+  const ranked = withPlaces(rows.filter((r) => r.total > 0), (r) => r.total);
+  const none = rows.filter((r) => !r.total);
+  const sum = rows.reduce((t, r) => ({ match: t.match + r.c.match, practice: t.practice + r.c.practice }), { match: 0, practice: 0 });
+  const row = (r, num) =>
+    h(
+      'a',
+      { class: 'rank-row' + (r.id === myId ? ' me' : ''), href: `#/p/${r.id}` },
+      h('span', { class: 'rank-num' }, num),
+      h('span', { class: 'rank-main' }, h('strong', {}, r.name), h('small', {}, `매치 ${r.c.match} · 연습 ${r.c.practice}` + (r.c.last ? ` · 마지막 ${fmtShort(r.c.last)}` : ''))),
+      h('span', { class: 'sp' }, r.total, h('small', {}, '회'))
+    );
+  return h(
+    'div',
+    { class: 'page' },
+    pageHead('순위', 'Ranking'),
+    h(
+      'div',
+      { class: 'sticky-bar' },
+      tabs,
+      seasons.length > 1 && h('div', { class: 'chips-scroll' }, seasons.map((s) => h('a', { class: 'chip' + (s.id === season.id ? ' on' : ''), href: `#/rank/activity/${s.id}` }, s.name)))
+    ),
+    h('section', { class: 'season-band' }, h('strong', {}, `${season.name} · 참여`), h('span', {}, `매치 ${sum.match} · 연습 ${sum.practice}`)),
+    h('p', { class: 'muted small' }, '일정에 도착 체크한 횟수예요. 일정 등록 때 고른 종류(매치 · 연습)로 나눠 셉니다'),
+    ranked.length ? h('div', { class: 'rank-list' }, ranked.map((r) => row(r, r.place))) : empty('이번 시즌 참여 기록이 아직 없어요'),
+    none.length > 0 && h('section', { class: 'block' }, h('h2', {}, `참여 없음 ${none.length}명`), h('div', { class: 'rank-list dim' }, none.map((r) => row(r, '–'))))
   );
 }
 

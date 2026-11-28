@@ -1,7 +1,7 @@
 import { h, fmtShortRange, onMount } from '../ui.js';
 import { state, me, today, scheduleEnded, attendanceOf, rosterOf, capacityOf, countText, derived, currentSeason, courtsOf, dowOf, parseYmd, weekStart, addDays, playersMap } from '../store.js';
 import { computeStats } from '../rules.js';
-import { toggleRsvp } from './schedule.js';
+import { toggleRsvp, kindBadge } from './schedule.js';
 import { weatherChip } from '../weather.js';
 import { rankList } from './rank.js';
 import { hallBlock } from './hall.js';
@@ -161,7 +161,7 @@ function slide(s, t, u) {
   return h(
     'div',
     { class: 'slide' + (past ? ' past' : '') + (isToday ? ' today' : '') },
-    h('div', { class: 'row between' }, h('span', { class: 'slide-tag' }, tag), mine && h('span', { class: 'type ' + (myRow.waiting ? 'type-friendly' : 'type-official') }, myRow.waiting ? `대기 ${myRow.waitNo}번` : '참가 중')),
+    h('div', { class: 'row between' }, h('span', { class: 'slide-tag' }, tag, kindBadge(s)), mine && h('span', { class: 'type ' + (myRow.waiting ? 'type-friendly' : 'type-official') }, myRow.waiting ? `대기 ${myRow.waitNo}번` : '참가 중')),
     h(
       'a',
       { class: 'next-main', href: `#/s/${s.id}` },

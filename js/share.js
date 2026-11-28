@@ -2,7 +2,7 @@
 // 카톡 공유: 휴대폰은 공유 창(카카오톡 선택), 안 되면 클립보드 복사
 // ─────────────────────────────────────────────────────────────
 import { h, toast, sheet } from './ui.js';
-import { attendanceOf, rosterOf, capacityOf, matchesOf, courtsOf, person, parseYmd, DOW } from './store.js';
+import { attendanceOf, rosterOf, capacityOf, matchesOf, courtsOf, person, parseYmd, DOW, kindOf, SESSION_KINDS } from './store.js';
 import { weatherFor } from './weather.js';
 import { MATCH_TYPES, winnerSide } from './rules.js';
 
@@ -47,7 +47,7 @@ export function scheduleText(s) {
   const ok = roster.filter((a) => !a.waiting);
   const wait = roster.filter((a) => a.waiting);
   return [
-    `[Offcourt] ${dateLabel(s)} ${s.start}–${s.end}`,
+    `[Offcourt ${SESSION_KINDS[kindOf(s)]}] ${dateLabel(s)} ${s.start}–${s.end}`,
     `📍 ${s.venue} · 코트 ${courtsOf(s).join(', ') || '-'}`,
     s.address ? `🏠 ${s.address}` : null,
     s.venue ? `🗺 지도: ${mapUrlOf(s)}` : null,
