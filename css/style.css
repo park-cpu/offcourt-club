@@ -763,3 +763,5 @@ body:has(.home-page) { background: var(--blue); }
 .act-nums { display: flex; gap: 10px; font-size: 17px; }
 .kind-match-t { color: var(--blue); }
 .kind-practice-t { color: #8a5a33; }
+/* 주간 일정 칸의 '.sch div span' 글자색 · 크기를 덮음 (v1.29.2) */
+.sch div span.kind { color: #fff; font-size: 11px; overflow: visible; }
