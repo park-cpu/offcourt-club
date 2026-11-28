@@ -335,7 +335,7 @@ function kindPicker(initial) {
   let v = initial;
   const node = h('div', { class: 'seg small' });
   const draw = () =>
-    node.replaceChildren(...Object.entries(SESSION_KINDS).map(([k, l]) => h('button', { type: 'button', class: v === k ? 'on' : '', onclick: () => { v = k; draw(); } }, l)));
+    node.replaceChildren(...Object.entries(SESSION_KINDS).map(([k, l]) => h('button', { type: 'button', class: v === k ? `on kind-on-${k}` : '', onclick: () => { v = k; draw(); } }, l)));
   draw();
   return { node, value: () => v };
 }

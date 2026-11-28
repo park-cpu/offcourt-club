@@ -765,3 +765,6 @@ body:has(.home-page) { background: var(--blue); }
 .kind-practice-t { color: #8a5a33; }
 /* 주간 일정 칸의 '.sch div span' 글자색 · 크기를 덮음 (v1.29.2) */
 .sch div span.kind { color: #fff; font-size: 11px; overflow: visible; }
+/* 일정 등록 '종류' 고르기: 고른 칸을 매치 블루 · 연습 클레이로 (v1.29.3) */
+.seg > .kind-on-match { background: var(--blue); color: #fff; }
+.seg > .kind-on-practice { background: var(--clay); color: #fff; }
