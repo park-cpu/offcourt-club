@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────
 // 홈 아래 '명예의 전당' (v1.24.0~)
 //   주간 · 월간을 골라 ‹ › 로 지난 기간도 보고, 항목(연승왕 · 출석왕 …)은 좌우로 넘김
-//   모두 경기 · 출석 기록에서 매번 계산 (저장 안 함). 항목 = 연승왕 · 출석왕 · 다승왕 · 레이팅 급상승 (v1.24.1~)
+//   모두 경기 · 출석 기록에서 매번 계산 (저장 안 함). 항목 = 연승왕 · 다승왕 · 레이팅 급상승 · 출석왕 (v1.24.1~, 순서 v1.29.1~)
 // ─────────────────────────────────────────────────────────────
 import { h, onMount } from '../ui.js';
 import { state, derived, playersMap, activePlayers, me, weekStart, addDays, ymd, parseYmd } from '../store.js';
@@ -42,9 +42,9 @@ function categories(range) {
 
   return [
     { key: 'streak', icon: '🔥', name: '연승왕', rows: from((s) => s.best), fmt: (v) => `${v}연승`, min: 2 },
-    { key: 'attend', icon: '📅', name: '출석왕', rows: ofMap(attend), fmt: (v) => `${v}회` },
     { key: 'wins', icon: '🏆', name: '다승왕', rows: from((s) => s.wins), fmt: (v) => `${v}승` },
     { key: 'rise', icon: '📈', name: '레이팅 급상승', rows: from((s) => Math.round(s.sp - s.games)), fmt: (v) => `+${v}` },
+    { key: 'attend', icon: '📅', name: '출석왕', rows: ofMap(attend), fmt: (v) => `${v}회` },
   ].map((c) => {
     const rows = c.rows
       .filter(([id, v]) => active.has(id) && v >= (c.min || 1))
